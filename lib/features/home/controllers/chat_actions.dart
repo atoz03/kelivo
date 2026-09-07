@@ -258,6 +258,9 @@ class ChatActions {
   /// Called when stream finishes and title may need to be generated.
   void Function(String conversationId)? onMaybeGenerateTitle;
 
+  /// Called when summary may need to be generated (every N messages).
+  void Function(String conversationId)? onMaybeGenerateSummary;
+
   /// Called when chat suggestions may need to be generated.
   void Function(String conversationId)? onMaybeGenerateSuggestions;
 
@@ -2477,6 +2480,9 @@ class ChatActions {
       if (shouldGenerateTitle) {
         onMaybeGenerateTitle?.call(conversationId);
       }
+
+      // Trigger summary generation check (actual logic in HomeViewModel)
+      onMaybeGenerateSummary?.call(conversationId);
 
       // Trigger follow-up suggestions after the final assistant reply is stored.
       onMaybeGenerateSuggestions?.call(conversationId);

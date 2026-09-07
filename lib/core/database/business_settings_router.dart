@@ -115,10 +115,6 @@ final class BusinessKeyRegistry {
     'desktop_right_sidebar_width_v1',
     'desktop_send_shortcut_v1',
     'android_background_chat_mode_v1',
-    'ios_background_generation_enabled_v1',
-    'ios_background_task_refresh_enabled_v1',
-    'ios_live_activity_enabled_v1',
-    'ios_background_notifications_enabled_v1',
     'display_app_font_family_v1',
     'display_code_font_family_v1',
     'display_app_font_is_google_v1',
@@ -145,6 +141,25 @@ final class BusinessKeyRegistry {
     'mobile_assistant_edit_tab_order_v1',
     'mobile_assistant_edit_tab_hidden_v1',
     'mobile_assistant_detail_outline_enabled_v1',
+    'memory_model_v1',
+    'memory_model_thinking_enabled_v1',
+    'memory_prompt_lang_v1',
+    'memory_trace_enabled_v1',
+    'memory_rules_prompt_zh_v1',
+    'memory_rules_prompt_en_v1',
+    'memory_gate_prompt_zh_v1',
+    'memory_gate_prompt_en_v1',
+    'memory_extract_prompt_zh_v1',
+    'memory_extract_prompt_en_v1',
+    'memory_smart_add_prompt_zh_v1',
+    'memory_smart_add_prompt_en_v1',
+    'memory_smart_add_batch_prompt_zh_v1',
+    'memory_smart_add_batch_prompt_en_v1',
+    'memory_profile_distill_prompt_zh_v1',
+    'memory_profile_distill_prompt_en_v1',
+    'memory_migrate_prompt_zh_v1',
+    'memory_migrate_prompt_en_v1',
+    'memory_migration_batch_size_v1',
     'chat_bubble_style_overrides_v1',
     'chat_bubble_style_overrides_user_v1',
     'tool_schema_overrides_v1',
@@ -449,6 +464,8 @@ final class BusinessSettingsRouter {
             'systemPrompt',
             'messageTemplate',
             'background',
+            'memorySmartAddMode',
+            'memoryWriteScope',
           },
           booleans: const {
             'useAssistantAvatar',
@@ -457,6 +474,11 @@ final class BusinessSettingsRouter {
             'streamOutput',
             'searchEnabled',
             'enableMemory',
+            // Read as a fallback for allowPastConversationRecall in old backups.
+            'enableRecentChatsReference',
+            'autoOrganizeMemory',
+            'allowPastConversationRecall',
+            'generateConversationSummary',
             'appendCurrentTimeToUserMessage',
           },
           numbers: const {
@@ -465,6 +487,8 @@ final class BusinessSettingsRouter {
             'contextMessageSize',
             'thinkingBudget',
             'maxTokens',
+            'recentChatsSummaryMessageCount',
+            'memoryOrganizeEveryNTurns',
           },
           lists: const {
             'customHeaders',
@@ -564,8 +588,80 @@ final class BusinessSettingsRouter {
         return;
       case BusinessEntityKind.assistantTag:
         return;
+      case BusinessEntityKind.memoryEntry:
+        _validateKnownFields(
+          kind,
+          payload,
+          requiredStrings: const {'id', 'scope', 'type', 'content'},
+          strings: const {'status', 'source', 'assistantId'},
+          numbers: const {'createdAt', 'updatedAt'},
+          stringLists: const {'relatedIds', 'migrationIds'},
+        );
+        final scope = payload['scope'] as String;
+        if (scope != 'global' && scope != 'assistant') {
+          throw FormatException(kind.sourceKey);
+        }
+        final type = payload['type'] as String;
+        if (type != 'identity' &&
+            type != 'workflow' &&
+            type != 'voice' &&
+            type != 'instruction') {
+          throw FormatException(kind.sourceKey);
+        }
+        final status = payload['status'];
+        if (status != null && status != 'active' && status != 'archived') {
+          throw FormatException(kind.sourceKey);
+        }
+        final source = payload['source'];
+        if (source != null &&
+            source != 'manual' &&
+            source != 'tool' &&
+            source != 'extracted' &&
+            source != 'distilled') {
+          throw FormatException(kind.sourceKey);
+        }
+        final assistantId = payload['assistantId'];
+        if (scope == 'global') {
+          if (assistantId != null) {
+            throw FormatException(kind.sourceKey);
+          }
+        } else if (assistantId is! String || assistantId.trim().isEmpty) {
+          throw FormatException(kind.sourceKey);
+        }
+        if (payload['createdAt'] is! num || payload['updatedAt'] is! num) {
+          throw FormatException(kind.sourceKey);
+        }
+        final content = payload['content'] as String;
+        if (content.trim().isEmpty) {
+          throw FormatException(kind.sourceKey);
+        }
+        return;
+      case BusinessEntityKind.userProfileField:
+        _validateKnownFields(
+          kind,
+          payload,
+          requiredStrings: const {'id', 'value'},
+          numbers: const {'updatedAt'},
+        );
+        final id = payload['id'] as String;
+        if (!_userProfileFieldIdPattern.hasMatch(id)) {
+          throw FormatException(kind.sourceKey);
+        }
+        final value = payload['value'] as String;
+        if (value.trim().isEmpty) {
+          throw FormatException(kind.sourceKey);
+        }
+        if (payload['updatedAt'] is! num) {
+          throw FormatException(kind.sourceKey);
+        }
+        return;
     }
   }
+
+  static final _userProfileFieldIdPattern = RegExp(
+    r'^(preferred_name|gender|pronouns|preferred_language|timezone|'
+    r'occupation|location|custom\.[A-Za-z0-9_\-]{1,32})$',
+  );
 
   static void _validateKnownFields(
     BusinessEntityKind kind,

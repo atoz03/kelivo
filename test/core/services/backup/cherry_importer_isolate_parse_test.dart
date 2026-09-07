@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 // ignore: depend_on_referenced_packages
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -154,7 +153,6 @@ void main() {
   tearDown(() async {
     await chatService.close();
     await database.close();
-    await Hive.close();
     if (await root.exists()) await root.delete(recursive: true);
   });
 

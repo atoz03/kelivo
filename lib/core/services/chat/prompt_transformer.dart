@@ -78,40 +78,4 @@ class PromptTransformer {
           : match.group(0) ?? '';
     });
   }
-
-  static const List<String> _weekdayAbbrev = [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun',
-  ];
-
-  /// Wraps [timestamp] as `<current_time>EEE yyyy-MM-dd HH:mm:ss</current_time>`
-  /// in the local timezone, without a UTC offset.
-  ///
-  /// Four-digit year avoids `yy-MM-dd` / `dd-MM-yy` ambiguity (e.g. 22-26).
-  static String formatCurrentTimeTag(DateTime timestamp) {
-    final local = timestamp.isUtc ? timestamp.toLocal() : timestamp;
-    final eee = _weekdayAbbrev[local.weekday - 1];
-    final yyyy = local.year.toString();
-    final mm = local.month.toString().padLeft(2, '0');
-    final dd = local.day.toString().padLeft(2, '0');
-    final hh = local.hour.toString().padLeft(2, '0');
-    final min = local.minute.toString().padLeft(2, '0');
-    final ss = local.second.toString().padLeft(2, '0');
-    return '<current_time>$eee $yyyy-$mm-$dd $hh:$min:$ss</current_time>';
-  }
-
-  /// Returns which of `{cur_date}`, `{cur_time}`, `{cur_datetime}` occur in
-  /// [systemPrompt], in that fixed order. `{timezone}` etc. are ignored.
-  static List<String> detectTimeVariablesInSystemPrompt(String systemPrompt) {
-    const candidates = ['{cur_date}', '{cur_time}', '{cur_datetime}'];
-    return [
-      for (final token in candidates)
-        if (systemPrompt.contains(token)) token,
-    ];
-  }
 }

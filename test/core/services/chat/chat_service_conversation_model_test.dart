@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 // ignore: depend_on_referenced_packages
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 
@@ -49,7 +48,6 @@ void main() {
       await service.close();
     }
     services.clear();
-    await Hive.close();
     SandboxPathResolver.debugSetDirs(docsDir: null, supportDir: null);
     if (await tempDir.exists()) {
       await tempDir.delete(recursive: true);
@@ -203,6 +201,8 @@ void main() {
         id: 'carried',
         title: 'Carried',
         summary: 'a summary',
+        injectedMemoryHash: 'hash-1',
+        lastMemoryExtractedOrder: 7,
         chatModelProvider: 'OpenAI',
         chatModelId: 'gpt-5',
       );
@@ -213,6 +213,8 @@ void main() {
       expect(restored.chatModelProvider, 'OpenAI');
       expect(restored.chatModelId, 'gpt-5');
       expect(restored.summary, 'a summary');
+      expect(restored.injectedMemoryHash, 'hash-1');
+      expect(restored.lastMemoryExtractedOrder, 7);
     });
 
     test('the override survives a JSON round trip', () {

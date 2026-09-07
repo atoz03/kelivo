@@ -2725,6 +2725,93 @@ void main() {
     );
 
     test(
+      'merge restore imports mcp servers without clobbering local entries',
+      () async {
+        await BusinessRestoreService(businessRepository).overwrite({
+          'mcp_servers_v1': jsonEncode([
+            {
+              'id': 'local-server',
+              'enabled': true,
+              'name': 'Local Server',
+              'transport': 'sse',
+              'url': 'http://local.example/sse',
+              'tools': [],
+            },
+            {
+              'id': 'shared-server',
+              'enabled': true,
+              'name': 'Local Shared Server',
+              'transport': 'sse',
+              'url': 'http://local-shared.example/sse',
+              'tools': [],
+            },
+          ]),
+        });
+
+        final settingsFile = File('${root.path}/settings.json');
+        await settingsFile.writeAsString(
+          jsonEncode({
+            'mcp_servers_v1': jsonEncode([
+              {
+                'id': 'shared-server',
+                'enabled': false,
+                'name': 'Imported Shared Server',
+                'transport': 'sse',
+                'url': 'http://imported-shared.example/sse',
+                'tools': [],
+              },
+              {
+                'id': 'remote-server',
+                'enabled': true,
+                'name': 'Remote Server',
+                'transport': 'http',
+                'url': 'http://remote.example/mcp',
+                'tools': [],
+              },
+            ]),
+          }),
+        );
+
+        final zipFile = File('${root.path}/settings_merge_backup.zip');
+        final encoder = ZipFileEncoder();
+        encoder.create(zipFile.path);
+        encoder.addFileSync(settingsFile, 'settings.json');
+        encoder.closeSync();
+
+        final sync = DataSync(
+          businessRepository: businessRepository,
+          chatService: ChatService(),
+        );
+        await sync.restoreFromLocalFile(
+          zipFile,
+          const WebDavConfig(includeChats: false, includeFiles: false),
+          mode: RestoreMode.merge,
+        );
+
+        final restored = await BusinessRestoreService(
+          businessRepository,
+        ).exportSettings();
+        final servers =
+            jsonDecode(restored['mcp_servers_v1'] as String) as List;
+        expect(servers, hasLength(3));
+        expect(
+          servers
+              .where((e) => (e as Map)['id'] == 'shared-server')
+              .single['name'],
+          'Local Shared Server',
+        );
+        expect(
+          servers.any(
+            (e) =>
+                (e as Map)['id'] == 'remote-server' &&
+                e['name'] == 'Remote Server',
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    test(
       'normalizes legacy JSON string lists before merging settings',
       () async {
         await BusinessRestoreService(businessRepository).overwrite({

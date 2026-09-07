@@ -35,7 +35,6 @@
   "storageSpaceOtherHint": "包括导入字体、本地下载模型和其他应用文件。",
   "storageSpaceSubOtherApp": "其他文件",
   "storageSpaceCategoryChatData": "聊天记录",
-  "storageSpaceCategoryLegacyChatData": "聊天记录（旧）",
   "storageSpaceCategoryRestoreTraces": "恢复痕迹",
   "storageSpaceCategoryDisplacedDatabases": "保留的旧数据库",
   "storageSpaceSubDisplacedDatabases": "自动重建前保留的数据库",
@@ -51,7 +50,6 @@
   "storageSpaceCategoryOther": "其他",
   "storageSpaceFilesCount": "{count} 个文件",
   "storageSpaceSafeToClearHint": "可安全清理，不影响聊天记录。",
-  "storageSpaceLegacyChatDataHint": "这是迁移到 SQLite 前保留的 Hive 旧文件。清理后不会删除当前聊天记录。",
   "storageSpaceNotSafeToClearHint": "可能影响聊天记录，请谨慎删除。",
   "storageSpaceBreakdownTitle": "明细",
   "storageSpaceSubChatMessages": "消息",
@@ -77,11 +75,6 @@
   "storageSpaceClearAvatarCacheButton": "清理头像缓存",
   "storageSpaceClearCacheButton": "清理缓存",
   "storageSpaceClearLogsButton": "清理日志",
-  "storageSpaceClearLegacyChatDataButton": "清理旧聊天记录",
-  "storageSpaceExportLegacyChatFileButton": "导出",
-  "storageSpaceExportDone": "已导出 {fileName}",
-  "storageSpaceExportFailed": "导出失败：{error}",
-  "storageSpaceClearLegacyChatDataConfirmMessage": "确定清理保留的旧聊天文件吗？当前 SQLite 聊天记录不会受到影响。",
   "storageSpaceViewLogsButton": "查看日志",
   "storageSpaceDeleteConfirmTitle": "确认删除",
   "storageSpaceDeleteUploadsConfirmMessage": "删除 {count} 个项目？删除后聊天记录中的附件可能无法打开。",
@@ -839,7 +832,6 @@
   "chatMessageWidgetMemoryDelete": "删除记忆",
   "chatMessageWidgetUpdateUserProfile": "更新用户画像",
   "chatMessageWidgetChatSearch": "搜索历史对话",
-  "chatMessageWidgetCreateMemory": "创建记忆",
   "chatMessageWidgetToolCall": "调用工具: {name}",
   "chatMessageWidgetToolResult": "调用工具: {name}",
   "chatMessageWidgetNoResultYet": "（暂无结果）",
@@ -1066,8 +1058,23 @@
   "defaultModelPageTitleModelTitle": "标题总结模型",
   "defaultModelPageTitleModelSubtitle": "用于总结对话标题，默认跟随当前对话模型，也可指定其他模型。",
   "titleModelThinkingTitle": "是否开启思考",
+  "defaultModelPageSummaryModelTitle": "摘要模型",
+  "defaultModelPageSummaryModelSubtitle": "用于生成对话摘要的模型，推荐使用快速且便宜的模型",
   "defaultModelPageSuggestionModelTitle": "聊天建议模型",
   "defaultModelPageSuggestionModelSubtitle": "用于在助手回复后生成聊天建议，可跟随当前对话模型或指定其他模型。默认未启用。",
+  "assistantEditRecentChatsSummaryFrequencyTitle": "摘要更新频率",
+  "assistantEditRecentChatsSummaryFrequencyOption": "每 {count} 条",
+  "@assistantEditRecentChatsSummaryFrequencyOption": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "assistantEditRecentChatsSummaryFrequencyCustomButton": "自定义",
+  "assistantEditRecentChatsSummaryFrequencyCustomTitle": "自定义摘要频率",
+  "assistantEditRecentChatsSummaryFrequencyCustomLabel": "新消息条数",
+  "assistantEditRecentChatsSummaryFrequencyCustomHint": "请输入大于 0 的整数",
   "defaultModelPageTranslateModelTitle": "翻译模型",
   "defaultModelPageTranslateModelSubtitle": "用于翻译消息内容的模型，推荐使用快速且准确的模型",
   "defaultModelPageOcrModelTitle": "OCR 模型",
@@ -1088,12 +1095,14 @@
   "defaultModelPageTitlePromptHint": "输入用于标题总结的提示词模板",
   "defaultModelPageTranslatePromptHint": "输入用于翻译的提示词模板",
   "defaultModelPageOcrPromptHint": "输入用于 OCR 识别的提示词模板",
+  "defaultModelPageSummaryPromptHint": "输入用于生成摘要的提示词模板",
   "defaultModelPageSuggestionPromptHint": "输入用于生成聊天建议的提示词模板",
   "defaultModelPageResetDefault": "重置为默认",
   "defaultModelPageDisable": "禁用",
   "defaultModelPageSave": "保存",
   "defaultModelPageTitleVars": "变量: 对话内容: {contentVar}, 语言: {localeVar}",
   "defaultModelPageTranslateVars": "变量：原始文本：{sourceVar}，目标语言：{targetVar}",
+  "defaultModelPageSummaryVars": "变量：旧摘要：{previousSummaryVar}，新消息：{userMessagesVar}",
   "defaultModelPageSuggestionVars": "变量：对话内容：{contentVar}，语言：{localeVar}",
   "defaultModelPageCompressModelTitle": "压缩模型",
   "defaultModelPageCompressModelSubtitle": "用于压缩对话上下文的模型，推荐使用快速模型",
@@ -1895,6 +1904,7 @@
   "chatInputBarQuickPhraseTooltip": "快捷短语",
   "chatInputBarOcrTooltip": "OCR 文字识别",
   "assistantEditQuickPhraseDescription": "管理该助手的快捷短语。点击下方按钮添加短语。",
+  "assistantEditPageMemoryTab": "记忆",
   "assistantEditLocalToolTimeInfoTitle": "时间信息",
   "assistantEditLocalToolTimeInfoSubtitle": "读取设备日期、星期、时间、时区、UTC 偏移和时间戳。",
   "assistantEditLocalToolClipboardTitle": "剪切板",
@@ -2143,7 +2153,9 @@
   "contextLogSnapshotMessages": "{count} 条消息",
   "contextLogSnapshotTokens": "{count} tokens",
   "contextLogSourceSystemPrompt": "系统提示词",
+  "contextLogSourceMemoryRules": "记忆规则",
   "contextLogSourceSearchPrompt": "搜索提示",
+  "contextLogSourceMemorySnapshot": "记忆快照",
   "contextLogSourceChatHistory": "聊天历史",
   "contextLogSourceToolCall": "工具调用",
   "contextLogSourceToolResult": "工具结果",
@@ -2191,8 +2203,320 @@
   "logSettingsMaxSize": "日志大小上限",
   "logSettingsMaxSizeSubtitle": "超出后将删除最早的日志",
   "logSettingsMaxSizeUnlimited": "不限制",
+  "assistantEditManageSummariesTitle": "管理摘要",
+  "assistantEditSummaryEmpty": "暂无摘要",
+  "assistantEditSummaryDialogTitle": "编辑摘要",
+  "assistantEditSummaryDialogHint": "输入摘要内容",
+  "assistantEditDeleteSummaryTitle": "清除摘要",
+  "assistantEditDeleteSummaryContent": "确定要清除此摘要吗？",
   "homePageProcessingFiles": "正在解析文件……",
   "settingsPageMemory": "记忆",
+  "memorySettingsPageTitle": "记忆",
+  "memorySettingsGlobalSubtitle": "记忆模型与提示词",
+  "memorySettingsModelSection": "记忆模型",
+  "memorySettingsModelTitle": "处理模型",
+  "memorySettingsModelUnset": "未选择",
+  "memorySettingsModelTip": "开启「自动整理记忆」后，后台会频繁调用此模型，建议选择便宜且速度快的模型。",
+  "memorySettingsAboutTitle": "记忆说明",
+  "memorySettingsAboutSubtitle": "了解记忆如何运作与触发",
+  "memoryAboutQuickstartTitle": "三步上手",
+  "memoryAboutQuickstartBody": "① 在「设置 → 记忆」里选择处理模型。\n② 在助手的「记忆」页打开长期记忆和自动整理。\n③ 聊几轮，或点「整理记忆」，再到「全部记忆」查看结果。",
+  "memoryAboutTypesTitle": "记忆类型",
+  "memoryAboutTypesBody": "身份：用户的稳定信息，例如称呼、职业、语言、长期偏好。写成完整的第三人称陈述。\n\n工作流：用户习惯怎么做事，例如工具、格式、审阅方式。\n\n语气：用户希望助手怎么说话，例如语气、篇幅、语言风格。\n\n指令：助手应长期遵守的规则，而不是本次对话里的一次性任务。",
+  "memoryAboutScopeTitle": "全局与助手范围",
+  "memoryAboutScopeBody": "全局记忆会对所有助手注入。助手范围的记忆只对该助手可见。跨助手都该知道的事实用全局；只属于某一个助手的规则或上下文用助手范围。",
+  "memoryAboutInjectionTitle": "记忆如何注入",
+  "memoryAboutInjectionBody": "开对话时，每类会把最近的若干条放进模型上下文。某类超过注入上限时，块会标上 mode=\"summary\"，并用 total / shown 标明总数与展示条数，其余由模型用 memory_search_profile 按需查询。可在「设置 → 记忆」调大上限，更全面但更费 token。",
+  "memoryAboutPipelineTitle": "后台整理",
+  "memoryAboutPipelineBody": "开启自动整理后，对话结束会走：判断是否值得记 → 提取候选 → 去重合并 → 必要时把身份类记忆提炼进用户画像。也可以在助手「记忆」页点「整理记忆」。因此处理模型会被较频繁调用。",
+  "memoryAboutCacheTitle": "保持缓存良好",
+  "memoryAboutCacheBody": "注入前缀会保持稳定，未改动时可复用 Prompt 缓存，从而降低费用与延迟。避免无意义的大批量改动或重排。日常增删改单条通常影响有限。",
+  "memoryAboutFaqTitle": "常见问题",
+  "memoryAboutFaqWhyNotRememberedTitle": "为什么没记住？",
+  "memoryAboutFaqWhyNotRememberedBody": "整理会被跳过，常见原因包括：新消息不足，暂不整理；没有新消息需要整理；尚未选择记忆处理模型。临时对话不会写入记忆。也可以按助手关闭记忆或自动整理。",
+  "memorySettingsThinkingTitle": "启用思考",
+  "memorySettingsThinkingSubtitle": "在模型支持时允许记忆模型使用推理",
+  "memorySettingsInjectionSection": "记忆注入",
+  "memorySettingsInjectionMaxItemsTitle": "每类注入条数",
+  "memorySettingsInjectionMaxItemsSubtitle": "某一类型的记忆超过该条数时，只注入最近的若干条，其余由模型用 memory_search_profile 按需查询。调大更全面但更费 token。若你改过规则提示词，请一并更新或恢复默认。",
+  "memorySettingsInjectionMaxItemsOption": "{n}",
+  "@memorySettingsInjectionMaxItemsOption": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "memorySettingsInjectionMaxItemsCustomButton": "自定义",
+  "memorySettingsInjectionMaxItemsCustomTitle": "自定义注入条数",
+  "memorySettingsInjectionMaxItemsCustomDescription": "请输入 1 到 100 之间的整数。",
+  "memorySettingsInjectionMaxItemsCustomLabel": "条数",
+  "memorySettingsInjectionMaxItemsCustomHint": "1–100",
+  "memorySettingsInjectionMaxItemsCustomInvalid": "请输入 1 到 100 之间的整数",
+  "memorySettingsPromptLangSection": "提示词语言",
+  "memorySettingsPromptLangAuto": "自动",
+  "memorySettingsPromptLangAutoSubtitle": "跟随界面语言（中文用 zh，否则用 en）",
+  "memorySettingsPromptLangZh": "中文",
+  "memorySettingsPromptLangZhSubtitle": "始终使用中文记忆提示词与工具描述",
+  "memorySettingsPromptLangEn": "English",
+  "memorySettingsPromptLangEnSubtitle": "始终使用英文记忆提示词与工具描述",
+  "memorySettingsPromptsSection": "提示词模板",
+  "memoryPromptEditRulesTitle": "记忆规则",
+  "memoryPromptEditRulesSubtitle": "注入到主对话的系统提示中",
+  "memoryPromptEditGateTitle": "Gatekeeper",
+  "memoryPromptEditGateSubtitle": "判断这一轮是否值得记忆",
+  "memoryPromptEditExtractTitle": "Extract",
+  "memoryPromptEditExtractSubtitle": "从对话中提取候选记忆条目",
+  "memoryPromptEditSmartAddTitle": "Smart Add",
+  "memoryPromptEditSmartAddSubtitle": "NEW / MERGE / CONFLICT / SKIP 去重判定",
+  "memoryPromptEditDistillTitle": "Profile Distiller",
+  "memoryPromptEditDistillSubtitle": "从身份类记忆提炼画像字段",
+  "memoryPromptEditMigrateTitle": "旧版记忆迁移",
+  "memoryPromptEditMigrateSubtitle": "选择「模型整理」时用于改写记忆原文",
+  "memoryPromptEditReset": "恢复默认",
+  "memoryPromptEditSave": "保存",
+  "memoryPromptEditSectionPerItem": "逐条提示词",
+  "memoryPromptEditSectionBatch": "合并提示词",
+  "memorySettingsEntriesSection": "全部记忆",
+  "memorySettingsEntriesTitle": "记忆列表",
+  "memorySettingsEntriesSubtitle": "浏览、编辑、归档与删除记忆",
+  "memorySettingsProfileTitle": "用户画像",
+  "memorySettingsProfileSubtitle": "供模型使用的结构化身份字段",
+  "memoryEntryTypeIdentity": "身份",
+  "memoryEntryTypeWorkflow": "工作流",
+  "memoryEntryTypeVoice": "语气",
+  "memoryEntryTypeInstruction": "指令",
+  "memoryEntryScopeGlobal": "全局",
+  "memoryEntryScopeAssistant": "仅本助手",
+  "memoryEntryScopeAssistantNamed": "{name}",
+  "@memoryEntryScopeAssistantNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "memoryEntrySourceManual": "手动",
+  "memoryEntrySourceTool": "工具",
+  "memoryEntrySourceExtracted": "提取",
+  "memoryEntrySourceDistilled": "蒸馏",
+  "memoryEntryUpdatedAt": "更新于 {date}",
+  "@memoryEntryUpdatedAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "memoryEntryActionEdit": "编辑",
+  "memoryEntryActionDelete": "删除",
+  "memoryEntryActionArchive": "归档",
+  "memoryEntryActionRestore": "恢复",
+  "memoryEntryActionSwitchScope": "切换范围",
+  "memoryEntryActionBatchDelete": "删除所选",
+  "memoryEntryActionAdd": "添加记忆",
+  "memoryEntryDeleteConfirmTitle": "删除这条记忆？",
+  "memoryEntryDeleteConfirmContent": "将永久删除该记忆，且无法撤销。",
+  "memoryEntryBatchDeleteConfirmTitle": "删除 {count} 条记忆？",
+  "@memoryEntryBatchDeleteConfirmTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryEntryBatchDeleteConfirmContent": "所选记忆将被永久删除。",
+  "memoryEntrySwitchScopeConfirmTitle": "更改记忆范围？",
+  "memoryEntrySwitchScopeToGlobal": "将这条记忆设为全局（所有助手可见）？",
+  "memoryEntrySwitchScopeToAssistant": "将这条记忆限制为仅本助手？",
+  "memoryEntryArchivedSection": "已归档",
+  "memoryEntryEmpty": "还没有记忆",
+  "memoryEntryEmptyDisabled": "该助手未启用长期记忆",
+  "memoryEntryEditTitle": "编辑记忆",
+  "memoryEntryCreateTitle": "新建记忆",
+  "memoryEntryContentHint": "输入记忆内容",
+  "memoryEntryTypeLabel": "类型",
+  "memoryEntryScopeLabel": "范围",
+  "memoryFilterScopeAll": "全部范围",
+  "memoryFilterScopeGlobal": "仅全局",
+  "memoryFilterScopeAssistant": "助手",
+  "memoryFilterTypeAll": "全部类型",
+  "memoryFilterStatusAll": "全部状态",
+  "memoryFilterStatusActive": "活跃",
+  "memoryFilterStatusArchived": "已归档",
+  "memorySearchHint": "搜索记忆",
+  "memorySearchEmpty": "没有匹配的记忆",
+  "memoryOrphanBanner": "有 {count} 条孤儿助手记忆（助手已删除）",
+  "@memoryOrphanBanner": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryOrphanCleanupButton": "清理",
+  "memoryOrphanConfirmTitle": "清理孤儿记忆？",
+  "memoryOrphanConfirmContent": "将永久删除 {count} 条所属助手已不存在的记忆。",
+  "@memoryOrphanConfirmContent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryOrganizeButton": "整理记忆",
+  "memoryOrganizeNeedsConversation": "需要在与该助手的对话中使用",
+  "memoryOrganizeNeedsModel": "请先在 设置 → 记忆 中选择记忆处理模型",
+  "memoryOrganizeStatusNever": "尚未整理",
+  "memoryOrganizeStatusLast": "上次整理：{when}",
+  "@memoryOrganizeStatusLast": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "memoryOrganizeStatusExtracted": "提取 {count} 条",
+  "@memoryOrganizeStatusExtracted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryOrganizeStatusSkipped": "无需记忆",
+  "memoryOrganizeStatusFailed": "失败：{reason}",
+  "@memoryOrganizeStatusFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "memoryOrganizeStatusSkippedReason": "已跳过：{reason}",
+  "@memoryOrganizeStatusSkippedReason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "memoryOutcomeTemporaryConversation": "临时对话不会写入记忆",
+  "memoryOutcomeMemoryDisabled": "该助手已关闭记忆",
+  "memoryOutcomeAutoOrganizeOff": "自动整理已关闭",
+  "memoryOutcomeStreaming": "回复仍在生成，已跳过整理",
+  "memoryOutcomeBelowThreshold": "新消息不足，暂不整理",
+  "memoryOutcomeEmptyWindow": "没有新消息需要整理",
+  "memoryOutcomeMemoryModelUnset": "尚未选择记忆处理模型",
+  "memoryOutcomeMemoryModelMissing": "所选记忆模型已不可用",
+  "memoryOutcomeAssistantMissing": "找不到助手",
+  "memoryOutcomeConversationMissing": "找不到对话",
+  "memoryOutcomeQueueOverflow": "整理队列已满，本次任务被丢弃",
+  "memoryOutcomeGateRequestFailed": "判断是否值得记忆时，无法请求记忆模型",
+  "memoryOutcomeGateParseFailed": "判断是否值得记忆的回复无法解析",
+  "memoryOutcomeExtractRequestFailed": "提取记忆时，无法请求记忆模型",
+  "memoryOutcomeExtractParseFailed": "提取记忆的回复无法解析",
+  "memoryOutcomeDistillFailed": "用户画像提炼失败",
+  "memoryOutcomeMemoryExecutionError": "记忆工具执行失败",
+  "memoryOutcomeUnsupportedTool": "不支持的记忆工具",
+  "memoryOutcomeInvalidMemoryType": "记忆类型无效",
+  "memoryOutcomeInvalidMemoryContent": "记忆内容无效",
+  "memoryOutcomeInvalidQuery": "查询无效",
+  "memoryOutcomeInvalidMemoryId": "记忆 ID 无效",
+  "memoryOutcomeMemoryNotFound": "找不到这条记忆",
+  "memoryOutcomeInvalidProfileFields": "画像字段无效",
+  "memoryOutcomeChatSearchUnavailable": "对话搜索不可用",
+  "memoryOrganizeJustNow": "刚刚",
+  "memoryOrganizeMinutesAgo": "{n} 分钟前",
+  "@memoryOrganizeMinutesAgo": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryOrganizeHoursAgo": "{n} 小时前",
+  "@memoryOrganizeHoursAgo": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryOrganizeDaysAgo": "{n} 天前",
+  "@memoryOrganizeDaysAgo": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryModelMissingNotice": "需要先在 设置 → 记忆 中选择记忆处理模型。",
+  "memoryModelMissingGoSelect": "去选择",
+  "memoryEntriesPageTitle": "全部记忆",
+  "userProfilePageTitle": "用户画像",
+  "userProfilePreferredName": "希望怎么称呼我",
+  "userProfileGender": "性别",
+  "userProfilePronouns": "代词",
+  "userProfilePreferredLanguage": "偏好语言",
+  "userProfileTimezone": "时区",
+  "userProfileOccupation": "职业",
+  "userProfileLocation": "所在地",
+  "userProfileCustomSection": "自定义字段",
+  "userProfileAddCustom": "添加自定义字段",
+  "userProfileCustomKeyHint": "键名（custom.name）",
+  "userProfileCustomValueHint": "值",
+  "userProfileInvalidKey": "键名须为 custom. 后跟 1–32 位字母、数字、_ 或 -",
+  "userProfileClear": "清除",
+  "userProfileSave": "保存",
+  "userProfileEmptyValue": "未设置",
+  "memoryUiValueLabel": "值",
+  "memoryUiCustomKeyLabel": "键名",
+  "memoryUiStatusLabel": "状态",
+  "memoryUiAssistantLabel": "助手",
+  "memoryUiAssistantAll": "全部助手",
+  "memoryUiSearchClear": "清除搜索",
+  "assistantEditMemorySwitchTitle": "使用长期记忆",
+  "assistantEditMemorySwitchSubtitle": "把已保存的记忆注入对话，并允许此助手写入新记忆",
+  "assistantEditAutoOrganizeTitle": "自动整理记忆",
+  "assistantEditAutoOrganizeSubtitle": "对话后自动运行记忆管线",
+  "assistantEditAllowPastRecallTitle": "允许回忆过去对话",
+  "assistantEditAllowPastRecallSubtitle": "启用跨会话的对话搜索",
+  "assistantEditGenerateSummaryTitle": "生成会话摘要",
+  "assistantEditGenerateSummarySubtitle": "摘要仅供对话搜索使用",
+  "assistantEditManageMemoryTitle": "本助手可见的记忆",
+  "assistantEditWriteScopeTitle": "记忆写入范围",
+  "assistantEditWriteScopeSubtitle": "新记忆默认写入的位置",
+  "assistantEditWriteScopeAlwaysGlobal": "一律全局",
+  "assistantEditWriteScopeAlwaysGlobalSubtitle": "新记忆对所有助手可见",
+  "assistantEditWriteScopeAlwaysAssistant": "一律本助手",
+  "assistantEditWriteScopeAlwaysAssistantSubtitle": "新记忆只对本助手可见",
+  "assistantEditWriteScopeToolDefaultGlobal": "模型自选（默认全局）",
+  "assistantEditWriteScopeToolDefaultGlobalSubtitle": "模型可选择全局或本助手，缺省写入全局",
+  "assistantEditWriteScopeToolDefaultAssistant": "模型自选（默认本助手）",
+  "assistantEditWriteScopeToolDefaultAssistantSubtitle": "模型可选择全局或本助手，缺省写入本助手",
+  "assistantEditDedupeModeTitle": "去重方式",
+  "assistantEditDedupeModeSubtitle": "候选记忆如何与已有条目比对",
+  "assistantEditDedupeModeBatched": "合并",
+  "assistantEditDedupeModeBatchedSubtitle": "一次请求判断本轮全部候选。更快更省；条目多时精度较差。",
+  "assistantEditDedupeModePerItem": "逐条",
+  "assistantEditDedupeModePerItemSubtitle": "每条候选单独请求判断。更准确，但会增加处理模型调用。",
+  "assistantEditOrganizeFrequencyTitle": "整理频率",
+  "assistantEditOrganizeFrequencySubtitle": "每累积 N 轮助手回复触发一次自动整理",
+  "assistantEditOrganizeFrequencyOption": "每 {n} 轮",
+  "@assistantEditOrganizeFrequencyOption": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "assistantEditOrganizeFrequencyCustomButton": "自定义",
+  "assistantEditOrganizeFrequencyCustomTitle": "自定义整理频率",
+  "assistantEditOrganizeFrequencyCustomDescription": "请输入 1 到 20 之间的整数。",
+  "assistantEditOrganizeFrequencyCustomLabel": "轮数",
+  "assistantEditOrganizeFrequencyCustomHint": "1–20",
+  "assistantEditOrganizeFrequencyCustomInvalid": "请输入 1 到 20 之间的整数",
   "mcpToolNeedsApproval": "需要审批",
   "toolApprovalPending": "等待审批",
   "toolApprovalApprove": "批准",
@@ -2285,70 +2609,6 @@
       }
     }
   },
-  "migrationIntroTitle": "升级聊天记录存储",
-  "migrationIntroSubtitle": "Kelivo 将聊天记录迁移到更快的 SQLite 数据库。升级会在应用打开前完成，避免新旧数据同时写入。",
-  "migrationBackupNote": "迁移开始前，会先导出包含设置、聊天记录和本地文件的 ZIP 备份。",
-  "migrationPerformanceNote": "迁移后，启动、历史加载和搜索都会使用 SQLite 索引，长对话会更流畅。",
-  "migrationSourceDatabaseLabel": "Hive",
-  "migrationTargetDatabaseLabel": "SQLite",
-  "migrationChooseFolderButton": "选择文件夹并备份",
-  "migrationSaveBackupButton": "保存备份 ZIP",
-  "migrationStartWithoutBackupButton": "不备份，直接迁移",
-  "migrationSkipChatsJsonOption": "跳过 chats.json",
-  "migrationSkipChatsJsonDescription": "仍会备份原始 Hive、设置和本地文件，超大聊天记录建议选择。",
-  "migrationSkipBackupOption": "跳过本次备份",
-  "migrationSkipBackupDescription": "仅在已有并确认备份可用时选择，之后将立即开始迁移。",
-  "migrationBackingUpTitle": "正在备份",
-  "migrationBackingUpSubtitle": "正在导出设置、聊天记录、上传文件、图片和字体。请保持 Kelivo 开启，等待备份完成。",
-  "migrationMigratingTitle": "正在迁移到 SQLite",
-  "migrationMigratingSubtitle": "正在分批写入会话和消息，避免超大聊天记录占满内存。请保持 Kelivo 在前台，等待迁移完成。",
-  "migrationBackingUpDetail": "正在备份 {fileName}",
-  "@migrationBackingUpDetail": {
-    "placeholders": {
-      "fileName": {
-        "type": "String"
-      }
-    }
-  },
-  "migrationMigratingDetail": "已迁移 {count} 条消息",
-  "@migrationMigratingDetail": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "migrationMigratingPrepareDetail": "正在准备 SQLite 数据库",
-  "migrationMigratingToolEventsDetail": "正在迁移工具调用记录",
-  "migrationMigratingValidateDetail": "正在校验迁移数据",
-  "migrationBackupReadyDetail": "备份 ZIP 已准备好",
-  "migrationSavingBackupZipDetail": "正在保存备份 ZIP",
-  "migrationBackupFileSavedTitle": "备份 ZIP 已保存",
-  "migrationChecklistPrepareSqlite": "准备 SQLite 数据库",
-  "migrationChecklistMigrateMessages": "迁移会话和消息",
-  "migrationChecklistMigrateToolEvents": "迁移工具调用记录",
-  "migrationChecklistValidate": "校验迁移数据",
-  "migrationStepBackup": "备份",
-  "migrationStepMigrate": "迁移",
-  "migrationStepComplete": "完成",
-  "migrationCompleteTitle": "升级完成",
-  "migrationCompleteSubtitle": "你的聊天记录已迁移到 SQLite。请重启 Kelivo 进入升级后的应用。",
-  "migrationConversationCount": "对话",
-  "migrationMessageCount": "消息",
-  "migrationConvertedCount": "已转换",
-  "migrationMalformedCount": "格式异常",
-  "migrationRestartButton": "重启 Kelivo",
-  "migrationFailedTitle": "迁移失败",
-  "migrationFailedSubtitle": "原始 Hive 数据仍然保留；如果备份已经完成，备份文件也不会被修改。查看下方原因后可以重试。",
-  "migrationUnknownError": "未知迁移错误。",
-  "migrationFailureLogTitle": "失败日志",
-  "migrationRetryButton": "重试迁移",
-  "migrationSkipButton": "跳过迁移并全新开始",
-  "migrationSkipDialogTitle": "跳过迁移？",
-  "migrationSkipDialogMessage": "Kelivo 将以空的聊天数据库启动。旧的聊天记录会保留在磁盘上（重命名为 .retired 后缀），但不会被迁移，也不会在应用中显示。之后如需找回，请使用已保存的备份 ZIP。",
-  "migrationSkipDialogCancel": "取消",
-  "migrationSkipDialogConfirm": "跳过并全新开始",
-  "migrationChatsExportDegradedNote": "chats.json 导出因出错而被跳过。备份 ZIP 仍包含原始 Hive 文件，完整聊天记录未丢失。",
   "largeContentShowMore": "再显示 {count} 项",
   "@largeContentShowMore": {
     "placeholders": {
@@ -2378,6 +2638,111 @@
   "imageSettingsPageSendSectionTitle": "发送",
   "imageSettingsPageMarkdownImageLinksTitle": "将 Markdown 图片链接作为图片发送",
   "imageSettingsPageMarkdownImageLinksSubtitle": "开启后，消息文本中的 ![alt](url) 会作为图片发送给视觉模型；关闭后仅作为普通文本发送。手动添加的图片附件不受影响。",
+  "memoryTraceSettingsTitle": "流程追踪",
+  "memoryTraceSettingsSubtitle": "逐步查看每次后台记忆处理的全过程",
+  "memoryTracePageTitle": "记忆流程追踪",
+  "memoryTraceRecordingSection": "记录",
+  "memoryTraceToggleTitle": "记录流程追踪",
+  "memoryTraceToggleSubtitle": "仅在内存中保留最近几次后台运行的提示词、模型回复与实际改动",
+  "memoryTraceRunsSection": "最近运行",
+  "memoryTraceEmptyTitle": "暂无追踪记录",
+  "memoryTraceEmptySubtitle": "后台记忆流程运行后，记录会显示在这里。",
+  "memoryTraceDisabledTitle": "记录已关闭",
+  "memoryTraceDisabledSubtitle": "开启记录后，下一次后台记忆运行才会被捕获。",
+  "memoryTraceClearAction": "清空",
+  "memoryTraceClearSheetTitle": "清空追踪记录",
+  "memoryTraceClearSheetMessage": "将删除所有已记录的追踪。追踪从不写入磁盘，因此不会影响其他数据。",
+  "memoryTraceClearConfirm": "清空记录",
+  "memoryTraceCancel": "取消",
+  "memoryTraceClearedToast": "追踪记录已清空",
+  "memoryTraceCopyAction": "复制",
+  "memoryTraceCopiedToast": "已复制到剪贴板",
+  "memoryTraceTriggerAuto": "自动",
+  "memoryTraceTriggerManual": "手动",
+  "memoryTraceTriggerTool": "工具调用",
+  "memoryTraceTriggerSummary": "对话摘要",
+  "memoryTraceScopeAssistant": "助手",
+  "memoryTraceScopeGlobal": "全局",
+  "memoryTraceStepGatekeeper": "守门判断",
+  "memoryTraceStepExtract": "记忆抽取",
+  "memoryTraceStepSmartAdd": "智能写入",
+  "memoryTraceStepDistiller": "用户画像提炼",
+  "memoryTraceStepSummary": "对话摘要生成",
+  "memoryTraceStepChatSearch": "历史对话检索",
+  "memoryTraceStepTool": "记忆工具",
+  "memoryTraceStatusSuccess": "成功",
+  "memoryTraceStatusFailed": "失败",
+  "memoryTraceStatusSkipped": "跳过",
+  "memoryTraceStatusRunning": "进行中",
+  "memoryTraceOutcomeAdvanced": "水位已推进",
+  "memoryTraceOutcomeHeld": "水位未推进",
+  "memoryTraceOutcomeForced": "强制推进",
+  "memoryTraceDetailTitle": "追踪详情",
+  "memoryTraceSectionOverview": "概览",
+  "memoryTraceSectionPrompt": "提示词",
+  "memoryTraceSectionResponse": "原始回复",
+  "memoryTraceSectionParsed": "解析结果",
+  "memoryTraceSectionMutations": "实际改动",
+  "memoryTraceFieldTime": "开始时间",
+  "memoryTraceFieldDuration": "耗时",
+  "memoryTraceFieldTrigger": "触发方式",
+  "memoryTraceFieldScope": "作用范围",
+  "memoryTraceFieldConversation": "对话",
+  "memoryTraceFieldAssistant": "助手",
+  "memoryTraceFieldWindow": "消息窗口",
+  "memoryTraceFieldWatermark": "水位",
+  "memoryTraceFieldOutcome": "结果",
+  "memoryTraceFieldError": "错误",
+  "memoryTraceMutationCreated": "新建",
+  "memoryTraceMutationMerged": "合并",
+  "memoryTraceMutationEdited": "修改",
+  "memoryTraceMutationArchived": "归档",
+  "memoryTraceMutationLinked": "关联",
+  "memoryTraceMutationProfileWritten": "写入画像字段",
+  "memoryTraceMutationProfileCleared": "清除画像字段",
+  "memoryTraceMutationSummary": "写入对话摘要",
+  "memoryTraceBefore": "改动前",
+  "memoryTraceAfter": "改动后",
+  "memoryTraceStepsCount": "{count} 个步骤",
+  "@memoryTraceStepsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryTraceMutationsCount": "{count} 项改动",
+  "@memoryTraceMutationsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryTraceRepeatCount": "重复 {count} 次",
+  "@memoryTraceRepeatCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryTraceWindowValue": "{size} 条消息 · #{start}–#{end}",
+  "@memoryTraceWindowValue": {
+    "placeholders": {
+      "size": {
+        "type": "int"
+      },
+      "start": {
+        "type": "int"
+      },
+      "end": {
+        "type": "int"
+      }
+    }
+  },
+  "memoryTraceShowMore": "展开全文",
+  "memoryTraceShowLess": "收起",
   "messageStyleSettingsPageTitle": "消息样式",
   "messageStyleSettingsPageReset": "重置",
   "messageStyleSettingsPageResetConfirm": "恢复全部消息样式自定义？",
@@ -2478,33 +2843,5 @@
   "toolSchemaSettingsCancel": "取消",
   "healthDataSettingsCategoryReproductive": "生殖健康",
   "healthDataSettingsTypeMenstrualFlowTitle": "经期记录",
-  "healthDataSettingsTypeMenstrualFlowSubtitle": "最近 90 天记录的经量与周期开始日期",
-  "memoryPageTitle": "记忆",
-  "memoryPageHowItWorksTitle": "记忆如何工作",
-  "memoryPageHowItWorksBody": "记忆就是普通的 Markdown 文件。启用记忆的助手会搜索、读取这些文件，并在了解到关于你的长期事实时写入新文件。你可以在这里随意编辑或删除——助手看到的就是磁盘上的内容。",
-  "memoryPageFilesTitle": "记忆文件",
-  "memoryPageEmpty": "还没有记忆。\n助手会把值得记住的内容保存在这里。",
-  "memoryPageNew": "新建记忆",
-  "memoryPageEdit": "编辑记忆",
-  "memoryPageNameLabel": "文件名",
-  "memoryPageNameHint": "preferences.md",
-  "memoryPageContentLabel": "内容",
-  "memoryPageContentHint": "# 偏好\n\n- 喜欢简洁的回答",
-  "memoryPageSave": "保存",
-  "memoryPageCancel": "取消",
-  "memoryPageDelete": "删除",
-  "memoryPageDeleteTitle": "删除记忆",
-  "memoryPageDeleteMessage": "删除 {name}？此操作无法撤销。",
-  "@memoryPageDeleteMessage": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
-  "memoryPageInvalidName": "无法使用该文件名。",
-  "memoryPageTooLarge": "这条记忆太大，无法保存。请拆分成更小的文件。",
-  "assistantEditEnableMemoryTitle": "长期记忆",
-  "assistantEditEnableMemorySubtitle": "允许该助手搜索并写入 Markdown 记忆文件",
-  "contextLogSourceMemory": "记忆"
+  "healthDataSettingsTypeMenstrualFlowSubtitle": "最近 90 天记录的经量与周期开始日期"
 }

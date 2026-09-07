@@ -17,11 +17,14 @@ IconData toolSchemaIconFor(String name) {
     case SearchToolService.toolName:
       return Lucide.Earth;
     case MemoryTools.memoryRead:
-    case MemoryTools.memoryWrite:
+    case MemoryTools.memoryUpdate:
+    case MemoryTools.memorySearchProfile:
+    case MemoryTools.memoryEdit:
+    case MemoryTools.updateUserProfile:
       return Lucide.bookHeart;
     case MemoryTools.memoryDelete:
       return Lucide.bookDashed;
-    case MemoryTools.memorySearch:
+    case MemoryTools.chatSearch:
       return Lucide.Search;
     case LocalToolNames.timeInfo:
       return Lucide.clock;

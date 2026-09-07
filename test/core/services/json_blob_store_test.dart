@@ -58,7 +58,6 @@ void main() {
           payload: assistantId == null
               ? '{"id":123,"title":"broken"}'
               : '{"id":"not-an-int","assistantId":"$assistantId","content":"x"}',
-          assistantId: assistantId,
         ),
       );
     }

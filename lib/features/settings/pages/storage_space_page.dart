@@ -1,11 +1,9 @@
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 
 import '../../../core/services/haptics.dart';
-import '../../../core/services/native_file_save.dart';
 import '../../../core/services/storage/storage_usage_service.dart';
 import '../../../icons/lucide_adapter.dart';
 import '../../../l10n/app_localizations.dart';
@@ -86,7 +84,6 @@ class _StorageSpacePageState extends State<StorageSpacePage> {
       StorageUsageCategoryKey.images,
       StorageUsageCategoryKey.files,
       StorageUsageCategoryKey.chatData,
-      StorageUsageCategoryKey.legacyChatData,
       StorageUsageCategoryKey.restoreTraces,
       StorageUsageCategoryKey.displacedDatabases,
       StorageUsageCategoryKey.localSnapshots,
@@ -106,8 +103,6 @@ class _StorageSpacePageState extends State<StorageSpacePage> {
         return Lucide.Paperclip;
       case StorageUsageCategoryKey.chatData:
         return Lucide.MessagesSquare;
-      case StorageUsageCategoryKey.legacyChatData:
-        return Lucide.History;
       case StorageUsageCategoryKey.restoreTraces:
         return Lucide.RotateCcw;
       case StorageUsageCategoryKey.displacedDatabases:
@@ -133,8 +128,6 @@ class _StorageSpacePageState extends State<StorageSpacePage> {
         return l10n.storageSpaceCategoryFiles;
       case StorageUsageCategoryKey.chatData:
         return l10n.storageSpaceCategoryChatData;
-      case StorageUsageCategoryKey.legacyChatData:
-        return l10n.storageSpaceCategoryLegacyChatData;
       case StorageUsageCategoryKey.restoreTraces:
         return l10n.storageSpaceCategoryRestoreTraces;
       case StorageUsageCategoryKey.displacedDatabases:
@@ -349,40 +342,6 @@ class _StorageSpacePageState extends State<StorageSpacePage> {
     setState(() => _clearing = true);
     try {
       await StorageUsageService.clearLogs();
-      if (!mounted) return;
-      showAppSnackBar(
-        context,
-        message: l10n.storageSpaceClearDone(targetName),
-        type: NotificationType.success,
-      );
-      await _refreshReport();
-    } catch (e) {
-      if (!mounted) return;
-      showAppSnackBar(
-        context,
-        message: l10n.storageSpaceClearFailed(e.toString()),
-        type: NotificationType.error,
-      );
-    } finally {
-      if (mounted) setState(() => _clearing = false);
-    }
-  }
-
-  Future<void> _doClearLegacyChatData() async {
-    if (_clearing) return;
-    final l10n = AppLocalizations.of(context)!;
-    final targetName = l10n.storageSpaceCategoryLegacyChatData;
-    final ok = await _confirmAction(
-      context,
-      title: l10n.storageSpaceClearConfirmTitle,
-      message: l10n.storageSpaceClearLegacyChatDataConfirmMessage,
-      actionLabel: l10n.storageSpaceClearButton,
-    );
-    if (!ok) return;
-
-    setState(() => _clearing = true);
-    try {
-      await StorageUsageService.clearLegacyChatData();
       if (!mounted) return;
       showAppSnackBar(
         context,
@@ -725,9 +684,6 @@ class _StorageSpacePageState extends State<StorageSpacePage> {
                             ? null
                             : _doClearSystemCache,
                         onClearLogs: _clearing ? null : _doClearLogs,
-                        onClearLegacyChatData: _clearing
-                            ? null
-                            : _doClearLegacyChatData,
                         onClearRestoreTraces: _clearing
                             ? null
                             : _doClearRestoreTraces,
@@ -1048,46 +1004,6 @@ class _StorageCategoryPageState extends State<_StorageCategoryPage> {
     }
   }
 
-  Future<void> _clearLegacyChatData() async {
-    if (_clearing) return;
-    final l10n = AppLocalizations.of(context)!;
-    final targetName = l10n.storageSpaceCategoryLegacyChatData;
-    final ok = await _confirmAction(
-      title: l10n.storageSpaceClearConfirmTitle,
-      message: l10n.storageSpaceClearLegacyChatDataConfirmMessage,
-      actionLabel: l10n.storageSpaceClearButton,
-    );
-    if (!ok) return;
-
-    setState(() => _clearing = true);
-    try {
-      await StorageUsageService.clearLegacyChatData();
-      final next = await widget.refreshReport();
-      if (!mounted) return;
-      showAppSnackBar(
-        context,
-        message: l10n.storageSpaceClearDone(targetName),
-        type: NotificationType.success,
-      );
-      if (next != null &&
-          !next.categories.any(
-            (category) =>
-                category.key == StorageUsageCategoryKey.legacyChatData,
-          )) {
-        Navigator.of(context).pop();
-      }
-    } catch (e) {
-      if (!mounted) return;
-      showAppSnackBar(
-        context,
-        message: l10n.storageSpaceClearFailed(e.toString()),
-        type: NotificationType.error,
-      );
-    } finally {
-      if (mounted) setState(() => _clearing = false);
-    }
-  }
-
   Future<void> _clearDisplacedDatabases() async {
     if (_clearing) return;
     final l10n = AppLocalizations.of(context)!;
@@ -1280,10 +1196,6 @@ class _StorageCategoryPageState extends State<_StorageCategoryPage> {
               : null,
           onClearLogs: (category.key == StorageUsageCategoryKey.logs)
               ? _clearLogs
-              : null,
-          onClearLegacyChatData:
-              (category.key == StorageUsageCategoryKey.legacyChatData)
-              ? _clearLegacyChatData
               : null,
           onClearRestoreTraces:
               (category.key == StorageUsageCategoryKey.restoreTraces)
@@ -1497,7 +1409,6 @@ class _CategoryDetail extends StatelessWidget {
     required this.onClearOtherCache,
     required this.onClearSystemCache,
     required this.onClearLogs,
-    required this.onClearLegacyChatData,
     required this.onClearRestoreTraces,
     required this.onClearDisplacedDatabases,
     required this.onClearFonts,
@@ -1514,7 +1425,6 @@ class _CategoryDetail extends StatelessWidget {
   final Future<void> Function()? onClearOtherCache;
   final Future<void> Function()? onClearSystemCache;
   final Future<void> Function()? onClearLogs;
-  final Future<void> Function()? onClearLegacyChatData;
   final Future<void> Function()? onClearRestoreTraces;
   final Future<void> Function()? onClearDisplacedDatabases;
   final Future<void> Function()? onClearFonts;
@@ -1531,11 +1441,8 @@ class _CategoryDetail extends StatelessWidget {
     final bool safeToClear =
         category.key == StorageUsageCategoryKey.cache ||
         category.key == StorageUsageCategoryKey.logs ||
-        category.key == StorageUsageCategoryKey.legacyChatData ||
         category.key == StorageUsageCategoryKey.restoreTraces;
     final String hint = switch (category.key) {
-      StorageUsageCategoryKey.legacyChatData =>
-        l10n.storageSpaceLegacyChatDataHint,
       StorageUsageCategoryKey.restoreTraces =>
         l10n.storageSpaceRestoreTracesHint,
       StorageUsageCategoryKey.other => l10n.storageSpaceOtherHint,
@@ -1590,14 +1497,6 @@ class _CategoryDetail extends StatelessWidget {
             onTap: () => onClearLogs?.call(),
           ),
         ],
-      );
-    } else if (category.key == StorageUsageCategoryKey.legacyChatData) {
-      actions = IosTileButton(
-        label: l10n.storageSpaceClearLegacyChatDataButton,
-        icon: Lucide.Trash2,
-        backgroundColor: cs.primary,
-        enabled: !clearing && onClearLegacyChatData != null,
-        onTap: () => onClearLegacyChatData?.call(),
       );
     } else if (category.key == StorageUsageCategoryKey.restoreTraces) {
       actions = IosTileButton(
@@ -1774,20 +1673,6 @@ class _CategoryDetail extends StatelessWidget {
                                   onTap: () => onClearSystemCache?.call(),
                                 ),
                               if (category.key ==
-                                      StorageUsageCategoryKey.legacyChatData &&
-                                  s.path != null &&
-                                  s.path!.isNotEmpty)
-                                _MiniActionButton(
-                                  label: l10n
-                                      .storageSpaceExportLegacyChatFileButton,
-                                  enabled: true,
-                                  onTap: () => _exportLegacyHiveFile(
-                                    context,
-                                    sourcePath: s.path!,
-                                    fileName: s.id,
-                                  ),
-                                ),
-                              if (category.key ==
                                       StorageUsageCategoryKey.other &&
                                   s.id == 'fonts')
                                 _MiniActionButton(
@@ -1827,53 +1712,6 @@ class _CategoryDetail extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  Future<void> _exportLegacyHiveFile(
-    BuildContext context, {
-    required String sourcePath,
-    required String fileName,
-  }) async {
-    final l10n = AppLocalizations.of(context)!;
-    try {
-      if (Platform.isAndroid) {
-        final saved = await NativeFileSave.saveFileFromPath(
-          sourcePath: sourcePath,
-          fileName: fileName,
-        );
-        if (saved && context.mounted) {
-          showAppSnackBar(
-            context,
-            message: l10n.storageSpaceExportDone(fileName),
-            type: NotificationType.success,
-          );
-        }
-        return;
-      }
-      final savePath = await FilePicker.platform.saveFile(
-        dialogTitle: l10n.backupPageExportToFile,
-        fileName: fileName,
-        type: FileType.custom,
-        allowedExtensions: ['hive'],
-      );
-      if (savePath == null) return;
-      await File(savePath).parent.create(recursive: true);
-      await File(sourcePath).copy(savePath);
-      if (context.mounted) {
-        showAppSnackBar(
-          context,
-          message: l10n.storageSpaceExportDone(fileName),
-          type: NotificationType.success,
-        );
-      }
-    } catch (e) {
-      if (!context.mounted) return;
-      showAppSnackBar(
-        context,
-        message: l10n.storageSpaceExportFailed(e.toString()),
-        type: NotificationType.error,
-      );
-    }
   }
 }
 

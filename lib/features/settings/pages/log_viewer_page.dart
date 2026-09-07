@@ -1992,7 +1992,8 @@ Color _contextSourceColor(BuildContext context, ContextSource source) {
   switch (source) {
     case ContextSource.systemPrompt:
       return cs.primary;
-    case ContextSource.memory:
+    case ContextSource.memoryRules:
+    case ContextSource.memorySnapshot:
       return cs.tertiary;
     case ContextSource.searchPrompt:
       return cs.secondary;
@@ -2008,10 +2009,12 @@ String _contextSourceLabel(AppLocalizations l10n, ContextSource source) {
   switch (source) {
     case ContextSource.systemPrompt:
       return l10n.contextLogSourceSystemPrompt;
-    case ContextSource.memory:
-      return l10n.contextLogSourceMemory;
+    case ContextSource.memoryRules:
+      return l10n.contextLogSourceMemoryRules;
     case ContextSource.searchPrompt:
       return l10n.contextLogSourceSearchPrompt;
+    case ContextSource.memorySnapshot:
+      return l10n.contextLogSourceMemorySnapshot;
     case ContextSource.chatHistory:
       return l10n.contextLogSourceChatHistory;
     case ContextSource.toolCall:

@@ -46,12 +46,6 @@ class AppDirectories {
     return Directory('${root.path}/fonts');
   }
 
-  /// Gets the directory holding the Markdown memory files.
-  static Future<Directory> getMemoryDirectory() async {
-    final root = await getAppDataDirectory();
-    return Directory('${root.path}/memory');
-  }
-
   /// Gets the directory for cache files.
   static Future<Directory> getCacheDirectory() async {
     final root = await getAppDataDirectory();

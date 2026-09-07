@@ -66,6 +66,7 @@ void main() {
               summary: 'summary',
               lastSummarizedMessageCount: 2,
               chatSuggestions: const ['next'],
+              injectedMemoryHash: 'source-memory',
             ),
           ],
           messages: [
@@ -83,6 +84,7 @@ void main() {
           revisionId: 'revision',
           conversationId: 'source',
           payload: 'frozen prompt',
+          carriesMemorySnapshot: false,
         );
         await repository.registerAsset(
           id: 'stale-asset',
@@ -110,6 +112,7 @@ void main() {
         expect(duplicate.truncateIndex, 1);
         expect(duplicate.summary, 'summary');
         expect(duplicate.chatSuggestions, const ['next']);
+        expect(duplicate.injectedMemoryHash, isNull);
         expect(duplicate.messageIds, hasLength(2));
         expect(duplicate.messageIds, isNot(contains('anchor')));
         expect(duplicate.messageIds, isNot(contains('revision')));

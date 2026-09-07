@@ -1,12 +1,11 @@
 import '../../models/chat_message.dart';
 import '../../models/conversation.dart';
 
-/// Field-level repair for dirty legacy (1.1.17 / Hive-era) records so they
-/// satisfy the SQLite CHECK constraints. Shared by the Hive-to-SQLite
-/// migration and the chats.json import boundary: both read data written by
-/// the old runtime, which tolerated shapes the new schema rejects (device
-/// clock rollback could persist negative durations, corrupted records could
-/// carry empty roles or out-of-range counters).
+/// Field-level repair for dirty 1.1.17-era records so they satisfy the SQLite
+/// CHECK constraints. Used at the chats.json import boundary, which reads data
+/// written by the old runtime: it tolerated shapes the current schema rejects
+/// (device clock rollback could persist negative durations, corrupted records
+/// could carry empty roles or out-of-range counters).
 ///
 /// Returns the input object unchanged (identical) when nothing needed repair,
 /// so callers can count repairs via `identical(...)`.
@@ -87,12 +86,17 @@ Conversation sanitizeLegacyConversationFields(Conversation conversation) {
   final lastSummarizedMessageCount = conversation.lastSummarizedMessageCount < 0
       ? 0
       : conversation.lastSummarizedMessageCount;
+  final lastMemoryExtractedOrder = conversation.lastMemoryExtractedOrder < -1
+      ? -1
+      : conversation.lastMemoryExtractedOrder;
   if (truncateIndex == conversation.truncateIndex &&
-      lastSummarizedMessageCount == conversation.lastSummarizedMessageCount) {
+      lastSummarizedMessageCount == conversation.lastSummarizedMessageCount &&
+      lastMemoryExtractedOrder == conversation.lastMemoryExtractedOrder) {
     return conversation;
   }
   return conversation.copyWith(
     truncateIndex: truncateIndex,
     lastSummarizedMessageCount: lastSummarizedMessageCount,
+    lastMemoryExtractedOrder: lastMemoryExtractedOrder,
   );
 }

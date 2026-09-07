@@ -565,7 +565,6 @@ class DataSync {
       final avatarsDirPath = (await _getAvatarsDir()).path;
       final imagesDirPath = (await _getImagesDir()).path;
       final fontsDirPath = (await _getFontsDir()).path;
-      final memoryDirPath = (await _getMemoryDir()).path;
       final manifestPath = manifestFile.path;
       final settingsPath = settingsFile.path;
       final databasePath = databaseTmp?.path;
@@ -587,7 +586,6 @@ class DataSync {
           avatarsDirPath: avatarsDirPath,
           imagesDirPath: imagesDirPath,
           fontsDirPath: fontsDirPath,
-          memoryDirPath: memoryDirPath,
         ),
         cancelToken: cancelToken,
         onProgress: onProgress,
@@ -880,7 +878,6 @@ class DataSync {
       avatarsDirPath: args.avatarsDirPath,
       imagesDirPath: args.imagesDirPath,
       fontsDirPath: args.fontsDirPath,
-      memoryDirPath: args.memoryDirPath,
       ctx: ctx,
     );
     _verifyPackedBackupSync(
@@ -919,7 +916,6 @@ class DataSync {
     required String avatarsDirPath,
     required String imagesDirPath,
     required String fontsDirPath,
-    required String memoryDirPath,
     BackupIsolateContext? ctx,
   }) {
     if (includeChats != (databasePath != null && snapshotInfo != null)) {
@@ -937,16 +933,12 @@ class DataSync {
     final fontFiles = includeFiles
         ? _listFilesSync(fontsDirPath)
         : const <File>[];
-    final memoryFiles = includeFiles
-        ? _listFilesSync(memoryDirPath)
-        : const <File>[];
     var totalBytes = _fileSizeSync(settingsPath) + _fileSizeSync(databasePath);
     for (final file in [
       ...uploadFiles,
       ...avatarFiles,
       ...imageFiles,
       ...fontFiles,
-      ...memoryFiles,
     ]) {
       totalBytes += file.lengthSync();
     }
@@ -1010,14 +1002,6 @@ class DataSync {
           entries,
           collisionKeys,
           files: fontFiles,
-        );
-        _addDirectoryToZip(
-          writer,
-          memoryDirPath,
-          'memory',
-          entries,
-          collisionKeys,
-          files: memoryFiles,
         );
       }
 
@@ -2083,8 +2067,7 @@ class DataSync {
           name.startsWith('upload/') ||
           name.startsWith('avatars/') ||
           name.startsWith('images/') ||
-          name.startsWith('fonts/') ||
-          name.startsWith('memory/');
+          name.startsWith('fonts/');
       final knownEntry =
           name == 'settings.json' || name == _databaseEntryName || isFileEntry;
       if (!knownEntry) {
@@ -2342,10 +2325,6 @@ class DataSync {
     return await AppDirectories.getFontsDirectory();
   }
 
-  Future<Directory> _getMemoryDir() async {
-    return await AppDirectories.getMemoryDirectory();
-  }
-
   Future<void> _copyRestoredFile(File source, File target) async {
     await target.parent.create(recursive: true);
     await source.copy(target.path);
@@ -2369,7 +2348,6 @@ class DataSync {
           (entryName: 'images', resolveTarget: _getImagesDir),
           (entryName: 'avatars', resolveTarget: _getAvatarsDir),
           (entryName: 'fonts', resolveTarget: _getFontsDir),
-          (entryName: 'memory', resolveTarget: _getMemoryDir),
         ];
     for (final target in targets) {
       final src = Directory(p.join(payloadDirectory.path, target.entryName));
@@ -2583,8 +2561,8 @@ class DataSync {
       final keptMessageIds = <String>[];
       // SQLite enforces unique(conversationId, groupId, version) while the
       // 1.1.17 runtime tolerated duplicate (groupId, version) pairs (and
-      // rehoming above can create new ones); reassign versions the same way
-      // the Hive migration does so INSERT OR REPLACE cannot swallow rows.
+      // rehoming above can create new ones); reassign versions so INSERT OR
+      // REPLACE cannot swallow rows.
       final seenGroupVersions = <String>{};
       final maxGroupVersions = <String, int>{};
       final legacyGroupIds = <String?>[];
@@ -2613,10 +2591,9 @@ class DataSync {
           message = message.copyWith(conversationId: conversation.id);
         }
         // Field-level repair (empty role, negative tokens/duration,
-        // out-of-range version, inverted reasoning timestamps) shares logic
-        // with the Hive migration; it must run before the version-conflict
-        // repair below because clamping version can introduce collisions
-        // that repair resolves.
+        // out-of-range version, inverted reasoning timestamps) must run before
+        // the version-conflict repair below, because clamping version can
+        // introduce collisions that repair resolves.
         final fieldSanitized = sanitizeLegacyMessageFields(message);
         if (!identical(fieldSanitized, message)) {
           dirtyFieldRepairs++;
@@ -2662,9 +2639,9 @@ class DataSync {
         versionSelections[entry.key] =
             repairedVersionsByMessageId[selected.id] ?? selected.version;
       }
-      // Counter clamping shares logic with the Hive migration so a legacy
-      // backup carrying out-of-range values (e.g. negative truncateIndex)
-      // cannot trip the conversation_rows CHECK constraints on restore.
+      // Counter clamping keeps a legacy backup carrying out-of-range values
+      // (e.g. negative truncateIndex) from tripping the conversation_rows
+      // CHECK constraints on restore.
       final rebuilt = conversation.copyWith(
         messageIds: keptMessageIds,
         mcpServerIds: mcpServerIds,
@@ -3247,25 +3224,6 @@ class DataSync {
               }
             }
           }
-
-          // Restore the Markdown memory directory
-          final memorySrc = Directory(
-            p.join(restorePayloadDirectory.path, 'memory'),
-          );
-          if (await memorySrc.exists()) {
-            final dst = await _getMemoryDir();
-            if (await dst.exists()) {
-              await dst.delete(recursive: true);
-            }
-            await dst.create(recursive: true);
-            for (final ent in memorySrc.listSync(recursive: true)) {
-              if (ent is File) {
-                final rel = p.relative(ent.path, from: memorySrc.path);
-                final target = File(p.join(dst.path, rel));
-                await _copyRestoredFile(ent, target);
-              }
-            }
-          }
         } else {
           // Merge mode: Only copy non-existing files
           await _restoreAssetDirectoriesAdditive(restorePayloadDirectory);
@@ -3372,6 +3330,11 @@ class DataSync {
                 );
               }
             }
+            // §6.7: restored history must not re-trigger background extraction,
+            // and injection hashes must clear so the next request self-heals.
+            await businessRepository.applyPostMergeMemoryConversationState(
+              mergedConvIds,
+            );
           }
         } catch (_) {
           rethrow;
@@ -3519,7 +3482,6 @@ class _BackupPackArgs {
     required this.avatarsDirPath,
     required this.imagesDirPath,
     required this.fontsDirPath,
-    required this.memoryDirPath,
   });
 
   final String outPath;
@@ -3535,7 +3497,6 @@ class _BackupPackArgs {
   final String avatarsDirPath;
   final String imagesDirPath;
   final String fontsDirPath;
-  final String memoryDirPath;
 }
 
 class _BackupByteMeter {

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import '../../../core/database/chat_database_repository.dart';
@@ -8,8 +9,7 @@ import '../../../core/models/chat_input_data.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../core/models/message_part.dart';
 import '../../../core/models/conversation.dart';
-import '../../../core/providers/memory_provider.dart';
-import '../../../core/services/memory/memory_tools.dart';
+import '../../../core/models/memory_entry.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/user_provider.dart';
 import '../../../core/services/chat/chat_service.dart';
@@ -19,6 +19,8 @@ import '../../../utils/sandbox_path_resolver.dart';
 import '../../../core/services/chat/prompt_transformer.dart';
 import '../../../core/services/logging/context_log_models.dart';
 import '../../../core/services/logging/context_logger.dart';
+import '../../../core/services/memory/memory_block_builder.dart';
+import '../../../core/services/memory/memory_prompts.dart';
 import '../../../core/services/search/search_tool_service.dart';
 import '../../../core/services/api/builtin_tools.dart';
 import '../../../core/services/api/providers/claude/claude_container.dart';
@@ -29,6 +31,63 @@ import '../../../core/utils/multimodal_input_utils.dart';
 import '../../../utils/assistant_regex.dart';
 import '../../../utils/markdown_media_sanitizer.dart';
 import 'ocr_service.dart';
+
+/// Result of §7.6 memory-prefix resolution.
+///
+/// [persistHash] separates "leave the stored hash alone" from "store [hash]".
+/// Clearing needs that distinction: when the last visible memory disappears the
+/// turn injects nothing yet must still record that the context now carries no
+/// snapshot, which is a null [hash] rather than an absent write.
+typedef MemoryPrefixResolution = ({
+  String prefix,
+  String? hash,
+  bool persistHash,
+  String? snapshotKind,
+});
+
+/// The blocks memory injection would emit for one assistant at one moment.
+typedef MemorySnapshotState = ({String prefix, String hash, bool isEmpty});
+
+const MemoryPrefixResolution _noMemoryPrefix = (
+  prefix: '',
+  hash: null,
+  persistHash: false,
+  snapshotKind: null,
+);
+
+/// Memory injection state shared by the messages assembled in one request.
+///
+/// Persisted conversations could read all of this back from the database, but
+/// temporary ones are never written there, so without a pass-scoped record each
+/// message would look like the first and re-inject the same snapshot.
+class MemoryInjectionPass {
+  /// Revision ids that received a memory block during this request.
+  final Set<String> snapshotCarriers = <String>{};
+
+  /// The most recent hash injected during this request, if any.
+  String? get injectedHash => _injectedHash;
+  String? _injectedHash;
+
+  /// Whether [injectedHash] has been set, distinguishing "none yet" from a
+  /// legitimately null hash.
+  bool get hasInjectedHash => _hasInjectedHash;
+  bool _hasInjectedHash = false;
+
+  void recordInjectedHash(String? hash) {
+    _injectedHash = hash;
+    _hasInjectedHash = true;
+  }
+
+  /// What injection would emit right now, once it has been computed. Reused so
+  /// a request that resolves the state and then decides not to inject does not
+  /// read it a second time on the way out.
+  MemorySnapshotState? get currentSnapshot => _currentSnapshot;
+  MemorySnapshotState? _currentSnapshot;
+
+  void recordCurrentSnapshot(MemorySnapshotState snapshot) {
+    _currentSnapshot = snapshot;
+  }
+}
 
 /// Service for building API messages from conversation state.
 ///
@@ -412,6 +471,41 @@ class MessageBuilderService {
     }
   }
 
+  void _tagFrozenUserPrompt(
+    Map<String, dynamic> message, {
+    required String payload,
+    required bool carriesMemorySnapshot,
+  }) {
+    if (!carriesMemorySnapshot) {
+      ContextSegmentTags.replaceWithSingle(
+        message,
+        source: ContextSource.chatHistory,
+        length: payload.length,
+      );
+      return;
+    }
+    final split = MemoryBlockBuilder.splitInjectedPrefix(payload);
+    if (split != null && split.rest.isNotEmpty) {
+      ContextSegmentTags.write(message, [
+        ContextSegmentTags.item(
+          source: ContextSource.memorySnapshot,
+          length: split.prefix.length,
+          meta: {'kind': split.kind},
+        ),
+        ContextSegmentTags.item(
+          source: ContextSource.chatHistory,
+          length: split.rest.length,
+        ),
+      ]);
+      return;
+    }
+    ContextSegmentTags.replaceWithSingle(
+      message,
+      source: ContextSource.memorySnapshot,
+      length: payload.length,
+    );
+  }
+
   ChatMessage? _latestPersistedMessage(ChatMessage message) {
     final persisted = chatService.getMessages(message.conversationId);
     for (final candidate in persisted) {
@@ -591,7 +685,7 @@ class MessageBuilderService {
 
     for (final message in apiMessages) {
       if (message['role'] != 'user') continue;
-      // WorldBook lore also uses role=user; only persisted input carries a
+      // Injected lore also uses role=user; only persisted input carries a
       // revision id and can hold attachments.
       final revisionId = (message[internalRevisionIdKey] ?? '')
           .toString()
@@ -657,7 +751,7 @@ class MessageBuilderService {
     List<String>? lastUserImagePaths;
 
     // Only real persisted user messages carry an internal revision ID.
-    // WorldBook lore may also use role=user and must not be treated as chat input.
+    // Injected lore may also use role=user and must not be treated as chat input.
     bool isPersistedUserMessage(Map<String, dynamic> message) {
       if (message['role'] != 'user') return false;
       return (message[internalRevisionIdKey] ?? '')
@@ -783,6 +877,14 @@ class MessageBuilderService {
       }
     }
 
+    final injectionPass = MemoryInjectionPass();
+
+    // Revision ids whose payload really came from memory injection. Format
+    // alone must never decide this: a user who pastes a snapshot copied out of
+    // the context log would otherwise have that text treated as an internal
+    // block and stripped off their message.
+    final snapshotRevisionIds = <String>{};
+
     for (int i = 0; i < apiMessages.length; i++) {
       if (!isPersistedUserMessage(apiMessages[i])) continue;
       final revisionId = (apiMessages[i][internalRevisionIdKey] ?? '')
@@ -887,12 +989,16 @@ class MessageBuilderService {
       // Prefer frozen promptContent — never recompute (§8.3).
       final existing = frozenPrompts?[revisionId];
       if (existing != null) {
-        apiMessages[i]['content'] = existing.payload;
+        final sendPayload = existing.payload;
+        apiMessages[i]['content'] = sendPayload;
+        final carriesSnapshot =
+            existing.carriesMemorySnapshot && sendPayload == existing.payload;
+        if (carriesSnapshot) snapshotRevisionIds.add(revisionId);
         if (ContextLogger.enabled) {
-          ContextSegmentTags.replaceWithSingle(
+          _tagFrozenUserPrompt(
             apiMessages[i],
-            source: ContextSource.chatHistory,
-            length: existing.payload.length,
+            payload: sendPayload,
+            carriesMemorySnapshot: carriesSnapshot,
           );
         }
         continue;
@@ -980,12 +1086,13 @@ class MessageBuilderService {
           conversation: conversation,
           settings: settings,
           apiMessages: apiMessages,
+          pass: injectionPass,
           readFrozenPrompt: false,
           freezePrompt: canFreezePrompt,
         );
       } else {
         // No conversation or no matching stored message: nothing to freeze
-        // against, so render the template directly.
+        // against, so render the template without a memory prefix.
         final templ =
             (assistant?.messageTemplate ?? '{{ message }}').trim().isEmpty
             ? '{{ message }}'
@@ -998,14 +1105,134 @@ class MessageBuilderService {
           now: now,
         );
         if (assistant?.appendCurrentTimeToUserMessage == true) {
-          content =
-              '$content\n\n${PromptTransformer.formatCurrentTimeTag(now)}';
+          content = '$content\n\n${MemoryPrompts.formatCurrentTimeTag(now)}';
         }
         apiMessages[i]['content'] = content;
       }
     }
 
+    await refreshMemorySnapshots(
+      apiMessages,
+      assistant: assistant,
+      conversation: conversation,
+      settings: settings,
+      pass: injectionPass,
+      snapshotRevisionIds: snapshotRevisionIds
+        ..addAll(injectionPass.snapshotCarriers),
+    );
+
     return lastUserImagePaths ?? <String>[];
+  }
+
+  /// Leave exactly the live memory snapshot in the request (§7.6).
+  ///
+  /// A snapshot is frozen into the user message it was injected on and would
+  /// otherwise be replayed for the life of the conversation. Every other one is
+  /// stale the moment memory changes, and a scope switch makes the staleness
+  /// user-visible: entries moved from global to one assistant keep showing up
+  /// in another assistant's older conversations, because that conversation's
+  /// history still carries the snapshot taken while they were global.
+  ///
+  /// The freeze rows are left untouched — they record what was actually sent,
+  /// and a turn that changes nothing must keep hitting the prompt cache — so
+  /// the correction happens on the way out instead: superseded prefixes are
+  /// dropped, and when nothing in this request injected a fresh snapshot the
+  /// surviving one is brought up to date in place.
+  ///
+  /// [snapshotRevisionIds] names the messages whose payload really came from
+  /// injection. Only those are candidates; text that merely looks like a
+  /// snapshot is the user's own and stays untouched.
+  Future<void> refreshMemorySnapshots(
+    List<Map<String, dynamic>> apiMessages, {
+    required Assistant? assistant,
+    required Conversation? conversation,
+    required SettingsProvider settings,
+    required Set<String> snapshotRevisionIds,
+    MemoryInjectionPass? pass,
+  }) async {
+    if (snapshotRevisionIds.isEmpty) return;
+
+    final carriers = <int>[];
+    int? injectedThisRequest;
+    for (int i = 0; i < apiMessages.length; i++) {
+      final message = apiMessages[i];
+      if ((message['role'] ?? '').toString() != 'user') continue;
+      final revisionId = (message[internalRevisionIdKey] ?? '')
+          .toString()
+          .trim();
+      if (!snapshotRevisionIds.contains(revisionId)) continue;
+      final content = message['content'];
+      if (content is! String || content.isEmpty) continue;
+      if (MemoryBlockBuilder.endOfInjectedPrefix(content) == null) continue;
+      carriers.add(i);
+      if (pass?.snapshotCarriers.contains(revisionId) ?? false) {
+        injectedThisRequest = i;
+      }
+    }
+    if (carriers.isEmpty) return;
+
+    // A snapshot injected during this request is the live one wherever it sits.
+    // Position alone would get this wrong: a history message that could not be
+    // frozen (a failed OCR, a sandbox data file) is reassembled mid-request and
+    // can take the fresh snapshot while an older frozen one follows it.
+    int? live = injectedThisRequest;
+    String? wanted;
+    if (live == null) {
+      // Nothing injected — either the state is unchanged, or no new user
+      // message forced a decision at all, which is what regenerating an old
+      // reply does. The surviving carrier has to prove it is current by holding
+      // exactly the snapshot the state produces right now; anything else is
+      // rewritten in place, and an empty state rewrites it away.
+      //
+      // Its own prefix is the only reliable evidence. The conversation's stored
+      // hash names whichever snapshot was injected last, which need not be the
+      // one that survives here: regenerating an earlier reply cuts the later
+      // messages — and the newer snapshot with them — out of the request.
+      //
+      // The rewrite is deliberately never persisted: the stored hash must keep
+      // describing the freeze rows, or the next turn would believe the stale
+      // prefix is current and send it untouched.
+      if (assistant == null || _repo == null) return;
+      final current = assistant.enableMemory
+          ? pass?.currentSnapshot ??
+                await _currentMemorySnapshot(
+                  assistant: assistant,
+                  lang: settings.resolvedMemoryPromptLang,
+                  settings: settings,
+                )
+          : null;
+      wanted = current == null || current.isEmpty ? '' : current.prefix;
+      live = carriers.last;
+    }
+
+    for (final i in carriers) {
+      final message = apiMessages[i];
+      final split = MemoryBlockBuilder.splitInjectedPrefix(
+        message['content'] as String,
+      );
+      if (split == null) continue;
+      if (i == live) {
+        if (wanted == null || wanted == split.prefix) continue;
+        final refreshed = '$wanted${split.rest}';
+        message['content'] = refreshed;
+        if (ContextLogger.enabled) {
+          _tagFrozenUserPrompt(
+            message,
+            payload: refreshed,
+            carriesMemorySnapshot: wanted.isNotEmpty,
+          );
+        }
+        continue;
+      }
+      message['content'] = split.rest;
+      if (ContextLogger.enabled) {
+        ContextSegmentTags.replaceWithSingle(
+          message,
+          source: ContextSource.chatHistory,
+          length: split.rest.length,
+        );
+      }
+    }
   }
 
   /// The stored message behind an api payload, or null when it cannot be
@@ -1050,6 +1277,7 @@ class MessageBuilderService {
     required Conversation conversation,
     required SettingsProvider settings,
     required List<Map<String, dynamic>> apiMessages,
+    MemoryInjectionPass? pass,
     bool readFrozenPrompt = true,
     bool freezePrompt = true,
   }) async {
@@ -1059,7 +1287,24 @@ class MessageBuilderService {
         !chatService.isTemporaryConversation(message.conversationId);
     if (persist && readFrozenPrompt) {
       final existing = await repo.getMessagePrompt(message.id);
-      if (existing != null) return existing.payload;
+      if (existing != null) {
+        return existing.payload;
+      }
+    }
+
+    final memory = assistant == null
+        ? _noMemoryPrefix
+        : await resolveMemoryPrefix(
+            conversation: conversation,
+            assistant: assistant,
+            apiMessages: apiMessages,
+            currentMessageId: message.id,
+            lang: settings.resolvedMemoryPromptLang,
+            pass: pass,
+            settings: settings,
+          );
+    if (memory.prefix.isNotEmpty) {
+      pass?.snapshotCarriers.add(message.id);
     }
 
     final templ = (assistant?.messageTemplate ?? '{{ message }}').trim().isEmpty
@@ -1072,9 +1317,9 @@ class MessageBuilderService {
       now: message.timestamp,
     );
     final timeSuffix = (assistant?.appendCurrentTimeToUserMessage ?? false)
-        ? '\n\n${PromptTransformer.formatCurrentTimeTag(message.timestamp)}'
+        ? '\n\n${MemoryPrompts.formatCurrentTimeTag(message.timestamp)}'
         : '';
-    final finalContent = '$templated$timeSuffix';
+    final finalContent = '${memory.prefix}$templated$timeSuffix';
 
     if (ContextLogger.enabled) {
       for (final apiMessage in apiMessages) {
@@ -1082,11 +1327,26 @@ class MessageBuilderService {
             message.id) {
           continue;
         }
-        ContextSegmentTags.replaceWithSingle(
-          apiMessage,
-          source: ContextSource.chatHistory,
-          length: finalContent.length,
-        );
+        if (memory.prefix.isNotEmpty) {
+          final kind = memory.snapshotKind;
+          ContextSegmentTags.write(apiMessage, [
+            ContextSegmentTags.item(
+              source: ContextSource.memorySnapshot,
+              length: memory.prefix.length,
+              meta: kind == null ? null : {'kind': kind},
+            ),
+            ContextSegmentTags.item(
+              source: ContextSource.chatHistory,
+              length: finalContent.length - memory.prefix.length,
+            ),
+          ]);
+        } else {
+          ContextSegmentTags.replaceWithSingle(
+            apiMessage,
+            source: ContextSource.chatHistory,
+            length: finalContent.length,
+          );
+        }
         break;
       }
     }
@@ -1098,10 +1358,165 @@ class MessageBuilderService {
         revisionId: message.id,
         conversationId: message.conversationId,
         payload: finalContent,
+        carriesMemorySnapshot: memory.prefix.isNotEmpty,
+        injectedMemoryHash: memory.persistHash
+            ? Value(memory.hash)
+            : const Value.absent(),
       );
     }
 
     return finalContent;
+  }
+
+  /// The blocks memory injection would emit right now for [assistant], plus
+  /// their hash. Pure state: it decides nothing about whether to inject.
+  ///
+  /// [isEmpty] means neither a profile field nor a visible memory exists —
+  /// distinct from the hash, which is a perfectly good hash of two empty
+  /// blocks. Always a full snapshot: a superseded one is stripped from history
+  /// rather than left in place for an update block to correct.
+  Future<MemorySnapshotState?> _currentMemorySnapshot({
+    required Assistant assistant,
+    required MemoryPromptLang lang,
+    SettingsProvider? settings,
+  }) async {
+    final repo = _repo;
+    if (repo == null) return null;
+
+    SettingsProvider? resolvedSettings = settings;
+    if (resolvedSettings == null) {
+      try {
+        resolvedSettings = contextProvider.read<SettingsProvider>();
+      } catch (_) {}
+    }
+    final maxItems =
+        resolvedSettings?.memoryInjectionMaxItems ??
+        SettingsProvider.defaultMemoryInjectionMaxItems;
+
+    final fields = await repo.readProfileFields();
+    final totalByType = await repo.countVisibleMemoriesByType(
+      assistantId: assistant.id,
+    );
+    final hasAnyMemory = totalByType.values.any((count) => count > 0);
+    final hasProfile = fields.any((f) => f.value.trim().isNotEmpty);
+
+    final visible = hasAnyMemory
+        ? await repo.queryVisibleMemories(assistantId: assistant.id)
+        : const <MemoryEntry>[];
+    final profileBlock = MemoryBlockBuilder.buildProfileBlock(
+      fields: fields,
+      lang: lang,
+    );
+    final memoryBlock = MemoryBlockBuilder.buildMemoryBlock(
+      visible: visible,
+      totalByType: totalByType,
+      lang: lang,
+      maxItems: maxItems,
+    );
+    return (
+      prefix: MemoryBlockBuilder.buildFullSnapshotPrefix(
+        profileBlock,
+        memoryBlock,
+        lang,
+      ),
+      hash: MemoryBlockBuilder.hashBlocks(profileBlock, memoryBlock),
+      isEmpty: !hasProfile && !hasAnyMemory,
+    );
+  }
+
+  /// §7.6 hash gating + self-healing. Compare hash **before** writing it.
+  Future<MemoryPrefixResolution> resolveMemoryPrefix({
+    required Conversation conversation,
+    required Assistant assistant,
+    required List<Map<String, dynamic>> apiMessages,
+    required String currentMessageId,
+    required MemoryPromptLang lang,
+    MemoryInjectionPass? pass,
+    SettingsProvider? settings,
+  }) async {
+    if (!assistant.enableMemory) {
+      return _noMemoryPrefix;
+    }
+
+    final repo = _repo;
+    if (repo == null) {
+      return _noMemoryPrefix;
+    }
+
+    final current = await _currentMemorySnapshot(
+      assistant: assistant,
+      lang: lang,
+      settings: settings,
+    );
+    if (current == null) return _noMemoryPrefix;
+    pass?.recordCurrentSnapshot(current);
+    final currentHash = current.hash;
+
+    // Self-healing: any history user message in *this* request carrying a
+    // snapshot? Read revision ids before stripInternalRevisionIds; exclude
+    // the message being assembled now.
+    final historyUserIds = <String>[];
+    for (final message in apiMessages) {
+      if ((message['role'] ?? '').toString() != 'user') continue;
+      final revisionId = (message[internalRevisionIdKey] ?? '')
+          .toString()
+          .trim();
+      if (revisionId.isEmpty || revisionId == currentMessageId) continue;
+      historyUserIds.add(revisionId);
+    }
+    final hasSnapshot =
+        historyUserIds.any(
+          (id) => pass?.snapshotCarriers.contains(id) ?? false,
+        ) ||
+        await repo.anyPromptCarriesMemorySnapshot(historyUserIds);
+
+    // CRITICAL: compare against the prior hash BEFORE any write (appendix §6).
+    // Writing first makes currentHash == injectedMemoryHash and no change is
+    // ever detected again.
+    //
+    // Read from the database, not from [conversation]: callers hand us
+    // `conversation.copyWith(...)` and nothing ever loads this column back into
+    // the model, so the cached value is stale forever and every turn would look
+    // like a change.
+    //
+    // A hash already injected earlier in this same request wins, because
+    // temporary conversations are never persisted and would otherwise read
+    // null for every message and repeat an identical snapshot on each one.
+    final previousHash = pass != null && pass.hasInjectedHash
+        ? pass.injectedHash
+        : await repo.getConversationInjectedMemoryHash(conversation.id);
+
+    // Nothing visible left. The snapshots already frozen into history are
+    // dropped on the way out by [refreshMemorySnapshots], so no update
+    // block has to announce the emptiness — but the conversation must record
+    // that its context now carries no snapshot at all. Skipping that write
+    // would leave the hash of the vanished snapshot behind, and re-adding the
+    // same content later would hash equal to it and never be injected again.
+    if (current.isEmpty) {
+      if (!hasSnapshot && previousHash == null) return _noMemoryPrefix;
+      pass?.recordInjectedHash(null);
+      return (
+        prefix: '',
+        hash: null,
+        // Already cleared on an earlier turn: recording it again would rewrite
+        // the same null every turn the memory stays empty.
+        persistHash: previousHash != null,
+        snapshotKind: null,
+      );
+    }
+
+    // Already the snapshot in context, and a message still carries it.
+    if (hasSnapshot && currentHash == previousHash) return _noMemoryPrefix;
+
+    // The hash lands in the database through freezeMessagePrompt, in the same
+    // transaction as the prompt row.
+    pass?.recordInjectedHash(currentHash);
+    return (
+      prefix: current.prefix,
+      hash: currentHash,
+      persistHash: true,
+      snapshotKind: 'full',
+    );
   }
 
   /// Default OCR text wrapper
@@ -1147,29 +1562,48 @@ class MessageBuilderService {
     }
   }
 
-  /// Append the memory index to the system message.
+  /// Inject §11 memory rules into the system message.
   ///
-  /// Only the index — file names and their headings — is injected. The bodies
-  /// stay on disk behind `memory_search` / `memory_read`, so enabling memory
-  /// costs a handful of tokens rather than the whole corpus, and the model
-  /// pulls in what a given turn actually needs.
-  Future<void> injectMemory(
+  /// Pure function of `(enableMemory, allowPastConversationRecall, lang,
+  /// user template)` — must not vary with memory content or the clock (§11.1).
+  /// Relative order among remaining system injections is preserved by the
+  /// caller (`injectSystemPrompt` → this → `injectSearchPrompt`).
+  Future<void> injectMemoryAndRecentChats(
     List<Map<String, dynamic>> apiMessages,
-    Assistant? assistant,
-  ) async {
+    Assistant? assistant, {
+    SettingsProvider? settings,
+    String? currentConversationId,
+  }) async {
     try {
-      if (assistant?.enableMemory != true) return;
-      final memory = contextProvider.read<MemoryProvider>();
-      await memory.initialize();
+      if (assistant == null) return;
+      // The two gates are independent: chat_search is registered on
+      // allowPastConversationRecall alone, so its rules cannot ride along with
+      // the long-term memory rules or the tool ships without instructions.
+      final wantsMemoryRules = assistant.enableMemory;
+      final wantsRecallRules = assistant.allowPastConversationRecall;
+      if (!wantsMemoryRules && !wantsRecallRules) return;
+
+      final resolved = settings ?? contextProvider.read<SettingsProvider>();
+      final lang = resolved.resolvedMemoryPromptLang;
+      final buf = StringBuffer();
+      if (wantsMemoryRules) {
+        final rules = lang == MemoryPromptLang.zh
+            ? resolved.memoryRulesPromptZh
+            : resolved.memoryRulesPromptEn;
+        buf.write(rules.trim());
+      }
+      if (wantsRecallRules) {
+        if (buf.isNotEmpty) buf.write('\n\n');
+        buf.write(MemoryPrompts.rulesPastConversationRecallFor(lang));
+      }
       _appendToSystemMessage(
         apiMessages,
-        MemoryTools.buildSystemBlock(memory.files),
-        source: ContextSource.memory,
+        buf.toString(),
+        source: ContextSource.memoryRules,
       );
     } catch (_) {}
   }
 
-  /// Inject search tool usage prompt into apiMessages.
   void injectSearchPrompt(
     List<Map<String, dynamic>> apiMessages,
     SettingsProvider settings,

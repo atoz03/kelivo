@@ -5,8 +5,6 @@ import 'dart:async';
 import 'dart:ui' show AppExitResponse;
 import 'l10n/app_localizations.dart';
 import 'features/home/pages/home_page.dart';
-import 'features/migration/hive_to_sqlite_migration_page.dart';
-import 'features/migration/hive_to_sqlite_migration_service.dart';
 import 'desktop/desktop_home_page.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
@@ -29,7 +27,9 @@ import 'core/providers/assistant_provider.dart';
 import 'core/providers/tag_provider.dart';
 import 'core/providers/update_provider.dart';
 import 'core/providers/quick_phrase_provider.dart';
-import 'core/providers/memory_provider.dart';
+import 'core/providers/memory_provider_v2.dart';
+import 'core/services/memory/memory_pipeline.dart';
+import 'core/services/memory/memory_repository.dart';
 import 'core/providers/backup_provider.dart';
 import 'core/providers/local_snapshot_provider.dart';
 import 'features/backup/local_snapshot_scheduler.dart';
@@ -174,20 +174,9 @@ Future<void> main() async {
       // Every call below can fail through drift's worker isolate, which erases
       // the distinction between them. Naming the current one is what lets the
       // failure screen say where startup actually stopped.
-      var admissionStep = 'legacy_migration_check';
+      var admissionStep = 'installation_gate';
       while (true) {
         try {
-          admissionStep = 'legacy_migration_check';
-          final migrationDecision = await HiveToSqliteMigrationService.check();
-          if (migrationDecision.needsMigration) {
-            runApp(
-              MigrationApp(
-                service: HiveToSqliteMigrationService(migrationDecision),
-                restoreOutcome: restoreOutcome?.state,
-              ),
-            );
-            return;
-          }
           admissionStep = 'installation_gate';
           await DatabaseInstallationGate.ensureReady(
             appDataDirectory: appDataDirectory,
@@ -228,17 +217,6 @@ Future<void> main() async {
               appDataDirectory,
               error,
             );
-            if (recovery == _AdmissionRecovery.remigrate) {
-              runApp(
-                MigrationApp(
-                  service: HiveToSqliteMigrationService(
-                    _legacyMigrationDecision(appDataDirectory),
-                  ),
-                  restoreOutcome: restoreOutcome?.state,
-                ),
-              );
-              return;
-            }
             if (recovery == _AdmissionRecovery.rebuilt) {
               continue;
             }
@@ -312,19 +290,7 @@ Future<void> _applyAndroidHighRefreshRate() async {
   }
 }
 
-enum _AdmissionRecovery { none, rebuilt, remigrate }
-
-/// Names must mirror HiveToSqliteMigrationService.check().
-const _legacyHiveSourceNames = <String>[
-  'conversations.hive',
-  'messages.hive',
-  'tool_events_v1.hive',
-];
-
-bool _legacyHiveSourcesExist(Directory appDataDirectory) =>
-    _legacyHiveSourceNames.any(
-      (name) => File('${appDataDirectory.path}/$name').existsSync(),
-    );
+enum _AdmissionRecovery { none, rebuilt }
 
 Future<_AdmissionRecovery> _recoverFailedAdmission(
   Directory appDataDirectory,
@@ -333,7 +299,6 @@ Future<_AdmissionRecovery> _recoverFailedAdmission(
   final action = await DatabaseInstallationGate.recoveryActionFor(
     appDataDirectory: appDataDirectory,
     error: error,
-    legacyHiveDataPresent: _legacyHiveSourcesExist(appDataDirectory),
   );
   switch (action) {
     case DatabaseRecoveryAction.rebuildAutomatically:
@@ -352,8 +317,6 @@ Future<_AdmissionRecovery> _recoverFailedAdmission(
         );
         return _AdmissionRecovery.none;
       }
-    case DatabaseRecoveryAction.promptRemigration:
-      return _AdmissionRecovery.remigrate;
     case DatabaseRecoveryAction.promptUpgrade:
     case DatabaseRecoveryAction.none:
       return _AdmissionRecovery.none;
@@ -392,23 +355,6 @@ Future<void> _recordAutomaticRebuild(
       flush: true,
     );
   } catch (_) {}
-}
-
-HiveToSqliteMigrationDecision _legacyMigrationDecision(
-  Directory appDataDirectory,
-) {
-  return HiveToSqliteMigrationDecision(
-    needsMigration: true,
-    appDataDir: appDataDirectory,
-    sqliteFile: File(
-      '${appDataDirectory.path}/${AppDatabase.databaseFileName}',
-    ),
-    hiveFiles: [
-      for (final name in _legacyHiveSourceNames)
-        if (File('${appDataDirectory.path}/$name').existsSync())
-          File('${appDataDirectory.path}/$name'),
-    ],
-  );
 }
 
 Future<void> _initRestoreFailureWindow() async {
@@ -530,32 +476,6 @@ Future<void> _pruneRestoreArchive(Directory appDataDirectory) async {
   } catch (_) {}
 }
 
-class MigrationApp extends StatelessWidget {
-  const MigrationApp({super.key, required this.service, this.restoreOutcome});
-
-  final HiveToSqliteMigrationService service;
-  final RestoreReceiptState? restoreOutcome;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = ThemePalettes.defaultPalette;
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Kelivo',
-      supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      theme: buildLightThemeForScheme(palette.light),
-      darkTheme: buildDarkThemeForScheme(palette.dark),
-      builder: (context, child) =>
-          AppSnackBarOverlay(child: child ?? const SizedBox.shrink()),
-      home: RestoreOutcomeNotice(
-        outcome: restoreOutcome,
-        child: HiveToSqliteMigrationPage(service: service),
-      ),
-    );
-  }
-}
-
 class MyApp extends StatelessWidget {
   const MyApp({
     super.key,
@@ -620,7 +540,25 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => QuickPhraseProvider(preferences: businessPreferences),
         ),
-        ChangeNotifierProvider(create: (_) => MemoryProvider()),
+        ChangeNotifierProvider(
+          create: (_) => MemoryProviderV2(
+            repository: MemoryRepository(businessPreferences),
+            chatRepository: databaseLease.chatRepository,
+          ),
+        ),
+        Provider<MemoryPipelineService>(
+          create: (ctx) {
+            final memoryV2 = ctx.read<MemoryProviderV2>();
+            return MemoryPipelineService(
+              chatService: ctx.read<ChatService>(),
+              repository: memoryV2.repository,
+              chatRepository: memoryV2.chatRepository,
+              settings: () => ctx.read<SettingsProvider>(),
+              assistants: () => ctx.read<AssistantProvider>(),
+              memoryV2: () => ctx.read<MemoryProviderV2>(),
+            );
+          },
+        ),
         ChangeNotifierProvider(
           create: (_) =>
               BackupReminderProvider(preferences: businessPreferences),

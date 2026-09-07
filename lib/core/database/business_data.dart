@@ -19,7 +19,12 @@ enum BusinessEntityKind {
     tableName: 'search_service_rows',
   ),
   ttsService(sourceKey: 'tts_services_v1', tableName: 'tts_service_rows'),
-  assistantTag(sourceKey: 'assistant_tags_v1', tableName: 'assistant_tag_rows');
+  assistantTag(sourceKey: 'assistant_tags_v1', tableName: 'assistant_tag_rows'),
+  memoryEntry(sourceKey: 'memory_entries_v1', tableName: 'memory_entry_rows'),
+  userProfileField(
+    sourceKey: 'user_profile_fields_v1',
+    tableName: 'user_profile_field_rows',
+  );
 
   const BusinessEntityKind({required this.sourceKey, required this.tableName});
 
@@ -34,25 +39,18 @@ final class BusinessEntityValue {
     required this.id,
     required this.sortOrder,
     required this.payload,
-    this.assistantId,
   });
 
   final String id;
   final int sortOrder;
   final String payload;
-  final String? assistantId;
 
-  BusinessEntityValue copyWith({
-    String? id,
-    int? sortOrder,
-    String? payload,
-    String? assistantId,
-  }) => BusinessEntityValue(
-    id: id ?? this.id,
-    sortOrder: sortOrder ?? this.sortOrder,
-    payload: payload ?? this.payload,
-    assistantId: assistantId ?? this.assistantId,
-  );
+  BusinessEntityValue copyWith({String? id, int? sortOrder, String? payload}) =>
+      BusinessEntityValue(
+        id: id ?? this.id,
+        sortOrder: sortOrder ?? this.sortOrder,
+        payload: payload ?? this.payload,
+      );
 }
 
 final class BusinessSnapshot {

@@ -318,7 +318,6 @@ void main() {
         final action = await DatabaseInstallationGate.recoveryActionFor(
           appDataDirectory: directory,
           error: StateError('database_schema_too_new'),
-          legacyHiveDataPresent: false,
         );
 
         expect(action, DatabaseRecoveryAction.promptUpgrade);
@@ -328,7 +327,6 @@ void main() {
         final action = await DatabaseInstallationGate.recoveryActionFor(
           appDataDirectory: directory,
           error: StateError('filesystem'),
-          legacyHiveDataPresent: false,
         );
 
         expect(action, DatabaseRecoveryAction.none);
@@ -340,7 +338,6 @@ void main() {
         final action = await DatabaseInstallationGate.recoveryActionFor(
           appDataDirectory: directory,
           error: StateError('database_corrupt'),
-          legacyHiveDataPresent: false,
         );
 
         expect(action, DatabaseRecoveryAction.none);
@@ -358,43 +355,9 @@ void main() {
         final action = await DatabaseInstallationGate.recoveryActionFor(
           appDataDirectory: directory,
           error: StateError('database_corrupt'),
-          legacyHiveDataPresent: false,
         );
 
         expect(action, DatabaseRecoveryAction.none);
-      });
-
-      test('无 receipt 且 Hive 源在时引导重迁移', () async {
-        await databaseFile(directory).writeAsString('not a sqlite database');
-
-        final action = await DatabaseInstallationGate.recoveryActionFor(
-          appDataDirectory: directory,
-          error: StateError('database_corrupt'),
-          legacyHiveDataPresent: true,
-        );
-
-        expect(action, DatabaseRecoveryAction.promptRemigration);
-      });
-
-      test('原始 sqlite 错误仅在可重迁移时引导', () async {
-        final rawError = sqlite.SqliteException(
-          extendedResultCode: 11,
-          message: 'database disk image is malformed',
-        );
-
-        final withHive = await DatabaseInstallationGate.recoveryActionFor(
-          appDataDirectory: directory,
-          error: rawError,
-          legacyHiveDataPresent: true,
-        );
-        final withoutHive = await DatabaseInstallationGate.recoveryActionFor(
-          appDataDirectory: directory,
-          error: rawError,
-          legacyHiveDataPresent: false,
-        );
-
-        expect(withHive, DatabaseRecoveryAction.promptRemigration);
-        expect(withoutHive, DatabaseRecoveryAction.none);
       });
 
       test('首启半成品库（userVersion=0）可自动重建', () async {
@@ -404,7 +367,6 @@ void main() {
         final action = await DatabaseInstallationGate.recoveryActionFor(
           appDataDirectory: directory,
           error: StateError('database_schema_version'),
-          legacyHiveDataPresent: false,
         );
 
         expect(action, DatabaseRecoveryAction.rebuildAutomatically);
@@ -492,7 +454,6 @@ void main() {
         final action = await DatabaseInstallationGate.recoveryActionFor(
           appDataDirectory: directory,
           error: StateError('database_corrupt'),
-          legacyHiveDataPresent: false,
         );
 
         expect(action, DatabaseRecoveryAction.none);
@@ -508,7 +469,6 @@ void main() {
         final action = await DatabaseInstallationGate.recoveryActionFor(
           appDataDirectory: directory,
           error: StateError('database_schema_version'),
-          legacyHiveDataPresent: false,
         );
 
         expect(action, DatabaseRecoveryAction.none);
@@ -524,7 +484,6 @@ void main() {
         final action = await DatabaseInstallationGate.recoveryActionFor(
           appDataDirectory: directory,
           error: StateError('database_schema_version'),
-          legacyHiveDataPresent: false,
         );
 
         expect(action, DatabaseRecoveryAction.none);
@@ -547,7 +506,6 @@ void main() {
         final action = await DatabaseInstallationGate.recoveryActionFor(
           appDataDirectory: directory,
           error: StateError('database_schema_version'),
-          legacyHiveDataPresent: false,
         );
 
         expect(action, DatabaseRecoveryAction.none);
@@ -562,7 +520,6 @@ void main() {
         final action = await DatabaseInstallationGate.recoveryActionFor(
           appDataDirectory: directory,
           error: StateError('database_schema_version'),
-          legacyHiveDataPresent: false,
         );
 
         expect(action, DatabaseRecoveryAction.rebuildAutomatically);
@@ -580,7 +537,6 @@ void main() {
         final action = await DatabaseInstallationGate.recoveryActionFor(
           appDataDirectory: directory,
           error: StateError('database_schema_version'),
-          legacyHiveDataPresent: false,
         );
 
         expect(action, DatabaseRecoveryAction.none);
@@ -602,7 +558,6 @@ void main() {
         final action = await DatabaseInstallationGate.recoveryActionFor(
           appDataDirectory: directory,
           error: StateError('database_schema_version'),
-          legacyHiveDataPresent: false,
         );
 
         expect(action, DatabaseRecoveryAction.none);

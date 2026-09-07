@@ -49,12 +49,7 @@ final class DatabaseInstallationReceipt {
 /// Recovery route for a failed startup admission. Only
 /// [rebuildAutomatically] may run without further user confirmation; every
 /// other route must be confirmed by the user first.
-enum DatabaseRecoveryAction {
-  none,
-  rebuildAutomatically,
-  promptRemigration,
-  promptUpgrade,
-}
+enum DatabaseRecoveryAction { none, rebuildAutomatically, promptUpgrade }
 
 /// A database family that [DatabaseInstallationGate.rebuildFresh] moved aside
 /// instead of deleting.
@@ -242,8 +237,8 @@ final class DatabaseInstallationGate {
   /// Automatic rebuild is the only route that runs unattended, so it is the
   /// only one that can destroy data without anybody agreeing to it first. It
   /// is returned only when every one of these holds: no installation receipt,
-  /// no legacy Hive source, no trace of prior use ([_priorUseEvidence]), and
-  /// an installed file that reads back as half-created (userVersion 0).
+  /// no trace of prior use ([_priorUseEvidence]), and an installed file that
+  /// reads back as half-created (userVersion 0).
   ///
   /// A file we merely failed to read is deliberately NOT enough. "Unreadable
   /// right now" is what a perfectly healthy database looks like while the OS
@@ -252,7 +247,6 @@ final class DatabaseInstallationGate {
   static Future<DatabaseRecoveryAction> recoveryActionFor({
     required Directory appDataDirectory,
     required Object error,
-    required bool legacyHiveDataPresent,
   }) async {
     if (error is StateError && error.message == 'database_schema_too_new') {
       return DatabaseRecoveryAction.promptUpgrade;
@@ -274,9 +268,6 @@ final class DatabaseInstallationGate {
       return DatabaseRecoveryAction.none;
     }
     if (hasReceipts) return DatabaseRecoveryAction.none;
-    if (legacyHiveDataPresent) {
-      return DatabaseRecoveryAction.promptRemigration;
-    }
     if (isRawSqliteFailure) {
       // A raw sqlite error never justifies deleting data automatically.
       return DatabaseRecoveryAction.none;

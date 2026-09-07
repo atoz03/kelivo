@@ -1,66 +1,49 @@
-import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 
-part 'conversation.g.dart';
-
-@HiveType(typeId: 1)
-class Conversation extends HiveObject {
-  @HiveField(0)
+class Conversation {
   final String id;
 
-  @HiveField(1)
   String title;
 
-  @HiveField(2)
   final DateTime createdAt;
 
-  @HiveField(3)
   DateTime updatedAt;
 
-  @HiveField(4)
   final List<String> messageIds;
 
-  @HiveField(5)
   bool isPinned;
 
   // Per-conversation enabled MCP servers (by server id)
-  @HiveField(6)
   List<String> mcpServerIds;
 
   // Owner assistant id; null for global/default
-  @HiveField(7)
   String? assistantId;
 
   // Truncate context starting at this index (-1 means no truncation)
-  @HiveField(8)
   int truncateIndex;
 
   // Selected version per message group (groupId -> selected version index)
-  @HiveField(9)
   Map<String, int> versionSelections;
 
   // LLM-generated conversation summary
-  @HiveField(10)
   String? summary;
 
   // Message count when summary was last generated (to avoid redundant updates)
-  @HiveField(11)
   int lastSummarizedMessageCount;
 
   // LLM-generated quick follow-up suggestions for the latest assistant reply.
-  @HiveField(12)
   List<String> chatSuggestions;
+
+  // Hash of the last injected memory block; null means never injected.
+  String? injectedMemoryHash;
+
+  // Highest message_order processed by background memory extraction; -1 = never.
+  int lastMemoryExtractedOrder;
 
   // Per-conversation model override. null means inherit: the assistant's model
   // first, then the global default. Both are set or both are null.
-  //
-  // NOTE: conversation.g.dart is intentionally stale (it stops at field 12) and
-  // must not be regenerated. The adapter is only read by the legacy
-  // Hive-to-SQLite migration, whose source data predates these fields.
-  @HiveField(15)
   String? chatModelProvider;
 
-  @HiveField(16)
   String? chatModelId;
 
   Conversation({
@@ -77,6 +60,8 @@ class Conversation extends HiveObject {
     this.summary,
     int? lastSummarizedMessageCount,
     List<String>? chatSuggestions,
+    this.injectedMemoryHash,
+    int? lastMemoryExtractedOrder,
     this.chatModelProvider,
     this.chatModelId,
   }) : id = id ?? const Uuid().v4(),
@@ -87,7 +72,8 @@ class Conversation extends HiveObject {
        truncateIndex = truncateIndex ?? -1,
        versionSelections = versionSelections ?? <String, int>{},
        lastSummarizedMessageCount = lastSummarizedMessageCount ?? 0,
-       chatSuggestions = chatSuggestions ?? [];
+       chatSuggestions = chatSuggestions ?? [],
+       lastMemoryExtractedOrder = lastMemoryExtractedOrder ?? -1;
 
   Conversation copyWith({
     String? id,
@@ -103,9 +89,12 @@ class Conversation extends HiveObject {
     String? summary,
     int? lastSummarizedMessageCount,
     List<String>? chatSuggestions,
+    String? injectedMemoryHash,
+    int? lastMemoryExtractedOrder,
     String? chatModelProvider,
     String? chatModelId,
     bool clearSummary = false,
+    bool clearInjectedMemoryHash = false,
     bool clearChatModel = false,
   }) {
     return Conversation(
@@ -123,6 +112,11 @@ class Conversation extends HiveObject {
       lastSummarizedMessageCount:
           lastSummarizedMessageCount ?? this.lastSummarizedMessageCount,
       chatSuggestions: chatSuggestions ?? this.chatSuggestions,
+      injectedMemoryHash: clearInjectedMemoryHash
+          ? null
+          : (injectedMemoryHash ?? this.injectedMemoryHash),
+      lastMemoryExtractedOrder:
+          lastMemoryExtractedOrder ?? this.lastMemoryExtractedOrder,
       chatModelProvider: clearChatModel
           ? null
           : (chatModelProvider ?? this.chatModelProvider),
@@ -145,6 +139,8 @@ class Conversation extends HiveObject {
       'summary': summary,
       'lastSummarizedMessageCount': lastSummarizedMessageCount,
       'chatSuggestions': chatSuggestions,
+      'injectedMemoryHash': injectedMemoryHash,
+      'lastMemoryExtractedOrder': lastMemoryExtractedOrder,
       'chatModelProvider': chatModelProvider,
       'chatModelId': chatModelId,
     };
@@ -173,6 +169,8 @@ class Conversation extends HiveObject {
       chatSuggestions:
           (json['chatSuggestions'] as List?)?.cast<String>() ??
           const <String>[],
+      injectedMemoryHash: json['injectedMemoryHash'] as String?,
+      lastMemoryExtractedOrder: json['lastMemoryExtractedOrder'] as int? ?? -1,
       chatModelProvider: json['chatModelProvider'] as String?,
       chatModelId: json['chatModelId'] as String?,
     );

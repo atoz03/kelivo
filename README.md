@@ -11,7 +11,7 @@ A Flutter LLM chat client for Android and macOS.
 - **Custom assistants** — create and manage personalized assistants with their own prompts and settings.
 - **Multimodal input** — images, text documents, PDFs, Word documents.
 - **Markdown rendering** — code highlighting, LaTeX, tables.
-- **Memory** — plain Markdown files the model reads, searches, and edits through tools.
+- **Memory** — long-term memories and a user profile the model reads, writes, and organizes through tools.
 - **MCP** — Model Context Protocol tool integration, including a built-in Fetch tool.
 - **Web search** — Bing, DuckDuckGo, Exa, Tavily, Zhipu, LinkUp, Brave, Metaso, SearXNG, Ollama, Jina, Perplexity, Bocha, Serper, Grok.
 - **Voice / TTS** — system TTS plus OpenAI, Google Gemini, and ElevenLabs voices.

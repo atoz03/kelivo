@@ -114,6 +114,8 @@ void main() {
             'tts_service_rows',
             'assistant_tag_rows',
             'preference_rows',
+            'memory_entry_rows',
+            'user_profile_field_rows',
             'message_prompt_rows',
             'asset_rows',
             'message_asset_rows',

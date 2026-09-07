@@ -47,9 +47,9 @@ void main() {
         'INSERT INTO conversation_rows '
         '(id, title, created_at, updated_at, is_pinned, truncate_index, '
         'version_selections_json, last_summarized_message_count, '
-        'chat_suggestions_json) '
+        'chat_suggestions_json, last_memory_extracted_order) '
         "VALUES ('$conversationId', 'Legacy chat', 1, 2, 0, -1, '{}', 0, "
-        "'[]');",
+        "'[]', -1);",
       );
     } finally {
       await database.close();
@@ -92,13 +92,8 @@ void main() {
       SchemaMigrations.readSchemaVersion(file),
       AppDatabase.currentSchemaVersion,
     );
-    // Schema 4 drops the two memory columns; everything else is additive.
     expect(columnsOf(file, 'conversation_rows'), [
-      ...before.where(
-        (column) =>
-            column != 'injected_memory_hash' &&
-            column != 'last_memory_extracted_order',
-      ),
+      ...before,
       'chat_model_provider',
       'chat_model_id',
       'extras_json',
@@ -126,8 +121,8 @@ void main() {
         'INSERT INTO conversation_rows '
         '(id, title, created_at, updated_at, is_pinned, truncate_index, '
         'version_selections_json, last_summarized_message_count, '
-        'chat_suggestions_json) '
-        "VALUES ('conv-2', 'Schema 2 chat', 1, 2, 0, -1, '{}', 0, '[]');",
+        'chat_suggestions_json, last_memory_extracted_order) '
+        "VALUES ('conv-2', 'Schema 2 chat', 1, 2, 0, -1, '{}', 0, '[]', -1);",
       );
       await database.customStatement(
         'INSERT INTO message_rows '

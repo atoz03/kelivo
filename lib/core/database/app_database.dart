@@ -56,6 +56,11 @@ class ConversationRows extends Table {
       .withDefault(const Constant(0))();
   TextColumn get chatSuggestionsJson =>
       text().withDefault(const Constant('[]'))();
+  TextColumn get injectedMemoryHash => text().nullable()();
+  IntColumn get lastMemoryExtractedOrder => integer()
+      // ignore: recursive_getters
+      .check(lastMemoryExtractedOrder.isBiggerOrEqualValue(-1))
+      .withDefault(const Constant(-1))();
   // Columns below are grouped by the schema version that appended them. New
   // columns must always be appended at the end of the table: only that makes
   // ALTER TABLE ADD COLUMN on a migrated database yield the same column order
@@ -522,10 +527,82 @@ class PreferenceRows extends Table {
   Set<Column<Object>> get primaryKey => {key};
 }
 
+@TableIndex(
+  name: 'idx_memory_entries_visible',
+  columns: {#status, #type, #scope, #assistantId},
+)
+@TableIndex(
+  name: 'idx_memory_entries_recent',
+  columns: {#status, #type, #entryUpdatedAt, #id},
+)
+@TableIndex(
+  name: 'idx_memory_entries_dedupe',
+  columns: {#scope, #assistantId, #type, #contentNormalized},
+)
+class MemoryEntryRows extends Table {
+  TextColumn get id => text()();
+  IntColumn get sortOrder =>
+      integer()
+      // ignore: recursive_getters
+      .check(sortOrder.isBiggerOrEqualValue(0))();
+  TextColumn get scope => text().check(
+    // ignore: recursive_getters
+    scope.isIn(const ['global', 'assistant']),
+  )();
+  TextColumn get assistantId => text().nullable()();
+  TextColumn get type => text().check(
+    // ignore: recursive_getters
+    type.isIn(const ['identity', 'workflow', 'voice', 'instruction']),
+  )();
+  TextColumn get status => text().check(
+    // ignore: recursive_getters
+    status.isIn(const ['active', 'archived']),
+  )();
+  TextColumn get content => text()();
+  TextColumn get contentNormalized => text()();
+  IntColumn get entryCreatedAt =>
+      integer().map(const MicrosecondDateTimeConverter())();
+  IntColumn get entryUpdatedAt =>
+      integer().map(const MicrosecondDateTimeConverter())();
+  TextColumn get payload => text()();
+  IntColumn get updatedAt =>
+      integer().map(const MicrosecondDateTimeConverter())();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => [
+    "CHECK ((scope = 'global' AND assistant_id IS NULL) OR "
+        "(scope = 'assistant' AND assistant_id IS NOT NULL))",
+    'CHECK (entry_updated_at >= entry_created_at)',
+  ];
+}
+
+class UserProfileFieldRows extends Table {
+  TextColumn get id => text()(); // = field key, e.g. preferred_name
+  IntColumn get sortOrder =>
+      integer()
+      // ignore: recursive_getters
+      .check(sortOrder.isBiggerOrEqualValue(0))();
+  TextColumn get payload => text()();
+  IntColumn get updatedAt =>
+      integer().map(const MicrosecondDateTimeConverter())();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@TableIndex(
+  name: 'idx_message_prompts_conversation_snapshot',
+  columns: {#conversationId, #carriesMemorySnapshot},
+)
 class MessagePromptRows extends Table {
   TextColumn get revisionId => text()();
   TextColumn get conversationId => text()();
   TextColumn get payload => text()();
+  BoolColumn get carriesMemorySnapshot =>
+      boolean().withDefault(const Constant(false))();
   IntColumn get createdAt =>
       integer().map(const MicrosecondDateTimeConverter())();
 
@@ -621,6 +698,8 @@ class ExtensionEntityRows extends Table {
     TtsServiceRows,
     AssistantTagRows,
     PreferenceRows,
+    MemoryEntryRows,
+    UserProfileFieldRows,
     MessagePromptRows,
     TombstoneRows,
     ExtensionEntityRows,
@@ -636,7 +715,7 @@ class AppDatabase extends _$AppDatabase {
   // (extras_json columns, message updated_at/sender_id, tombstone_rows,
   // extension_entity_rows) so later features can ship without further
   // migrations; schema 4 drops the world book, instruction injection, and
-  // database-backed memory tables when those features were removed. Every
+  // legacy assistant memory tables when those features were removed. Every
   // version outside [publishedSchemaVersions] belongs to an unpublished or
   // future format and is rejected.
   static const currentSchemaVersion = 4;
@@ -814,33 +893,15 @@ FROM probe;
         // stepByStep does not create new indexes automatically.
         await m.create(schema.idxExtensionEntitiesKindOrder);
       },
-      // World book, instruction injection, and the database-backed memory
-      // system were removed. Their rows are dropped rather than migrated:
-      // memory now lives in Markdown files outside SQLite, and nothing reads
-      // the other two any more.
-      //
-      // The frozen prompts that carried an injected memory block go with them.
-      // message_prompt_rows is a rebuildable cache — a miss is reassembled on
-      // demand — so deleting those rows is cheaper and safer than leaving a
-      // stale <memories> block to be resent verbatim on a regenerate.
+      // World book, instruction injection, and the pre-v2 assistant memory
+      // list were removed. Their rows are dropped rather than migrated:
+      // nothing reads them any more, and the v2 memory tables they sat next to
+      // are untouched.
       from3To4: (m, schema) async {
-        await m.database.customStatement(
-          'DELETE FROM message_prompt_rows WHERE carries_memory_snapshot = 1;',
-        );
-        // alterTable recreates the table and replays the indexes it finds in
-        // sqlite_master. An index over a column that is about to disappear
-        // would fail on replay, so it has to go first.
-        await m.database.customStatement(
-          'DROP INDEX IF EXISTS idx_message_prompts_conversation_snapshot;',
-        );
-        await m.alterTable(TableMigration(schema.messagePromptRows));
-        await m.alterTable(TableMigration(schema.conversationRows));
         for (final table in const [
           'world_book_rows',
           'instruction_injection_rows',
           'assistant_memory_rows',
-          'memory_entry_rows',
-          'user_profile_field_rows',
         ]) {
           await m.database.customStatement('DROP TABLE IF EXISTS $table;');
         }

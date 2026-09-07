@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/models/chat_input_data.dart';
+import '../../../core/models/assistant.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../core/models/compress_context_options.dart';
 import '../../../core/models/conversation.dart';
@@ -11,6 +12,8 @@ import '../../../core/services/api/chat_api_service.dart';
 import '../../../core/services/chat/chat_service.dart';
 import '../../../core/services/model_override_payload_parser.dart';
 import '../../../core/services/logging/flutter_logger.dart';
+import '../../../core/services/memory/memory_pipeline.dart';
+import '../../../core/services/memory/memory_trace.dart';
 import '../../../utils/utf16_safe_cut.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../chat/widgets/chat_message_widget.dart' show ToolUIPart;
@@ -26,7 +29,7 @@ import 'stream_controller.dart' as stream_ctrl;
 
 export '../../../core/models/compress_context_options.dart';
 
-enum BackgroundTaskKind { ocr, title, suggestions }
+enum BackgroundTaskKind { ocr, title, summary, suggestions, memory }
 
 class BatchDeleteGroupPlan {
   const BatchDeleteGroupPlan({
@@ -119,6 +122,7 @@ class HomeViewModel extends ChangeNotifier {
     _chatActions.onContentUpdated = _onContentUpdated;
     _chatActions.onStreamError = _onStreamError;
     _chatActions.onMaybeGenerateTitle = _onMaybeGenerateTitle;
+    _chatActions.onMaybeGenerateSummary = _onMaybeGenerateSummary;
     _chatActions.onMaybeGenerateSuggestions = _onMaybeGenerateSuggestions;
     _chatActions.onStreamFinished = _onStreamFinished;
     _chatActions.onAssistantMessageFinished = _onAssistantMessageFinished;
@@ -275,6 +279,13 @@ class HomeViewModel extends ChangeNotifier {
     );
   }
 
+  void _onMaybeGenerateSummary(String conversationId) {
+    _runBackgroundTask(
+      BackgroundTaskKind.summary,
+      _maybeGenerateSummaryFor(conversationId),
+    );
+  }
+
   void _onMaybeGenerateSuggestions(String conversationId) {
     _runBackgroundTask(
       BackgroundTaskKind.suggestions,
@@ -301,6 +312,34 @@ class HomeViewModel extends ChangeNotifier {
 
   void _onAssistantMessageFinished(ChatMessage message) {
     onAssistantMessageFinished?.call(message);
+    _onMaybeOrganizeMemory(message.conversationId);
+  }
+
+  /// Schedule background memory organize after a successful finalize (§12.1).
+  /// Never awaited; failures must not surface as chat errors.
+  void _onMaybeOrganizeMemory(String conversationId) {
+    try {
+      final convo = _chatService.getConversation(conversationId);
+      if (convo == null) return;
+      final assistantProvider = _contextProvider.read<AssistantProvider>();
+      final assistant = convo.assistantId != null
+          ? assistantProvider.getById(convo.assistantId!)
+          : assistantProvider.currentAssistant;
+      if (assistant == null || !assistant.enableMemory) return;
+      if (!assistant.autoOrganizeMemory) return;
+      final pipeline = _contextProvider.read<MemoryPipelineService>();
+      pipeline.scheduleIfNeeded(
+        conversationId: conversationId,
+        assistantId: assistant.id,
+        onError: (error) =>
+            onBackgroundTaskError?.call(BackgroundTaskKind.memory, error),
+      );
+    } catch (e, st) {
+      FlutterLogger.log(
+        '[MemoryPipeline] schedule failed: $e\n$st',
+        tag: 'HomeViewModel',
+      );
+    }
   }
 
   /// Drops the indicator immediately, ignoring the minimum-visible hold. Used
@@ -1110,6 +1149,8 @@ class HomeViewModel extends ChangeNotifier {
     final resolvedModel = resolveCompressContextModel(
       compressProvider: settings.compressModelProvider,
       compressModelId: settings.compressModelId,
+      summaryProvider: settings.summaryModelProvider,
+      summaryModelId: settings.summaryModelId,
       titleProvider: settings.titleModelProvider,
       titleModelId: settings.titleModelId,
       assistantProvider: assistant?.chatModelProvider,
@@ -1404,6 +1445,11 @@ class HomeViewModel extends ChangeNotifier {
     return defaultLabel;
   }
 
+  /// Test entry for [_maybeGenerateSummaryFor].
+  @visibleForTesting
+  Future<void> debugMaybeGenerateSummaryFor(String conversationId) =>
+      _maybeGenerateSummaryFor(conversationId);
+
   /// Test entry for [_maybeGenerateTitleFor].
   @visibleForTesting
   Future<void> debugMaybeGenerateTitleFor(
@@ -1505,6 +1551,183 @@ class HomeViewModel extends ChangeNotifier {
     final cid = currentConversation?.id;
     if (cid != null) {
       await _maybeGenerateTitleFor(cid, force: force);
+    }
+  }
+
+  // ============================================================================
+  // Summary Generation
+  // ============================================================================
+
+  /// Generate summary for a conversation if conditions are met.
+  /// Triggers after the configured number of new messages since last summary.
+  Future<void> _maybeGenerateSummaryFor(String conversationId) async {
+    final convo = _chatService.getConversation(conversationId);
+    if (convo == null) return;
+    // Summaries only feed past-conversation search; temporary chats are never searchable.
+    if (_chatService.isTemporaryConversation(convo.id)) return;
+
+    final settings = _contextProvider.read<SettingsProvider>();
+    if (!_chatService.isMessageCountKnown(conversationId)) return;
+    final msgCount = _chatService.getMessageCount(conversationId);
+    final assistantProvider = _contextProvider.read<AssistantProvider>();
+
+    // Get assistant for this conversation
+    final assistant = convo.assistantId != null
+        ? assistantProvider.getById(convo.assistantId!)
+        : assistantProvider.currentAssistant;
+
+    final budget = settings.summaryGenerationThinkingBudgetFor(
+      assistant?.thinkingBudget,
+    );
+
+    if (!MemoryPipelineService.shouldGenerateConversationSummary(
+      allowPastConversationRecall:
+          assistant?.allowPastConversationRecall == true,
+      generateConversationSummary:
+          assistant?.generateConversationSummary == true,
+    )) {
+      return;
+    }
+
+    final triggerMessageCount =
+        assistant?.recentChatsSummaryMessageCount ??
+        Assistant.defaultRecentChatsSummaryMessageCount;
+    if (msgCount == 0 ||
+        msgCount - convo.lastSummarizedMessageCount < triggerMessageCount) {
+      return;
+    }
+
+    // Use summary model if configured, else fall back to title model, then current model
+    final provKey =
+        settings.summaryModelProvider ??
+        settings.titleModelProvider ??
+        assistant?.chatModelProvider ??
+        settings.currentModelProvider;
+    final mdlId =
+        settings.summaryModelId ??
+        settings.titleModelId ??
+        assistant?.chatModelId ??
+        settings.currentModelId;
+    if (provKey == null || mdlId == null) return;
+
+    final cfg = settings.getProviderConfig(provKey);
+
+    // Get all messages and filter user messages
+    final msgs = await _chatService.loadMessages(convo.id);
+    final allUserMsgs = msgs
+        .where((m) => m.role == 'user' && m.content.trim().isNotEmpty)
+        .toList();
+
+    if (allUserMsgs.isEmpty) return;
+
+    // Get previous summary (empty string if first time)
+    final previousSummary = (convo.summary ?? '').trim();
+
+    // Get only the recent user messages since last summarization
+    // Calculate how many user messages were in the last summarized state
+    final lastSummarizedMsgCount = (convo.lastSummarizedMessageCount < 0)
+        ? 0
+        : convo.lastSummarizedMessageCount;
+    final msgsAtLastSummary = msgs.take(lastSummarizedMsgCount).toList();
+    final userMsgsAtLastSummary = msgsAtLastSummary
+        .where((m) => m.role == 'user' && m.content.trim().isNotEmpty)
+        .length;
+
+    // Get new user messages since last summary
+    final newUserMsgs = allUserMsgs.skip(userMsgsAtLastSummary).toList();
+    if (newUserMsgs.isEmpty) return;
+
+    final recentMessages = newUserMsgs
+        .map((m) => m.content.trim())
+        .join('\n\n');
+
+    // Truncate if too long
+    final content = recentMessages.length > 2000
+        ? recentMessages.substring(0, 2000)
+        : recentMessages;
+
+    final prompt = settings.summaryPrompt
+        .replaceAll('{previous_summary}', previousSummary)
+        .replaceAll('{user_messages}', content);
+
+    final traceHandle = _beginSummaryTrace(convo, assistant);
+    final traceStep = traceHandle?.beginStep(
+      MemoryTraceStepKind.conversationSummary,
+    );
+    traceStep?.appendPrompt(prompt);
+
+    try {
+      final summary = (await ChatApiService.generateText(
+        conversationId: convo.id,
+        config: cfg,
+        modelId: mdlId,
+        prompt: prompt,
+        thinkingBudget: budget,
+        skipImageParsing: true,
+      )).trim();
+      traceStep?.appendResponse(summary);
+
+      if (summary.isNotEmpty) {
+        await _chatService.updateConversationSummary(
+          convo.id,
+          summary,
+          msgCount,
+        );
+        traceStep?.addMutation(
+          MemoryTraceMutation(
+            kind: MemoryTraceMutationKind.conversationSummaryWritten,
+            targetId: convo.id,
+            before: previousSummary.isEmpty ? null : previousSummary,
+            after: summary,
+          ),
+        );
+      }
+      traceStep?.finish(MemoryTraceStepStatus.success);
+      traceHandle?.commit(advanced: summary.isNotEmpty);
+      if (summary.isNotEmpty) {
+        if (currentConversation?.id == convo.id) {
+          _chatController.updateCurrentConversation(
+            _chatService.getConversation(convo.id),
+          );
+          notifyListeners();
+        }
+      } else {
+        onBackgroundTaskError?.call(
+          BackgroundTaskKind.summary,
+          'empty_response',
+        );
+      }
+    } catch (e) {
+      // Keep the old summary when background generation fails.
+      traceStep?.finish(MemoryTraceStepStatus.failed, error: e.toString());
+      traceHandle?.commit(error: e.toString());
+      onBackgroundTaskError?.call(BackgroundTaskKind.summary, e);
+    }
+  }
+
+  /// Open a trace for background summary generation (feeds past-conversation
+  /// recall). Never throws.
+  MemoryTraceHandle? _beginSummaryTrace(
+    Conversation convo,
+    Assistant? assistant,
+  ) {
+    // Temporary chats are discarded on exit; keep their traces out of the UI.
+    if (_chatService.isTemporaryConversation(convo.id)) {
+      return null;
+    }
+    try {
+      return MemoryTraceRecorder.instance.begin(
+        trigger: MemoryTraceTrigger.conversationSummary,
+        scope: assistant == null
+            ? MemoryTraceScope.global
+            : memoryTraceScopeOf(assistant.memoryWriteScope),
+        conversationId: convo.id,
+        conversationTitle: convo.title,
+        assistantId: assistant?.id,
+        assistantName: assistant?.name,
+      );
+    } catch (_) {
+      return null;
     }
   }
 

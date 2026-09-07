@@ -603,8 +603,28 @@ void main() {
             'apiKey': 'tts-secret',
           },
         ]),
+        'instruction_injections_v1': jsonEncode([
+          {'id': 'injection-1', 'title': 'Learn', 'prompt': 'Explain'},
+        ]),
         'assistant_tags_v1': jsonEncode([
           {'id': 'tag-1', 'name': 'Work'},
+        ]),
+        'memory_entries_v1': jsonEncode([
+          {
+            'id': 'mem_a1b2c3d4',
+            'scope': 'global',
+            'type': 'identity',
+            'content': 'User likes Flutter.',
+            'createdAt': 1786012880106000,
+            'updatedAt': 1786012880106000,
+          },
+        ]),
+        'user_profile_fields_v1': jsonEncode([
+          {
+            'id': 'preferred_name',
+            'value': 'Psyche',
+            'updatedAt': 1786012880106000,
+          },
         ]),
       });
 

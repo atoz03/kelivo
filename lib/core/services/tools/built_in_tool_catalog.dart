@@ -1,3 +1,4 @@
+import '../../services/memory/memory_prompts.dart';
 import '../../services/memory/memory_tools.dart';
 import '../../services/search/search_tool_service.dart';
 import '../../../features/home/services/local_tools_service.dart';
@@ -29,7 +30,9 @@ class BuiltInToolCatalogEntry {
 abstract final class BuiltInToolCatalog {
   BuiltInToolCatalog._();
 
-  static List<BuiltInToolCatalogEntry> entries() {
+  static List<BuiltInToolCatalogEntry> entries({
+    required MemoryPromptLang lang,
+  }) {
     final out = <BuiltInToolCatalogEntry>[
       BuiltInToolCatalogEntry(
         name: SearchToolService.toolName,
@@ -38,7 +41,7 @@ abstract final class BuiltInToolCatalog {
       ),
     ];
 
-    for (final def in MemoryTools.catalogDefinitions()) {
+    for (final def in MemoryTools.catalogDefinitions(lang)) {
       final name = _toolName(def);
       if (name == null) continue;
       out.add(

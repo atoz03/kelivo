@@ -2280,6 +2280,8 @@ final class Schema4 extends i0.VersionedSchema {
     ttsServiceRows,
     assistantTagRows,
     preferenceRows,
+    memoryEntryRows,
+    userProfileFieldRows,
     messagePromptRows,
     tombstoneRows,
     extensionEntityRows,
@@ -2294,9 +2296,13 @@ final class Schema4 extends i0.VersionedSchema {
     idxMessageAssetsAsset,
     idxGenerationRunsActiveTarget,
     idxGenerationRunsStateUpdated,
+    idxMemoryEntriesVisible,
+    idxMemoryEntriesRecent,
+    idxMemoryEntriesDedupe,
+    idxMessagePromptsConversationSnapshot,
     idxExtensionEntitiesKindOrder,
   ];
-  late final Shape23 conversationRows = Shape23(
+  late final Shape18 conversationRows = Shape18(
     source: i0.VersionedTable(
       entityName: 'conversation_rows',
       withoutRowId: false,
@@ -2314,6 +2320,8 @@ final class Schema4 extends i0.VersionedSchema {
         _column_8,
         _column_9,
         _column_10,
+        _column_11,
+        _column_12,
         _column_13,
         _column_14,
         _column_75,
@@ -2625,7 +2633,46 @@ final class Schema4 extends i0.VersionedSchema {
     ),
     alias: null,
   );
-  late final Shape24 messagePromptRows = Shape24(
+  late final Shape16 memoryEntryRows = Shape16(
+    source: i0.VersionedTable(
+      entityName: 'memory_entry_rows',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'CHECK((scope = \'global\' AND assistant_id IS NULL)OR(scope = \'assistant\' AND assistant_id IS NOT NULL))',
+        'CHECK(entry_updated_at >= entry_created_at)',
+      ],
+      columns: [
+        _column_0,
+        _column_64,
+        _column_67,
+        _column_5,
+        _column_68,
+        _column_69,
+        _column_70,
+        _column_71,
+        _column_72,
+        _column_73,
+        _column_41,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape12 userProfileFieldRows = Shape12(
+    source: i0.VersionedTable(
+      entityName: 'user_profile_field_rows',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [_column_0, _column_64, _column_41, _column_3],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape17 messagePromptRows = Shape17(
     source: i0.VersionedTable(
       entityName: 'message_prompt_rows',
       withoutRowId: false,
@@ -2634,7 +2681,7 @@ final class Schema4 extends i0.VersionedSchema {
         'PRIMARY KEY(revision_id)',
         'FOREIGN KEY(revision_id)REFERENCES message_rows(id)ON DELETE CASCADE',
       ],
-      columns: [_column_39, _column_38, _column_41, _column_2],
+      columns: [_column_39, _column_38, _column_41, _column_74, _column_2],
       attachedDatabase: database,
     ),
     alias: null,
@@ -2712,55 +2759,26 @@ final class Schema4 extends i0.VersionedSchema {
     'idx_generation_runs_state_updated',
     'CREATE INDEX idx_generation_runs_state_updated ON generation_run_rows (state, updated_at, id)',
   );
+  final i1.Index idxMemoryEntriesVisible = i1.Index(
+    'idx_memory_entries_visible',
+    'CREATE INDEX idx_memory_entries_visible ON memory_entry_rows (status, type, scope, assistant_id)',
+  );
+  final i1.Index idxMemoryEntriesRecent = i1.Index(
+    'idx_memory_entries_recent',
+    'CREATE INDEX idx_memory_entries_recent ON memory_entry_rows (status, type, entry_updated_at, id)',
+  );
+  final i1.Index idxMemoryEntriesDedupe = i1.Index(
+    'idx_memory_entries_dedupe',
+    'CREATE INDEX idx_memory_entries_dedupe ON memory_entry_rows (scope, assistant_id, type, content_normalized)',
+  );
+  final i1.Index idxMessagePromptsConversationSnapshot = i1.Index(
+    'idx_message_prompts_conversation_snapshot',
+    'CREATE INDEX idx_message_prompts_conversation_snapshot ON message_prompt_rows (conversation_id, carries_memory_snapshot)',
+  );
   final i1.Index idxExtensionEntitiesKindOrder = i1.Index(
     'idx_extension_entities_kind_order',
     'CREATE INDEX idx_extension_entities_kind_order ON extension_entity_rows (kind, sort_order)',
   );
-}
-
-class Shape23 extends i0.VersionedTable {
-  Shape23({required super.source, required super.alias}) : super.aliased();
-  i1.GeneratedColumn<String> get id =>
-      columnsByName['id']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get title =>
-      columnsByName['title']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<int> get createdAt =>
-      columnsByName['created_at']! as i1.GeneratedColumn<int>;
-  i1.GeneratedColumn<int> get updatedAt =>
-      columnsByName['updated_at']! as i1.GeneratedColumn<int>;
-  i1.GeneratedColumn<int> get isPinned =>
-      columnsByName['is_pinned']! as i1.GeneratedColumn<int>;
-  i1.GeneratedColumn<String> get assistantId =>
-      columnsByName['assistant_id']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<int> get truncateIndex =>
-      columnsByName['truncate_index']! as i1.GeneratedColumn<int>;
-  i1.GeneratedColumn<String> get versionSelectionsJson =>
-      columnsByName['version_selections_json']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get summary =>
-      columnsByName['summary']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<int> get lastSummarizedMessageCount =>
-      columnsByName['last_summarized_message_count']!
-          as i1.GeneratedColumn<int>;
-  i1.GeneratedColumn<String> get chatSuggestionsJson =>
-      columnsByName['chat_suggestions_json']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get chatModelProvider =>
-      columnsByName['chat_model_provider']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get chatModelId =>
-      columnsByName['chat_model_id']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get extrasJson =>
-      columnsByName['extras_json']! as i1.GeneratedColumn<String>;
-}
-
-class Shape24 extends i0.VersionedTable {
-  Shape24({required super.source, required super.alias}) : super.aliased();
-  i1.GeneratedColumn<String> get revisionId =>
-      columnsByName['revision_id']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get conversationId =>
-      columnsByName['conversation_id']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<String> get payload =>
-      columnsByName['payload']! as i1.GeneratedColumn<String>;
-  i1.GeneratedColumn<int> get createdAt =>
-      columnsByName['created_at']! as i1.GeneratedColumn<int>;
 }
 
 i0.MigrationStepWithVersion migrationSteps({

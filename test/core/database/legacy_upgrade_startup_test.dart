@@ -13,7 +13,6 @@ import 'package:Kelivo/core/database/app_database.dart';
 import 'package:Kelivo/core/database/chat_database_gateway.dart';
 import 'package:Kelivo/core/database/chat_database_repository.dart';
 import 'package:Kelivo/core/database/database_installation_gate.dart';
-import 'package:Kelivo/features/migration/hive_to_sqlite_migration_service.dart';
 
 import 'generated_schema/schema.dart';
 
@@ -36,14 +35,14 @@ class _FakePathProviderPlatform extends PathProviderPlatform {
 }
 
 /// Reproduces the device state that fails closed on a schema upgrade: an
-/// installed database a schema behind, its installation receipt, and the legacy
-/// Hive files that a completed Hive migration deliberately leaves on disk.
+/// installed database a schema behind, plus its installation receipt.
 ///
-/// Every user who ever migrated from Hive is in this state, so the startup
-/// sequence below is the one that runs on their first launch of a release that
-/// publishes a new schema. The database is built from the generated schema for
-/// each published version rather than by stamping `user_version` onto a
-/// current-schema file, so a future version genuinely exercises its own upgrade.
+/// Every user upgrading from an earlier release is in this state, so the
+/// startup sequence below is the one that runs on their first launch of a
+/// release that publishes a new schema. The database is built from the
+/// generated schema for each published version rather than by stamping
+/// `user_version` onto a current-schema file, so a future version genuinely
+/// exercises its own upgrade.
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 
@@ -57,8 +56,8 @@ void main() {
       'INSERT INTO conversation_rows '
       '(id, title, created_at, updated_at, is_pinned, truncate_index, '
       'version_selections_json, last_summarized_message_count, '
-      "chat_suggestions_json) VALUES "
-      "('$conversationId', 'Migrated chat', 1, 2, 0, -1, '{}', 0, '[]');";
+      "chat_suggestions_json, last_memory_extracted_order) VALUES "
+      "('$conversationId', 'Migrated chat', 1, 2, 0, -1, '{}', 0, '[]', -1);";
 
   late Directory directory;
   late PathProviderPlatform previousPathProvider;
@@ -77,13 +76,13 @@ void main() {
   File databaseFile() =>
       File(p.join(directory.path, AppDatabase.databaseFileName));
 
-  /// Installs a database built at [schemaVersion] together with everything a
-  /// device that came from Hive carries.
+  /// Installs a database built at [schemaVersion] together with everything an
+  /// upgrading device carries.
   ///
   /// When [hotWal] is set the write-ahead log is left unfolded and its `-shm`
   /// discarded, which is what a crashed launch leaves behind — the shape the
   /// receipt read has to survive without reporting corruption.
-  Future<void> seedHiveMigratedInstall(
+  Future<void> seedLegacyInstall(
     int schemaVersion, {
     required bool hotWal,
   }) async {
@@ -103,7 +102,7 @@ void main() {
     final raw = sqlite.sqlite3.open(stagedFile.path);
     raw.select('PRAGMA journal_mode = WAL;');
     for (final entry in const {
-      ChatStorageMetaKeys.hiveMigrationComplete: 'true',
+      ChatStorageMetaKeys.databaseComplete: 'true',
       ChatStorageMetaKeys.databaseIdentity: databaseId,
     }.entries) {
       raw.execute(
@@ -144,25 +143,10 @@ void main() {
         'databaseId': databaseId,
       }),
     );
-
-    // The Hive migration keeps its sources; they are what made the legacy
-    // check open the database in the first place.
-    for (final name in const [
-      'conversations.hive',
-      'messages.hive',
-      'tool_events_v1.hive',
-    ]) {
-      await File(p.join(directory.path, name)).writeAsString('legacy');
-    }
   }
 
   Future<void> expectStartupSucceeds() async {
-    // 1. The legacy check, which used to open a live connection here and throw
-    //    DriftRemoteException('database_schema_version').
-    final decision = await HiveToSqliteMigrationService.check();
-    expect(decision.needsMigration, isFalse);
-
-    // 2. Admission, which is what may upgrade the schema.
+    // 1. Admission, which is what may upgrade the schema.
     final receipt = await DatabaseInstallationGate.ensureReady(
       appDataDirectory: directory,
     );
@@ -175,7 +159,7 @@ void main() {
       AppDatabase.currentSchemaVersion,
     );
 
-    // 3. The live connection, now that the file is at the current schema.
+    // 2. The live connection, now that the file is at the current schema.
     final lease = await ChatDatabaseGateway.instance.acquire(databaseFile());
     try {
       final contract = await lease.repository.validateConnectionContract();
@@ -203,18 +187,15 @@ void main() {
   });
 
   for (final schemaVersion in AppDatabase.publishedSchemaVersions) {
-    test('a Hive-migrated schema-$schemaVersion install starts', () async {
-      await seedHiveMigratedInstall(schemaVersion, hotWal: false);
+    test('a schema-$schemaVersion install starts', () async {
+      await seedLegacyInstall(schemaVersion, hotWal: false);
       await expectStartupSucceeds();
     });
 
-    test(
-      'a Hive-migrated schema-$schemaVersion install starts with a hot WAL',
-      () async {
-        await seedHiveMigratedInstall(schemaVersion, hotWal: true);
-        expect(File('${databaseFile().path}-wal').existsSync(), isTrue);
-        await expectStartupSucceeds();
-      },
-    );
+    test('a schema-$schemaVersion install starts with a hot WAL', () async {
+      await seedLegacyInstall(schemaVersion, hotWal: true);
+      expect(File('${databaseFile().path}-wal').existsSync(), isTrue);
+      await expectStartupSucceeds();
+    });
   }
 }

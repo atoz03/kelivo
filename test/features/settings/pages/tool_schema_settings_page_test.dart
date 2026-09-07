@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:Kelivo/core/providers/settings_provider.dart';
+import 'package:Kelivo/core/services/memory/memory_prompts.dart';
 import 'package:Kelivo/core/services/search/search_tool_service.dart';
 import 'package:Kelivo/core/services/tools/built_in_tool_catalog.dart';
 import 'package:Kelivo/features/home/services/local_tools_service.dart';
@@ -127,5 +128,7 @@ void main() {
 }
 
 Iterable<String> _catalogNames() {
-  return BuiltInToolCatalog.entries().map((e) => e.name);
+  return BuiltInToolCatalog.entries(
+    lang: MemoryPromptLang.en,
+  ).map((e) => e.name);
 }

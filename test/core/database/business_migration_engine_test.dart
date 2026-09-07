@@ -232,13 +232,31 @@ void main() {
                 'provider-b': {'id': 'provider-b', 'apiKey': 'secret-b'},
               })
             : jsonEncode([
-                {
-                  'id': '${kind.name}-a',
-                  if (kind == BusinessEntityKind.searchService)
-                    'type': 'bing_local',
-                  if (kind == BusinessEntityKind.ttsService) 'kind': 'openai',
-                  'opaque': kind.name,
-                },
+                if (kind == BusinessEntityKind.memoryEntry)
+                  {
+                    'id': 'mem_a1b2c3d4',
+                    'scope': 'global',
+                    'type': 'identity',
+                    'content': 'Migrated memory.',
+                    'createdAt': 1786012880106000,
+                    'updatedAt': 1786012880106000,
+                    'opaque': kind.name,
+                  }
+                else if (kind == BusinessEntityKind.userProfileField)
+                  {
+                    'id': 'preferred_name',
+                    'value': 'Psyche',
+                    'updatedAt': 1786012880106000,
+                    'opaque': kind.name,
+                  }
+                else
+                  {
+                    'id': '${kind.name}-a',
+                    if (kind == BusinessEntityKind.searchService)
+                      'type': 'bing_local',
+                    if (kind == BusinessEntityKind.ttsService) 'kind': 'openai',
+                    'opaque': kind.name,
+                  },
               ]),
       'providers_order_v1': <String>['provider-b', 'provider-a'],
       'pinned_models_v1': <String>['provider-a::model-a'],

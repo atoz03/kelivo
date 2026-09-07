@@ -199,7 +199,7 @@ class _PromptTabState extends State<_PromptTab> {
 
   Future<void> _onAppendCurrentTimeChanged(Assistant a, bool enabled) async {
     if (enabled) {
-      final hits = PromptTransformer.detectTimeVariablesInSystemPrompt(
+      final hits = MemoryPrompts.detectTimeVariablesInSystemPrompt(
         _sysCtrl.text,
       );
       if (hits.isNotEmpty) {
@@ -271,8 +271,9 @@ class _PromptTabState extends State<_PromptTab> {
     final cs = Theme.of(context).colorScheme;
     final ap = context.watch<AssistantProvider>();
     final a = ap.getById(widget.assistantId)!;
-    final timeVarsInPrompt =
-        PromptTransformer.detectTimeVariablesInSystemPrompt(_sysCtrl.text);
+    final timeVarsInPrompt = MemoryPrompts.detectTimeVariablesInSystemPrompt(
+      _sysCtrl.text,
+    );
 
     // Sample preview for message template
     final now = DateTime.now();

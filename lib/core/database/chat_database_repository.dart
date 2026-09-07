@@ -14,6 +14,8 @@ import '../models/message_part.dart';
 import '../utils/multimodal_input_utils.dart';
 import '../../utils/sandbox_path_resolver.dart';
 import '../../utils/kelivo_file_uri.dart';
+import '../models/memory_entry.dart';
+import '../models/user_profile_field.dart';
 import 'app_database.dart';
 import 'business_data.dart';
 import 'business_repository.dart';
@@ -666,7 +668,7 @@ class ChatDatabaseRepository {
         database.execute(
           'INSERT OR REPLACE INTO chat_storage_meta_rows (key, value) '
           'VALUES (?, ?);',
-          [ChatStorageMetaKeys.hiveMigrationComplete, 'true'],
+          [ChatStorageMetaKeys.databaseComplete, 'true'],
         );
         database.execute('COMMIT;');
       } catch (_) {
@@ -724,7 +726,7 @@ class ChatDatabaseRepository {
       }
       final migrationRows = database.select(
         'SELECT value FROM chat_storage_meta_rows WHERE key = ?;',
-        [ChatStorageMetaKeys.hiveMigrationComplete],
+        [ChatStorageMetaKeys.databaseComplete],
       );
       if (migrationRows.length != 1 ||
           migrationRows.single['value'] != 'true') {
@@ -804,6 +806,8 @@ class ChatDatabaseRepository {
       'tts_service_rows',
       'assistant_tag_rows',
       'preference_rows',
+      'memory_entry_rows',
+      'user_profile_field_rows',
       'message_prompt_rows',
       'tombstone_rows',
       'extension_entity_rows',
@@ -849,6 +853,8 @@ class ChatDatabaseRepository {
       'summary',
       'last_summarized_message_count',
       'chat_suggestions_json',
+      'injected_memory_hash',
+      'last_memory_extracted_order',
       'chat_model_provider',
       'chat_model_id',
       'extras_json',
@@ -939,10 +945,26 @@ class ChatDatabaseRepository {
     'tts_service_rows': ['id', 'sort_order', 'payload', 'updated_at'],
     'assistant_tag_rows': ['id', 'sort_order', 'payload', 'updated_at'],
     'preference_rows': ['key', 'value', 'updated_at'],
+    'memory_entry_rows': [
+      'id',
+      'sort_order',
+      'scope',
+      'assistant_id',
+      'type',
+      'status',
+      'content',
+      'content_normalized',
+      'entry_created_at',
+      'entry_updated_at',
+      'payload',
+      'updated_at',
+    ],
+    'user_profile_field_rows': ['id', 'sort_order', 'payload', 'updated_at'],
     'message_prompt_rows': [
       'revision_id',
       'conversation_id',
       'payload',
+      'carries_memory_snapshot',
       'created_at',
     ],
     'tombstone_rows': ['scope', 'entity_id', 'deleted_at', 'payload'],
@@ -984,6 +1006,8 @@ class ChatDatabaseRepository {
       'tts_service_rows': ['id'],
       'assistant_tag_rows': ['id'],
       'preference_rows': ['key'],
+      'memory_entry_rows': ['id'],
+      'user_profile_field_rows': ['id'],
       'message_prompt_rows': ['revision_id'],
       'tombstone_rows': ['scope', 'entity_id'],
       'extension_entity_rows': ['kind', 'id'],
@@ -997,6 +1021,8 @@ class ChatDatabaseRepository {
       'search_service_rows',
       'tts_service_rows',
       'assistant_tag_rows',
+      'memory_entry_rows',
+      'user_profile_field_rows',
       'extension_entity_rows',
     };
     for (final entry in expectedPrimaryKeys.entries) {
@@ -1050,6 +1076,26 @@ class ChatDatabaseRepository {
       }
     }
 
+    requireIndex(
+      table: 'memory_entry_rows',
+      name: 'idx_memory_entries_visible',
+      columns: const ['status', 'type', 'scope', 'assistant_id'],
+    );
+    requireIndex(
+      table: 'memory_entry_rows',
+      name: 'idx_memory_entries_recent',
+      columns: const ['status', 'type', 'entry_updated_at', 'id'],
+    );
+    requireIndex(
+      table: 'memory_entry_rows',
+      name: 'idx_memory_entries_dedupe',
+      columns: const ['scope', 'assistant_id', 'type', 'content_normalized'],
+    );
+    requireIndex(
+      table: 'message_prompt_rows',
+      name: 'idx_message_prompts_conversation_snapshot',
+      columns: const ['conversation_id', 'carries_memory_snapshot'],
+    );
     requireIndex(
       table: 'extension_entity_rows',
       name: 'idx_extension_entities_kind_order',
@@ -1125,6 +1171,8 @@ class ChatDatabaseRepository {
       'tts_service_rows': <String>{},
       'assistant_tag_rows': <String>{},
       'preference_rows': <String>{},
+      'memory_entry_rows': <String>{},
+      'user_profile_field_rows': <String>{},
       'message_prompt_rows': {'revision_id->message_rows.id:CASCADE'},
       'tombstone_rows': <String>{},
       'extension_entity_rows': <String>{},
@@ -4059,10 +4107,17 @@ class ChatDatabaseRepository {
 
   Future<void> putConversation(Conversation conversation) async {
     await _db.transaction(() async {
+      // Existing rows keep the database-owned hash written by prompt freeze;
+      // cached Conversation instances may still hold an older value.
       final updated =
-          await (_db.update(_db.conversationRows)
-                ..where((row) => row.id.equals(conversation.id)))
-              .write(_conversationCompanion(conversation));
+          await (_db.update(
+            _db.conversationRows,
+          )..where((row) => row.id.equals(conversation.id))).write(
+            _conversationCompanion(
+              conversation,
+              injectedMemoryHash: const Value.absent(),
+            ),
+          );
       if (updated == 0) {
         await _db
             .into(_db.conversationRows)
@@ -4114,6 +4169,10 @@ class ChatDatabaseRepository {
           for (final entry in source.versionSelections.entries)
             groupIdMap[entry.key] ?? entry.key: entry.value,
         },
+        clearInjectedMemoryHash: true,
+        lastMemoryExtractedOrder: sourceMessages.isEmpty
+            ? -1
+            : sourceMessages.last.messageOrder,
       );
       await _db
           .into(_db.conversationRows)
@@ -4330,6 +4389,12 @@ class ChatDatabaseRepository {
                 ..limit(1))
               .getSingleOrNull();
       if (activeRun != null) return false;
+      await (_db.delete(_db.messagePromptRows)..where(
+            (row) =>
+                row.conversationId.equals(conversationId) &
+                row.carriesMemorySnapshot.equals(true),
+          ))
+          .go();
       final updated =
           await (_db.update(
             _db.conversationRows,
@@ -4337,6 +4402,7 @@ class ChatDatabaseRepository {
             ConversationRowsCompanion(
               assistantId: Value(assistantId),
               updatedAt: Value(updatedAt),
+              injectedMemoryHash: const Value(null),
             ),
           );
       return updated != 0;
@@ -5476,13 +5542,16 @@ class ChatDatabaseRepository {
       '(id, title, created_at, updated_at, is_pinned, assistant_id, '
       'truncate_index, version_selections_json, summary, '
       'last_summarized_message_count, chat_suggestions_json, '
+      'injected_memory_hash, last_memory_extracted_order, '
       'chat_model_provider, chat_model_id, extras_json) '
       'SELECT ?, title, created_at, updated_at, is_pinned, assistant_id, '
       'truncate_index, ?, summary, '
       'last_summarized_message_count, chat_suggestions_json, '
+      'NULL, COALESCE((SELECT MAX(message_order) '
+      'FROM merge_source.message_rows WHERE conversation_id = ?), -1), '
       'chat_model_provider, chat_model_id, extras_json '
       'FROM merge_source.conversation_rows WHERE id = ?;',
-      [targetId, jsonEncode(targetSelections), sourceId],
+      [targetId, jsonEncode(targetSelections), sourceId, sourceId],
     );
     await _db.customStatement(
       'INSERT INTO main.conversation_mcp_server_rows '
@@ -6430,7 +6499,7 @@ class ChatDatabaseRepository {
         .into(_db.chatStorageMetaRows)
         .insertOnConflictUpdate(
           ChatStorageMetaRowsCompanion.insert(
-            key: ChatStorageMetaKeys.hiveMigrationComplete,
+            key: ChatStorageMetaKeys.databaseComplete,
             value: 'true',
           ),
         );
@@ -6438,9 +6507,9 @@ class ChatDatabaseRepository {
 
   Future<bool> isMigrationComplete() async {
     final row =
-        await (_db.select(_db.chatStorageMetaRows)..where(
-              (t) => t.key.equals(ChatStorageMetaKeys.hiveMigrationComplete),
-            ))
+        await (_db.select(
+              _db.chatStorageMetaRows,
+            )..where((t) => t.key.equals(ChatStorageMetaKeys.databaseComplete)))
             .getSingleOrNull();
     return row?.value == 'true';
   }
@@ -6627,12 +6696,17 @@ class ChatDatabaseRepository {
       summary: row.summary,
       lastSummarizedMessageCount: row.lastSummarizedMessageCount,
       chatSuggestions: _decodeStringList(row.chatSuggestionsJson),
+      injectedMemoryHash: row.injectedMemoryHash,
+      lastMemoryExtractedOrder: row.lastMemoryExtractedOrder,
       chatModelProvider: row.chatModelProvider,
       chatModelId: row.chatModelId,
     );
   }
 
-  ConversationRowsCompanion _conversationCompanion(Conversation conversation) {
+  ConversationRowsCompanion _conversationCompanion(
+    Conversation conversation, {
+    Value<String?>? injectedMemoryHash,
+  }) {
     return ConversationRowsCompanion.insert(
       id: conversation.id,
       title: conversation.title,
@@ -6647,6 +6721,9 @@ class ChatDatabaseRepository {
         conversation.lastSummarizedMessageCount,
       ),
       chatSuggestionsJson: Value(jsonEncode(conversation.chatSuggestions)),
+      injectedMemoryHash:
+          injectedMemoryHash ?? Value(conversation.injectedMemoryHash),
+      lastMemoryExtractedOrder: Value(conversation.lastMemoryExtractedOrder),
       chatModelProvider: Value(conversation.chatModelProvider),
       chatModelId: Value(conversation.chatModelId),
     );
@@ -7011,6 +7088,336 @@ class ChatDatabaseRepository {
 
   // —— Memory system V1 read path (§13.3) ——
 
+  /// Visible memories for [assistantId]: `status='active'` (unless
+  /// [includeArchived]) and `(scope='global' OR (scope='assistant' AND
+  /// assistant_id = :aid))`. When [assistantId] is null, only global rows
+  /// are visible. Ordered for in-block injection (§7.2):
+  /// `scope_rank ASC, entry_created_at ASC, id ASC` (global before assistant).
+  Future<List<MemoryEntry>> queryVisibleMemories({
+    required String? assistantId,
+    MemoryType? type,
+    bool includeArchived = false,
+    int? limit,
+  }) async {
+    final clauses = <String>[_memoryVisibilitySql(assistantId)];
+    final variables = <Variable<Object>>[
+      ..._memoryVisibilityVariables(assistantId),
+    ];
+    if (!includeArchived) {
+      clauses.add("status = 'active'");
+    }
+    if (type != null) {
+      clauses.add('type = ?');
+      variables.add(Variable<String>(MemoryEntry.typeToString(type)));
+    }
+    final limitSql = limit == null ? '' : ' LIMIT ?';
+    if (limit != null) {
+      variables.add(Variable<int>(limit));
+    }
+    final rows = await _db
+        .customSelect(
+          'SELECT payload FROM memory_entry_rows '
+          'WHERE ${clauses.join(' AND ')} '
+          'ORDER BY CASE WHEN scope = \'global\' THEN 0 ELSE 1 END ASC, '
+          'entry_created_at ASC, id ASC'
+          '$limitSql;',
+          variables: variables,
+          readsFrom: {_db.memoryEntryRows},
+        )
+        .get();
+    return _memoryEntriesFromPayloadRows(
+      rows,
+      assistantId: assistantId,
+      dropInvisibleRelated: true,
+    );
+  }
+
+  /// Counts active visible memories by [MemoryType] for [assistantId].
+  Future<Map<MemoryType, int>> countVisibleMemoriesByType({
+    required String? assistantId,
+  }) async {
+    final rows = await _db
+        .customSelect(
+          'SELECT type, COUNT(*) AS count FROM memory_entry_rows '
+          "WHERE status = 'active' AND ${_memoryVisibilitySql(assistantId)} "
+          'GROUP BY type;',
+          variables: _memoryVisibilityVariables(assistantId),
+          readsFrom: {_db.memoryEntryRows},
+        )
+        .get();
+    final result = <MemoryType, int>{
+      for (final type in MemoryType.values) type: 0,
+    };
+    for (final row in rows) {
+      final type = MemoryEntry.typeFromString(row.read<String>('type'));
+      result[type] = row.read<int>('count');
+    }
+    return result;
+  }
+
+  /// Search memories by pre-normalized, LIKE-escaped [tokens].
+  ///
+  /// Callers must lowercase/normalize tokens and escape `%`, `_`, and `\`
+  /// (e.g. via [MemoryTokenizer.escapeLike]) before passing them here.
+  ///
+  /// - [matchAll] `true` (§5.9): every token must match (`AND`), ordered by
+  ///   `entry_updated_at DESC, id ASC`.
+  /// - [matchAll] `false` (§12.6): `hits` = count of matching tokens (`OR`),
+  ///   filter `hits >= 1`, ordered by
+  ///   `hits DESC, entry_updated_at DESC, id ASC`.
+  Future<List<MemoryEntry>> searchMemories({
+    required String? assistantId,
+    required List<String> tokens,
+    MemoryType? type,
+    bool matchAll = true,
+    int limit = 10,
+  }) async {
+    if (tokens.isEmpty || limit <= 0) {
+      return const <MemoryEntry>[];
+    }
+    if (!matchAll) {
+      return _searchMemoriesMatchAny(
+        assistantId: assistantId,
+        tokens: tokens,
+        type: type,
+        limit: limit,
+      );
+    }
+
+    final clauses = <String>[
+      "status = 'active'",
+      _memoryVisibilitySql(assistantId),
+    ];
+    final variables = <Variable<Object>>[
+      ..._memoryVisibilityVariables(assistantId),
+    ];
+    if (type != null) {
+      clauses.add('type = ?');
+      variables.add(Variable<String>(MemoryEntry.typeToString(type)));
+    }
+    for (final token in tokens) {
+      clauses.add("content_normalized LIKE ? ESCAPE '\\'");
+      variables.add(Variable<String>('%$token%'));
+    }
+    variables.add(Variable<int>(limit));
+    final rows = await _db
+        .customSelect(
+          'SELECT payload FROM memory_entry_rows '
+          'WHERE ${clauses.join(' AND ')} '
+          'ORDER BY entry_updated_at DESC, id ASC '
+          'LIMIT ?;',
+          variables: variables,
+          readsFrom: {_db.memoryEntryRows},
+        )
+        .get();
+    return _memoryEntriesFromPayloadRows(
+      rows,
+      assistantId: assistantId,
+      dropInvisibleRelated: true,
+    );
+  }
+
+  Future<List<MemoryEntry>> _searchMemoriesMatchAny({
+    required String? assistantId,
+    required List<String> tokens,
+    required MemoryType? type,
+    required int limit,
+  }) async {
+    final hitParts = <String>[
+      for (final _ in tokens)
+        "CASE WHEN content_normalized LIKE ? ESCAPE '\\' THEN 1 ELSE 0 END",
+    ];
+    final hitsExpr = hitParts.join(' + ');
+
+    // Variable order must match `?` appearance: SELECT hits, then WHERE.
+    final clauses = <String>[
+      "status = 'active'",
+      _memoryVisibilitySql(assistantId),
+    ];
+    final variables = <Variable<Object>>[
+      for (final token in tokens) Variable<String>('%$token%'),
+      ..._memoryVisibilityVariables(assistantId),
+    ];
+    if (type != null) {
+      clauses.add('type = ?');
+      variables.add(Variable<String>(MemoryEntry.typeToString(type)));
+    }
+    clauses.add('($hitsExpr) >= 1');
+    for (final token in tokens) {
+      variables.add(Variable<String>('%$token%'));
+    }
+    variables.add(Variable<int>(limit));
+
+    final rows = await _db
+        .customSelect(
+          'SELECT payload, ($hitsExpr) AS hits FROM memory_entry_rows '
+          'WHERE ${clauses.join(' AND ')} '
+          'ORDER BY hits DESC, entry_updated_at DESC, id ASC '
+          'LIMIT ?;',
+          variables: variables,
+          readsFrom: {_db.memoryEntryRows},
+        )
+        .get();
+    return _memoryEntriesFromPayloadRows(
+      rows,
+      assistantId: assistantId,
+      dropInvisibleRelated: true,
+    );
+  }
+
+  Future<List<MemoryEntry>> memoriesByIds(List<String> ids) async {
+    if (ids.isEmpty) return const <MemoryEntry>[];
+    final unique = ids.toSet().toList(growable: false);
+    final placeholders = List.filled(unique.length, '?').join(',');
+    final rows = await _db
+        .customSelect(
+          'SELECT payload FROM memory_entry_rows '
+          'WHERE id IN ($placeholders) '
+          'ORDER BY id ASC;',
+          variables: [for (final id in unique) Variable<String>(id)],
+          readsFrom: {_db.memoryEntryRows},
+        )
+        .get();
+    return _memoryEntriesFromPayloadRows(
+      rows,
+      assistantId: null,
+      dropInvisibleRelated: false,
+    );
+  }
+
+  Future<MemoryEntry?> findExactMemory({
+    required String? assistantId,
+    required MemoryType type,
+    required String contentNormalized,
+  }) async {
+    final rows = await _db
+        .customSelect(
+          'SELECT payload FROM memory_entry_rows '
+          "WHERE status = 'active' "
+          'AND ${_memoryVisibilitySql(assistantId)} '
+          'AND type = ? '
+          'AND content_normalized = ? '
+          'LIMIT 1;',
+          variables: [
+            ..._memoryVisibilityVariables(assistantId),
+            Variable<String>(MemoryEntry.typeToString(type)),
+            Variable<String>(contentNormalized),
+          ],
+          readsFrom: {_db.memoryEntryRows},
+        )
+        .get();
+    if (rows.isEmpty) return null;
+    final entries = await _memoryEntriesFromPayloadRows(
+      rows,
+      assistantId: assistantId,
+      dropInvisibleRelated: true,
+    );
+    return entries.single;
+  }
+
+  Future<int> countOrphanAssistantMemories() async {
+    final row = await _db
+        .customSelect(
+          'SELECT COUNT(*) AS count FROM memory_entry_rows m '
+          "WHERE m.scope = 'assistant' "
+          'AND NOT EXISTS ('
+          'SELECT 1 FROM assistant_rows a WHERE a.id = m.assistant_id'
+          ');',
+          readsFrom: {_db.memoryEntryRows, _db.assistantRows},
+        )
+        .getSingle();
+    return row.read<int>('count');
+  }
+
+  /// All memory entries across every assistant (global management UI §14.4).
+  Future<List<MemoryEntry>> queryAllMemories({
+    bool includeArchived = false,
+    MemoryType? type,
+  }) async {
+    final clauses = <String>[];
+    final variables = <Variable<Object>>[];
+    if (!includeArchived) {
+      clauses.add("status = 'active'");
+    }
+    if (type != null) {
+      clauses.add('type = ?');
+      variables.add(Variable<String>(MemoryEntry.typeToString(type)));
+    }
+    final where = clauses.isEmpty ? '' : 'WHERE ${clauses.join(' AND ')} ';
+    final rows = await _db
+        .customSelect(
+          'SELECT payload FROM memory_entry_rows '
+          '$where'
+          'ORDER BY entry_updated_at DESC, id ASC;',
+          variables: variables,
+          readsFrom: {_db.memoryEntryRows},
+        )
+        .get();
+    return _memoryEntriesFromPayloadRows(
+      rows,
+      assistantId: null,
+      dropInvisibleRelated: false,
+    );
+  }
+
+  /// Search across every assistant (§14.4 / §5.9 AND semantics).
+  Future<List<MemoryEntry>> searchAllMemories({
+    required List<String> tokens,
+    MemoryType? type,
+    bool includeArchived = false,
+    int limit = 200,
+  }) async {
+    if (tokens.isEmpty || limit <= 0) {
+      return const <MemoryEntry>[];
+    }
+    final clauses = <String>[];
+    final variables = <Variable<Object>>[];
+    if (!includeArchived) {
+      clauses.add("status = 'active'");
+    }
+    if (type != null) {
+      clauses.add('type = ?');
+      variables.add(Variable<String>(MemoryEntry.typeToString(type)));
+    }
+    for (final token in tokens) {
+      clauses.add("content_normalized LIKE ? ESCAPE '\\'");
+      variables.add(Variable<String>('%$token%'));
+    }
+    variables.add(Variable<int>(limit));
+    final rows = await _db
+        .customSelect(
+          'SELECT payload FROM memory_entry_rows '
+          'WHERE ${clauses.join(' AND ')} '
+          'ORDER BY entry_updated_at DESC, id ASC '
+          'LIMIT ?;',
+          variables: variables,
+          readsFrom: {_db.memoryEntryRows},
+        )
+        .get();
+    return _memoryEntriesFromPayloadRows(
+      rows,
+      assistantId: null,
+      dropInvisibleRelated: false,
+    );
+  }
+
+  Future<List<UserProfileField>> readProfileFields() async {
+    final rows = await _db
+        .customSelect(
+          'SELECT payload FROM user_profile_field_rows '
+          'ORDER BY sort_order ASC, id ASC;',
+          readsFrom: {_db.userProfileFieldRows},
+        )
+        .get();
+    return [
+      for (final row in rows)
+        UserProfileField.fromPayload(
+          (jsonDecode(row.read<String>('payload')) as Map)
+              .cast<String, dynamic>(),
+        ),
+    ];
+  }
+
   Future<MessagePromptRow?> getMessagePrompt(String revisionId) {
     return (_db.select(
       _db.messagePromptRows,
@@ -7032,6 +7439,7 @@ class ChatDatabaseRepository {
     required String revisionId,
     required String conversationId,
     required String payload,
+    required bool carriesMemorySnapshot,
   }) async {
     final now = DateTime.now().toUtc();
     await _db
@@ -7041,21 +7449,103 @@ class ChatDatabaseRepository {
             revisionId: revisionId,
             conversationId: conversationId,
             payload: payload,
+            carriesMemorySnapshot: Value(carriesMemorySnapshot),
             createdAt: now,
           ),
         );
   }
 
-  /// Freezes a message's final prompt string so later turns resend it verbatim.
+  /// Freezes a message's final prompt string and, when [injectedMemoryHash] is
+  /// present, advances the conversation's injected-memory hash in the same
+  /// transaction.
+  ///
+  /// The two writes must not be split: a crash between them leaves a hash that
+  /// claims a snapshot was delivered while no message carries one, costing an
+  /// extra full re-injection once self-healing notices (§8.3).
+  ///
+  /// [injectedMemoryHash] is a three-state value on purpose. `Value.absent()`
+  /// leaves the stored hash alone, `Value(hash)` records a freshly injected
+  /// snapshot, and `Value(null)` records that the context now carries no
+  /// snapshot at all — the state a turn reaches when every visible memory is
+  /// gone and the stale snapshots in history are stripped at send time.
+  /// Without that third state a later re-add of identical content would hash
+  /// equal to the cleared snapshot and never be injected again.
   Future<void> freezeMessagePrompt({
     required String revisionId,
     required String conversationId,
     required String payload,
+    required bool carriesMemorySnapshot,
+    Value<String?> injectedMemoryHash = const Value.absent(),
   }) {
-    return putMessagePrompt(
-      revisionId: revisionId,
-      conversationId: conversationId,
-      payload: payload,
+    return _db.transaction(() async {
+      await putMessagePrompt(
+        revisionId: revisionId,
+        conversationId: conversationId,
+        payload: payload,
+        carriesMemorySnapshot: carriesMemorySnapshot,
+      );
+      if (injectedMemoryHash.present) {
+        await setConversationInjectedMemoryHash(
+          conversationId,
+          injectedMemoryHash.value,
+        );
+      }
+    });
+  }
+
+  Future<bool> anyPromptCarriesMemorySnapshot(List<String> revisionIds) async {
+    if (revisionIds.isEmpty) return false;
+    final unique = revisionIds.toSet().toList(growable: false);
+    final placeholders = List.filled(unique.length, '?').join(',');
+    final row = await _db
+        .customSelect(
+          'SELECT 1 AS hit FROM message_prompt_rows '
+          'WHERE carries_memory_snapshot = 1 '
+          'AND revision_id IN ($placeholders) '
+          'LIMIT 1;',
+          variables: [for (final id in unique) Variable<String>(id)],
+          readsFrom: {_db.messagePromptRows},
+        )
+        .getSingleOrNull();
+    return row != null;
+  }
+
+  /// The last memory snapshot hash delivered to [conversationId].
+  ///
+  /// Read this rather than a cached [Conversation]: the field is written by
+  /// [freezeMessagePrompt] and never loaded back into the in-memory model, so a
+  /// cached copy reports the value from whenever it was constructed.
+  Future<String?> getConversationInjectedMemoryHash(
+    String conversationId,
+  ) async {
+    final row = await _db
+        .customSelect(
+          'SELECT injected_memory_hash FROM conversation_rows '
+          'WHERE id = ? LIMIT 1;',
+          variables: [Variable<String>(conversationId)],
+          readsFrom: {_db.conversationRows},
+        )
+        .getSingleOrNull();
+    return row?.read<String?>('injected_memory_hash');
+  }
+
+  Future<void> setConversationInjectedMemoryHash(
+    String conversationId,
+    String? hash,
+  ) async {
+    await (_db.update(_db.conversationRows)
+          ..where((t) => t.id.equals(conversationId)))
+        .write(ConversationRowsCompanion(injectedMemoryHash: Value(hash)));
+  }
+
+  Future<void> setConversationLastMemoryExtractedOrder(
+    String conversationId,
+    int order,
+  ) async {
+    await (_db.update(
+      _db.conversationRows,
+    )..where((t) => t.id.equals(conversationId))).write(
+      ConversationRowsCompanion(lastMemoryExtractedOrder: Value(order)),
     );
   }
 
@@ -7082,6 +7572,86 @@ class ChatDatabaseRepository {
         chatModelId: Value(null),
       ),
     );
+  }
+
+  String _memoryVisibilitySql(String? assistantId) {
+    if (assistantId == null) {
+      return "scope = 'global'";
+    }
+    return "(scope = 'global' OR (scope = 'assistant' AND assistant_id = ?))";
+  }
+
+  List<Variable<Object>> _memoryVisibilityVariables(String? assistantId) {
+    if (assistantId == null) return const <Variable<Object>>[];
+    return <Variable<Object>>[Variable<String>(assistantId)];
+  }
+
+  Future<List<MemoryEntry>> _memoryEntriesFromPayloadRows(
+    List<QueryRow> rows, {
+    required String? assistantId,
+    required bool dropInvisibleRelated,
+  }) async {
+    if (rows.isEmpty) return const <MemoryEntry>[];
+    final entries = <MemoryEntry>[
+      for (final row in rows)
+        MemoryEntry.fromPayload(
+          (jsonDecode(row.read<String>('payload')) as Map)
+              .cast<String, dynamic>(),
+        ),
+    ];
+    final related = <String>{for (final entry in entries) ...entry.relatedIds};
+    if (related.isEmpty) return entries;
+
+    final keep = dropInvisibleRelated
+        ? await _filterRelatedIdsVisible(related, assistantId)
+        : await _filterRelatedIdsExisting(related);
+    return [
+      for (final entry in entries)
+        () {
+          final filtered = entry.relatedIds
+              .where(keep.contains)
+              .toList(growable: false);
+          if (filtered.length == entry.relatedIds.length) return entry;
+          return entry.copyWith(relatedIds: filtered);
+        }(),
+    ];
+  }
+
+  Future<Set<String>> _filterRelatedIdsExisting(Set<String> ids) async {
+    if (ids.isEmpty) return const <String>{};
+    final list = ids.toList(growable: false);
+    final placeholders = List.filled(list.length, '?').join(',');
+    final rows = await _db
+        .customSelect(
+          'SELECT id FROM memory_entry_rows WHERE id IN ($placeholders);',
+          variables: [for (final id in list) Variable<String>(id)],
+          readsFrom: {_db.memoryEntryRows},
+        )
+        .get();
+    return {for (final row in rows) row.read<String>('id')};
+  }
+
+  Future<Set<String>> _filterRelatedIdsVisible(
+    Set<String> ids,
+    String? assistantId,
+  ) async {
+    if (ids.isEmpty) return const <String>{};
+    final list = ids.toList(growable: false);
+    final placeholders = List.filled(list.length, '?').join(',');
+    final rows = await _db
+        .customSelect(
+          'SELECT id FROM memory_entry_rows '
+          "WHERE status = 'active' "
+          'AND ${_memoryVisibilitySql(assistantId)} '
+          'AND id IN ($placeholders);',
+          variables: [
+            ..._memoryVisibilityVariables(assistantId),
+            for (final id in list) Variable<String>(id),
+          ],
+          readsFrom: {_db.memoryEntryRows},
+        )
+        .get();
+    return {for (final row in rows) row.read<String>('id')};
   }
 }
 
@@ -7265,7 +7835,11 @@ class ChatStorageMetaKeys {
   ChatStorageMetaKeys._();
 
   static const activeStreamingIds = 'active_streaming_ids';
-  static const hiveMigrationComplete = 'hive_migration_complete_v1';
+
+  /// Receipt that a database file is fully provisioned, written when a restore
+  /// or a backup snapshot finishes. The stored key keeps its original name so
+  /// backups written by earlier builds still validate.
+  static const databaseComplete = 'hive_migration_complete_v1';
   static const databaseIdentity = 'database_identity_v1';
   static const sandboxPathVersion = 'sandbox_path_migration_version';
   static const assetReferenceBackfillVersion =

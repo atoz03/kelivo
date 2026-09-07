@@ -10,10 +10,12 @@ import 'package:provider/provider.dart';
 import 'package:Kelivo/core/database/chat_database_repository.dart';
 import 'package:Kelivo/core/models/assistant.dart';
 import 'package:Kelivo/core/providers/assistant_provider.dart';
-import 'package:Kelivo/core/providers/memory_provider.dart';
+import 'package:Kelivo/core/providers/memory_provider_v2.dart';
 import 'package:Kelivo/core/providers/quick_phrase_provider.dart';
 import 'package:Kelivo/core/providers/settings_provider.dart';
 import 'package:Kelivo/core/services/chat/chat_service.dart';
+import 'package:Kelivo/core/services/memory/memory_pipeline.dart';
+import 'package:Kelivo/core/services/memory/memory_repository.dart';
 import 'package:Kelivo/features/assistant/pages/assistant_settings_edit_page.dart';
 import 'package:Kelivo/features/home/services/local_tools_service.dart';
 import 'package:Kelivo/icons/lucide_adapter.dart';
@@ -41,7 +43,14 @@ class _FakePathProviderPlatform extends PathProviderPlatform {
 
 const _assistantId = 'assistant-mcp-test';
 
-Future<({AssistantProvider assistantProvider, ChatService chatService})>
+Future<
+  ({
+    AssistantProvider assistantProvider,
+    ChatService chatService,
+    MemoryProviderV2 memoryV2,
+    MemoryPipelineService pipeline,
+  })
+>
 _createAssistantProvider(WidgetTester tester) async {
   final tempDir = await tester.runAsync(
     () => Directory.systemTemp.createTemp('kelivo_asst_edit_'),
@@ -73,12 +82,40 @@ _createAssistantProvider(WidgetTester tester) async {
     if (provider.getById(_assistantId) != null) break;
     await tester.pump(const Duration(milliseconds: 10));
   }
-  return (assistantProvider: provider, chatService: chatService);
+  final memoryV2 = MemoryProviderV2(
+    repository: MemoryRepository(harness.preferences),
+    chatRepository: chatRepository,
+  );
+  final settings = SettingsProvider(harness.preferences);
+  final pipeline = MemoryPipelineService(
+    chatService: chatService,
+    repository: memoryV2.repository,
+    chatRepository: chatRepository,
+    settings: () => settings,
+    assistants: () => provider,
+    memoryV2: () => memoryV2,
+    generateText:
+        ({
+          required config,
+          required modelId,
+          required prompt,
+          String? conversationId,
+          int? thinkingBudget,
+        }) async => '<user_memory>false</user_memory>',
+  );
+  return (
+    assistantProvider: provider,
+    chatService: chatService,
+    memoryV2: memoryV2,
+    pipeline: pipeline,
+  );
 }
 
 Widget _buildHarness({
   required AssistantProvider assistantProvider,
   required ChatService chatService,
+  required MemoryProviderV2 memoryV2,
+  required MemoryPipelineService pipeline,
   required Widget child,
 }) {
   return MultiProvider(
@@ -88,7 +125,8 @@ Widget _buildHarness({
       ),
       ChangeNotifierProvider.value(value: assistantProvider),
       ChangeNotifierProvider.value(value: chatService),
-      ChangeNotifierProvider(create: (_) => MemoryProvider()),
+      ChangeNotifierProvider.value(value: memoryV2),
+      Provider.value(value: pipeline),
       ChangeNotifierProvider(
         create: (_) =>
             QuickPhraseProvider(preferences: assistantProvider.preferences),
@@ -113,6 +151,8 @@ void main() {
       _buildHarness(
         assistantProvider: assistantProvider,
         chatService: bundle.chatService,
+        memoryV2: bundle.memoryV2,
+        pipeline: bundle.pipeline,
         child: const AssistantSettingsEditPage(assistantId: _assistantId),
       ),
     );
@@ -132,6 +172,8 @@ void main() {
       _buildHarness(
         assistantProvider: assistantProvider,
         chatService: bundle.chatService,
+        memoryV2: bundle.memoryV2,
+        pipeline: bundle.pipeline,
         child: const AssistantSettingsEditPage(assistantId: _assistantId),
       ),
     );
@@ -201,6 +243,8 @@ void main() {
         _buildHarness(
           assistantProvider: bundle.assistantProvider,
           chatService: bundle.chatService,
+          memoryV2: bundle.memoryV2,
+          pipeline: bundle.pipeline,
           child: const AppSnackBarOverlay(
             child: AssistantSettingsEditPage(assistantId: _assistantId),
           ),
@@ -262,6 +306,8 @@ void main() {
       _buildHarness(
         assistantProvider: assistantProvider,
         chatService: bundle.chatService,
+        memoryV2: bundle.memoryV2,
+        pipeline: bundle.pipeline,
         child: Scaffold(
           body: Builder(
             builder: (context) {

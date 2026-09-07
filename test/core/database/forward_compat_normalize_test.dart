@@ -32,8 +32,8 @@ void main() {
       'INSERT INTO conversation_rows '
       '(id, title, created_at, updated_at, is_pinned, truncate_index, '
       'version_selections_json, last_summarized_message_count, '
-      'chat_suggestions_json) '
-      "VALUES ('conv-1', 'Future chat', 1, 2, 0, -1, '{}', 0, '[]');",
+      'chat_suggestions_json, last_memory_extracted_order) '
+      "VALUES ('conv-1', 'Future chat', 1, 2, 0, -1, '{}', 0, '[]', -1);",
     );
     // A real exported snapshot carries this receipt; inspectPreparedSnapshot
     // requires it.
@@ -226,8 +226,8 @@ void main() {
       'INSERT INTO conversation_rows '
       '(id, title, created_at, updated_at, is_pinned, truncate_index, '
       'version_selections_json, last_summarized_message_count, '
-      'chat_suggestions_json) '
-      "VALUES ('keep', 'Keep me', 1, 2, 0, -1, '{}', 0, '[]');",
+      'chat_suggestions_json, last_memory_extracted_order) '
+      "VALUES ('keep', 'Keep me', 1, 2, 0, -1, '{}', 0, '[]', -1);",
     );
     await database.close();
     await ChatDatabaseRepository.normalizeSnapshotJournal(file);

@@ -294,21 +294,29 @@ void main() {
 
           await settings.loaded;
 
+          expect(settings.summaryGenerationThinkingBudgetFor(1024), 0);
           expect(settings.suggestionGenerationThinkingBudgetFor(1024), 0);
           expect(settings.compressGenerationThinkingBudgetFor(1024), 0);
           expect(settings.translateGenerationThinkingBudgetFor(1024), 0);
           expect(settings.ocrGenerationThinkingBudgetFor(1024), 0);
 
+          await settings.setSummaryGenerationThinkingEnabled(true);
           await settings.setSuggestionGenerationThinkingEnabled(true);
           await settings.setCompressGenerationThinkingEnabled(true);
           await settings.setTranslateGenerationThinkingEnabled(true);
           await settings.setOcrGenerationThinkingEnabled(true);
 
-          expect(settings.suggestionGenerationThinkingBudgetFor(null), 16000);
-          expect(settings.compressGenerationThinkingBudgetFor(null), 16000);
+          expect(settings.summaryGenerationThinkingBudgetFor(null), 16000);
+          expect(settings.suggestionGenerationThinkingBudgetFor(1024), 1024);
           expect(settings.compressGenerationThinkingBudgetFor(1024), 1024);
           expect(settings.translateGenerationThinkingBudgetFor(1024), 1024);
           expect(settings.ocrGenerationThinkingBudgetFor(1024), 1024);
+          expect(
+            harness.preferences.getBool(
+              'summary_generation_thinking_enabled_v1',
+            ),
+            isTrue,
+          );
           expect(
             harness.preferences.getBool(
               'suggestion_generation_thinking_enabled_v1',

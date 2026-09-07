@@ -262,16 +262,6 @@ class _BasicSettingsTabState extends State<_BasicSettingsTab> {
                     .read<AssistantProvider>()
                     .updateAssistant(a.copyWith(streamOutput: v)),
               ),
-              _iosSwitchRow(
-                context,
-                icon: Lucide.Brain,
-                label: l10n.assistantEditEnableMemoryTitle,
-                subtitle: l10n.assistantEditEnableMemorySubtitle,
-                value: a.enableMemory,
-                onChanged: (v) => context
-                    .read<AssistantProvider>()
-                    .updateAssistant(a.copyWith(enableMemory: v)),
-              ),
             ],
           ),
         ),

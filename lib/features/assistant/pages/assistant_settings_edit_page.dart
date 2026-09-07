@@ -13,6 +13,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import '../../../core/services/chat/prompt_transformer.dart';
+import '../../../core/services/memory/memory_prompts.dart';
 import 'package:provider/provider.dart';
 import 'package:syncfusion_flutter_core/theme.dart';
 import 'package:syncfusion_flutter_sliders/sliders.dart';
@@ -24,14 +25,24 @@ import '../../chat/widgets/reasoning_budget_sheet.dart';
 import '../../model/widgets/model_select_sheet.dart';
 import '../../../core/models/assistant.dart';
 import '../../../core/models/chat_message.dart';
+import '../../../core/models/conversation.dart';
 import '../../../core/models/preset_message.dart';
 import '../../../core/models/quick_phrase.dart';
 import '../../../core/providers/assistant_provider.dart';
 import '../../../core/providers/mcp_provider.dart';
 import '../../../core/providers/quick_phrase_provider.dart';
+import '../../../core/models/memory_entry.dart';
+import '../../../core/providers/memory_provider_v2.dart';
 import '../../../core/providers/settings_provider.dart';
+import '../../../core/services/chat/chat_service.dart';
+import '../../../core/services/memory/memory_gatekeeper.dart';
+import '../../../core/services/memory/memory_pipeline.dart';
+import '../../settings/pages/memory_settings_page.dart';
+import '../../settings/widgets/memory_ui.dart';
 import '../../../core/services/haptics.dart';
 import '../../../desktop/desktop_context_menu.dart';
+import '../../../desktop/setting/memory_dialogs.dart';
+import '../../../desktop/widgets/desktop_select_dropdown.dart';
 import '../../home/services/health_data_selection.dart';
 import '../../home/services/local_tools_service.dart';
 import '../../../core/models/health_data_type.dart';
@@ -39,6 +50,7 @@ import '../../../icons/lucide_adapter.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/emoji_picker_dialog.dart';
 import '../../../shared/widgets/emoji_text.dart';
+import '../../../shared/widgets/ios_form_text_field.dart';
 import '../../../shared/widgets/ios_switch.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../../shared/widgets/snackbar.dart';
@@ -46,16 +58,17 @@ import '../../../theme/app_font_weights.dart';
 import '../../../theme/design_tokens.dart';
 import '../../../utils/avatar_cache.dart';
 import '../../../utils/brand_assets.dart';
+import '../../../utils/platform_utils.dart';
 import '../../../utils/sandbox_path_resolver.dart';
 import '../utils/assistant_edit_tab_layout.dart';
 import 'assistant_regex_tab.dart';
 import 'health_data_settings_page.dart';
 import 'package:Kelivo/theme/app_semantic_colors.dart';
 import 'package:Kelivo/shared/widgets/section_card.dart';
-import 'package:Kelivo/shared/widgets/setting_tip_icon.dart';
 
 part 'assistant_settings_edit_basic_tab.dart';
 part 'assistant_settings_edit_prompt_tab.dart';
+part 'assistant_settings_edit_memory_tab.dart';
 part 'assistant_settings_edit_local_tools_tab.dart';
 part 'assistant_settings_edit_mcp_tab.dart';
 part 'assistant_settings_edit_quick_phrase_tab.dart';
@@ -95,6 +108,12 @@ List<_AssistantEditTabSpec> _assistantEditTabSpecs(
       label: l10n.assistantEditPagePromptsTab,
       icon: Lucide.FileText,
       child: _PromptTab(assistantId: assistantId),
+    ),
+    _AssistantEditTabSpec(
+      id: assistantEditTabMemory,
+      label: l10n.assistantEditPageMemoryTab,
+      icon: Lucide.Brain,
+      child: _MemoryTab(assistantId: assistantId),
     ),
     _AssistantEditTabSpec(
       id: assistantEditTabLocalTools,
@@ -1308,7 +1327,7 @@ Widget _iosNavRow(
             },
           ),
         ),
-        if (tip != null) SettingTipIcon(message: tip),
+        if (tip != null) MemoryTipIcon(message: tip),
         GestureDetector(
           onTap: onTap,
           behavior: HitTestBehavior.opaque,
@@ -1405,7 +1424,7 @@ Widget _iosSwitchRow(
             },
           ),
         ),
-        if (tip != null) SettingTipIcon(message: tip),
+        if (tip != null) MemoryTipIcon(message: tip),
         IosSwitch(value: value, onChanged: onChanged),
       ],
     ),
@@ -1512,6 +1531,7 @@ class _IosButtonState extends State<_IosButton> {
 enum _AssistantDesktopMenu {
   basic,
   prompts,
+  memory,
   localTools,
   mcp,
   quick,
@@ -1619,6 +1639,8 @@ class _DesktopAssistantDialogShellState
                         );
                       case _AssistantDesktopMenu.prompts:
                         return _PromptTab(assistantId: widget.assistantId);
+                      case _AssistantDesktopMenu.memory:
+                        return _MemoryTab(assistantId: widget.assistantId);
                       case _AssistantDesktopMenu.localTools:
                         return _LocalToolsTab(assistantId: widget.assistantId);
                       case _AssistantDesktopMenu.mcp:
@@ -1663,6 +1685,7 @@ class _DesktopAssistantMenuState extends State<_DesktopAssistantMenu> {
     final items = <(_AssistantDesktopMenu, String)>[
       (_AssistantDesktopMenu.basic, l10n.assistantEditPageBasicTab),
       (_AssistantDesktopMenu.prompts, l10n.assistantEditPagePromptsTab),
+      (_AssistantDesktopMenu.memory, l10n.assistantEditPageMemoryTab),
       (_AssistantDesktopMenu.localTools, l10n.assistantEditPageLocalToolsTab),
       (_AssistantDesktopMenu.mcp, l10n.assistantEditPageMcpTab),
       (_AssistantDesktopMenu.quick, l10n.assistantEditPageQuickPhraseTab),

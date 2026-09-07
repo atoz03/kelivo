@@ -91,6 +91,7 @@ void main() {
             summary: 'summary',
             lastSummarizedMessageCount: 5,
             chatSuggestions: const ['next'],
+            injectedMemoryHash: 'source-memory',
           ),
         ],
         messages: [
@@ -130,6 +131,8 @@ void main() {
       expect(fork.truncateIndex, -1);
       expect(fork.summary, isNull);
       expect(fork.chatSuggestions, isEmpty);
+      expect(fork.injectedMemoryHash, isNull);
+      expect(fork.lastMemoryExtractedOrder, -1);
       expect(fork.messageIds, hasLength(3));
       expect(
         fork.messageIds,

@@ -4,10 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 // ignore: depend_on_referenced_packages
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:path/path.dart' as p;
-import 'package:sqlite3/sqlite3.dart';
 
 import 'package:Kelivo/core/database/app_database.dart';
-import 'package:Kelivo/core/database/chat_database_repository.dart';
 import 'package:Kelivo/core/database/database_installation_gate.dart';
 import 'package:Kelivo/core/services/backup/local_snapshot_schedule.dart';
 import 'package:Kelivo/core/services/backup/restore_workspace_lock.dart';
@@ -37,25 +35,6 @@ Future<void> _writeSizedFile(Directory root, String name, int size) async {
   await file.writeAsBytes(List<int>.filled(size, 1), flush: true);
 }
 
-void _markMigrationComplete(Directory root) {
-  final database = sqlite3.open(
-    p.join(root.path, AppDatabase.databaseFileName),
-  );
-  try {
-    database.execute(
-      'CREATE TABLE IF NOT EXISTS chat_storage_meta_rows '
-      '(key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL);',
-    );
-    database.execute(
-      'INSERT OR REPLACE INTO chat_storage_meta_rows (key, value) '
-      'VALUES (?, ?);',
-      [ChatStorageMetaKeys.hiveMigrationComplete, 'true'],
-    );
-  } finally {
-    database.close();
-  }
-}
-
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -77,115 +56,32 @@ void main() {
     }
   });
 
-  test(
-    'chat records size uses SQLite files instead of legacy Hive files',
-    () async {
-      await _writeSizedFile(tempDir, AppDatabase.databaseFileName, 11);
-      await _writeSizedFile(tempDir, '${AppDatabase.databaseFileName}-wal', 7);
-      await _writeSizedFile(tempDir, '${AppDatabase.databaseFileName}-shm', 5);
-      await _writeSizedFile(tempDir, 'conversations.hive', 100);
-      await _writeSizedFile(tempDir, 'messages.hive', 200);
-      await _writeSizedFile(tempDir, 'tool_events_v1.hive', 300);
-      await _writeSizedFile(tempDir, 'messages.lock', 400);
+  test('chat records size counts only the SQLite database family', () async {
+    await _writeSizedFile(tempDir, AppDatabase.databaseFileName, 11);
+    await _writeSizedFile(tempDir, '${AppDatabase.databaseFileName}-wal', 7);
+    await _writeSizedFile(tempDir, '${AppDatabase.databaseFileName}-shm', 5);
+    await _writeSizedFile(tempDir, 'messages.lock', 400);
 
-      final report = await StorageUsageService.computeReport();
-      final chat = report.categories.singleWhere(
-        (category) => category.key == StorageUsageCategoryKey.chatData,
-      );
-
-      expect(chat.stats.bytes, 23);
-      expect(chat.stats.fileCount, 3);
-      expect(
-        chat.subcategories.map((subcategory) => subcategory.id),
-        containsAllInOrder(['sqlite_database', 'sqlite_wal', 'sqlite_shm']),
-      );
-      expect(
-        chat.subcategories.map((subcategory) => p.basename(subcategory.path!)),
-        containsAllInOrder([
-          AppDatabase.databaseFileName,
-          '${AppDatabase.databaseFileName}-wal',
-          '${AppDatabase.databaseFileName}-shm',
-        ]),
-      );
-      expect(report.totalBytes, 1023);
-      expect(
-        report.categories.where(
-          (category) => category.key == StorageUsageCategoryKey.legacyChatData,
-        ),
-        isEmpty,
-      );
-    },
-  );
-
-  test(
-    'migrated legacy chat data is clearable and disappears after cleanup',
-    () async {
-      _markMigrationComplete(tempDir);
-      await _writeSizedFile(tempDir, 'conversations.hive', 100);
-      await _writeSizedFile(tempDir, 'messages.hive', 200);
-      await _writeSizedFile(tempDir, 'tool_events_v1.hive', 300);
-
-      final before = await StorageUsageService.computeReport();
-      final legacy = before.categories.singleWhere(
-        (category) => category.key == StorageUsageCategoryKey.legacyChatData,
-      );
-      expect(legacy.stats.bytes, 600);
-      expect(legacy.stats.fileCount, 3);
-      expect(before.clearable.bytes, greaterThanOrEqualTo(600));
-
-      await StorageUsageService.clearLegacyChatData();
-      final after = await StorageUsageService.computeReport();
-
-      expect(
-        after.categories.where(
-          (category) => category.key == StorageUsageCategoryKey.legacyChatData,
-        ),
-        isEmpty,
-      );
-    },
-  );
-
-  test(
-    'cleanup gate reopens after a legacy backup restore and re-migration',
-    () async {
-      _markMigrationComplete(tempDir);
-      await _writeSizedFile(tempDir, 'messages.hive', 200);
-      await StorageUsageService.clearLegacyChatData();
-
-      // Restoring a 1.1.17 backup brings the Hive files back and the
-      // re-migration writes its receipt into a fresh database. Earlier
-      // cleanup evidence must not lock the gate.
-      await File(p.join(tempDir.path, AppDatabase.databaseFileName)).delete();
-      _markMigrationComplete(tempDir);
-      await _writeSizedFile(tempDir, 'messages.hive', 128);
-
-      final again = await StorageUsageService.computeReport();
-      final legacy = again.categories.singleWhere(
-        (category) => category.key == StorageUsageCategoryKey.legacyChatData,
-      );
-      expect(legacy.stats.bytes, 128);
-      expect(again.clearable.bytes, greaterThanOrEqualTo(128));
-
-      await StorageUsageService.clearLegacyChatData();
-      final after = await StorageUsageService.computeReport();
-      expect(
-        after.categories.where(
-          (category) => category.key == StorageUsageCategoryKey.legacyChatData,
-        ),
-        isEmpty,
-      );
-      expect(File(p.join(tempDir.path, 'messages.hive')).existsSync(), isFalse);
-    },
-  );
-
-  test('legacy cleanup refuses to run without a migration receipt', () async {
-    await _writeSizedFile(tempDir, 'messages.hive', 64);
-
-    await expectLater(
-      StorageUsageService.clearLegacyChatData(),
-      throwsA(isA<StateError>()),
+    final report = await StorageUsageService.computeReport();
+    final chat = report.categories.singleWhere(
+      (category) => category.key == StorageUsageCategoryKey.chatData,
     );
-    expect(File(p.join(tempDir.path, 'messages.hive')).existsSync(), isTrue);
+
+    expect(chat.stats.bytes, 23);
+    expect(chat.stats.fileCount, 3);
+    expect(
+      chat.subcategories.map((subcategory) => subcategory.id),
+      containsAllInOrder(['sqlite_database', 'sqlite_wal', 'sqlite_shm']),
+    );
+    expect(
+      chat.subcategories.map((subcategory) => p.basename(subcategory.path!)),
+      containsAllInOrder([
+        AppDatabase.databaseFileName,
+        '${AppDatabase.databaseFileName}-wal',
+        '${AppDatabase.databaseFileName}-shm',
+      ]),
+    );
+    expect(report.totalBytes, 423);
   });
 
   test(

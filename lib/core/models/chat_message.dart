@@ -1,83 +1,58 @@
-import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 
 import 'message_part.dart';
 
-part 'chat_message.g.dart';
-
-@HiveType(typeId: 0)
-class ChatMessage extends HiveObject {
-  @HiveField(0)
+class ChatMessage {
   final String id;
 
-  @HiveField(1)
   final String role; // 'user' or 'assistant'
 
   /// Structured parts — single source of truth for body text and attachments.
   ///
-  /// Hive field 2 (legacy content string) is intentionally not a stored field
-  /// here. [ChatMessageAdapter] still reads field 2 for migration only;
-  /// [content] is derived from [TextPart]s.
+  /// [content] is derived from the [TextPart]s in here.
   final List<MessagePart> parts;
 
   /// Derived text body: concatenation of every [TextPart] in [parts] order.
   String get content =>
       parts.whereType<TextPart>().map((part) => part.text).join();
 
-  @HiveField(3)
   final DateTime timestamp;
 
-  @HiveField(4)
   final String? modelId;
 
-  @HiveField(5)
   final String? providerId;
 
-  @HiveField(6)
   final int? totalTokens;
 
-  @HiveField(7)
   final String conversationId;
 
-  @HiveField(8)
   final bool isStreaming;
 
   // Optional reasoning fields for assistant messages
-  @HiveField(9)
   final String? reasoningText;
 
-  @HiveField(10)
   final DateTime? reasoningStartAt;
 
-  @HiveField(11)
   final DateTime? reasoningFinishedAt;
 
   // Translation field for translated content
-  @HiveField(12)
   final String? translation;
 
   // JSON encoded reasoning segments for multiple reasoning blocks
-  @HiveField(13)
   final String? reasoningSegmentsJson;
 
   // Versioning: group messages sharing the same semantic position
   // groupId identifies a message thread; version starts from 0 and increments
-  @HiveField(14)
   final String? groupId;
 
-  @HiveField(15)
   final int version;
 
-  @HiveField(16)
   final int? promptTokens;
 
-  @HiveField(17)
   final int? completionTokens;
 
-  @HiveField(18)
   final int? cachedTokens;
 
-  @HiveField(19)
   final int? durationMs;
 
   ChatMessage({

@@ -163,7 +163,12 @@ class MessageGenerationService {
     // Inject prompts first. Document/OCR work runs only after the single final
     // context trim below.
     messageBuilderService.injectSystemPrompt(apiMessages, assistant, modelId);
-    await messageBuilderService.injectMemory(apiMessages, assistant);
+    await messageBuilderService.injectMemoryAndRecentChats(
+      apiMessages,
+      assistant,
+      settings: settings,
+      currentConversationId: currentConversation?.id,
+    );
 
     final hasBuiltInSearch = messageBuilderService.hasBuiltInSearch(
       settings,

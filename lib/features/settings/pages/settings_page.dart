@@ -9,7 +9,7 @@ import 'display_settings_page.dart';
 import '../../mcp/pages/mcp_page.dart';
 import '../../assistant/pages/assistant_settings_page.dart';
 import 'about_page.dart';
-import 'memory_page.dart';
+import 'memory_settings_page.dart';
 import 'tts_services_page.dart';
 import 'tool_schema_settings_page.dart';
 import 'sponsor_page.dart';
@@ -256,9 +256,11 @@ class SettingsPage extends StatelessWidget {
                 icon: Lucide.Brain,
                 label: l10n.settingsPageMemory,
                 onTap: () {
-                  Navigator.of(
-                    context,
-                  ).push(MaterialPageRoute(builder: (_) => const MemoryPage()));
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MemorySettingsPage(),
+                    ),
+                  );
                 },
               ),
               _iosDivider(context),

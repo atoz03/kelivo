@@ -33,7 +33,6 @@ void main() {
         (assistantId == null
             ? '{"id":"$id"}'
             : '{"id":"$id","assistantId":"$assistantId"}'),
-    assistantId: assistantId,
   );
 
   test('entity CRUD reads in stable sort order', () async {

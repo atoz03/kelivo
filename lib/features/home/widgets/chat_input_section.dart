@@ -60,7 +60,6 @@ class ChatInputSection extends StatelessWidget {
     this.onPickPhotos,
     this.onUploadFiles,
     this.onToggleLearningMode,
-    this.onOpenWorldBook, // 新增世界书支持桌面端
     this.onLongPressLearning,
     this.onClearContext,
     this.onCompressContext,
@@ -102,7 +101,6 @@ class ChatInputSection extends StatelessWidget {
   final VoidCallback? onPickPhotos;
   final VoidCallback? onUploadFiles;
   final VoidCallback? onToggleLearningMode;
-  final VoidCallback? onOpenWorldBook;
   final VoidCallback? onLongPressLearning;
   final VoidCallback? onClearContext;
   final VoidCallback? onCompressContext;

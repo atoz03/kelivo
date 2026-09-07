@@ -6,13 +6,14 @@ import 'package:provider/provider.dart';
 import '../../../core/models/assistant.dart';
 import '../../../core/providers/assistant_provider.dart';
 import '../../../core/providers/mcp_provider.dart';
-import '../../../core/providers/memory_provider.dart';
+import '../../../core/providers/memory_provider_v2.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/tts_provider.dart';
 import '../../../core/services/api/chat_api_service.dart';
 import '../../../core/services/api/json_schema_utils.dart';
 import '../../../core/services/chat/chat_service.dart';
 import '../../../core/services/mcp/mcp_tool_service.dart';
+import '../../../core/services/memory/memory_pipeline.dart';
 import '../../../core/services/memory/memory_tools.dart';
 import '../../../core/services/search/search_tool_service.dart';
 import '../../../core/services/tools/tool_schema_overrides.dart';
@@ -242,12 +243,15 @@ class ToolHandlerService {
       toolDefs.add(SearchToolService.getToolDefinition());
     }
 
-    // Memory tools
+    // Memory tools (§10.1)
     if (supportsTools && assistant != null) {
       toolDefs.addAll(
         MemoryTools.buildDefinitions(
+          lang: settings.resolvedMemoryPromptLang,
+          writeScope: assistant.memoryWriteScope,
           enableMemory: assistant.enableMemory,
-          allowWrites: !_isTemporaryConversation(),
+          allowPastConversationRecall: assistant.allowPastConversationRecall,
+          allowMemoryWrites: !_isTemporaryConversation(),
         ),
       );
     }
@@ -428,7 +432,12 @@ class ToolHandlerService {
         }
 
         // Memory tools
-        final memoryResult = await _handleMemoryToolCall(name, args, assistant);
+        final memoryResult = await _handleMemoryToolCall(
+          name,
+          args,
+          assistant,
+          conversationId: conversationId,
+        );
         if (memoryResult != null) {
           return memoryResult;
         }
@@ -525,22 +534,73 @@ class ToolHandlerService {
     };
   }
 
-  /// Handle memory tool calls.
+  /// Handle memory tool calls (§10).
   ///
-  /// Returns null if the tool is not a memory tool or memory is off.
+  /// Returns null if the tool is not a memory tool or the relevant gate is off.
   Future<String?> _handleMemoryToolCall(
     String name,
     Map<String, dynamic> args,
-    Assistant? assistant,
-  ) async {
-    if (assistant?.enableMemory != true) return null;
+    Assistant? assistant, {
+    String? conversationId,
+  }) async {
+    final settings = contextProvider.read<SettingsProvider>();
+    if (assistant == null) return null;
     if (!MemoryTools.allToolNames.contains(name)) return null;
-    final memory = contextProvider.read<MemoryProvider>();
+
+    final memoryV2 = contextProvider.read<MemoryProviderV2>();
+    ChatService? chatService;
+    try {
+      chatService = contextProvider.read<ChatService>();
+    } catch (_) {
+      chatService = null;
+    }
+
+    MemoryPipelineService? pipeline;
+    try {
+      pipeline = contextProvider.read<MemoryPipelineService>();
+    } catch (_) {
+      pipeline = null;
+    }
+
+    Future<String> Function(String prompt)? memoryLlmCall;
+    final provKey = settings.memoryModelProvider;
+    final mdlId = settings.memoryModelId;
+    if (provKey != null && mdlId != null) {
+      final cfg = settings.getProviderConfig(provKey);
+      final budget = settings.memoryModelThinkingEnabled
+          ? (assistant.thinkingBudget ?? settings.thinkingBudget)
+          : 0;
+      memoryLlmCall = (prompt) => ChatApiService.generateText(
+        conversationId: conversationId,
+        config: cfg,
+        modelId: mdlId,
+        prompt: prompt,
+        thinkingBudget: budget,
+      );
+    }
+
+    final temporary =
+        chatService?.isTemporaryConversation(conversationId) ?? false;
     return MemoryTools.handle(
       name: name,
       args: args,
-      store: await memory.store,
-      onMutated: memory.refresh,
+      assistant: assistant,
+      repository: memoryV2.repository,
+      chatRepository: memoryV2.chatRepository,
+      chatService: chatService,
+      conversationId: conversationId,
+      // Reload without changing which assistants the open memory UI is showing.
+      onMutated: memoryV2.reloadCurrentScope,
+      smartAdd: pipeline?.smartAdd,
+      promptLang: settings.resolvedMemoryPromptLang,
+      memoryLlmCall: memoryLlmCall,
+      smartAddPromptZh: settings.memorySmartAddPromptZh,
+      smartAddPromptEn: settings.memorySmartAddPromptEn,
+      // Temporary chats are discarded on exit; their tool traces must not linger.
+      traceRecorder: temporary ? null : pipeline?.traceRecorder,
+      conversationTitle: conversationId == null
+          ? null
+          : chatService?.getConversation(conversationId)?.title,
     );
   }
 }

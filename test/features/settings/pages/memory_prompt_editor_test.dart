@@ -1,0 +1,119 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:Kelivo/core/providers/settings_provider.dart';
+import 'package:Kelivo/core/services/memory/memory_prompts.dart';
+import 'package:Kelivo/features/settings/pages/memory_settings_page.dart';
+import 'package:Kelivo/features/settings/widgets/memory_ui.dart';
+import 'package:Kelivo/l10n/app_localizations.dart';
+
+import '../../../support/business_test_harness.dart';
+
+Future<SettingsProvider> _createSettings() async {
+  SharedPreferences.setMockInitialValues({});
+  final harness = await createBusinessTestHarness();
+  final settings = SettingsProvider(harness.preferences);
+  await settings.loaded;
+  return settings;
+}
+
+Widget _wrap(SettingsProvider settings, {required Locale locale}) {
+  return ChangeNotifierProvider.value(
+    value: settings,
+    child: MaterialApp(
+      locale: locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: const Scaffold(body: MemorySettingsContent()),
+    ),
+  );
+}
+
+/// Opens the "memory rules" template editor from the settings list.
+Future<void> _openRulesEditor(WidgetTester tester, String title) async {
+  tester.view.physicalSize = const Size(800, 1600);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  await tester.pumpAndSettle();
+  final target = find.text(title);
+  await tester.ensureVisible(target);
+  await tester.pumpAndSettle();
+  await tester.tap(target.hitTestable());
+  await tester.pumpAndSettle();
+}
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('injection count uses a tip icon instead of a subtitle', (
+    tester,
+  ) async {
+    final settings = await _createSettings();
+    await tester.pumpWidget(_wrap(settings, locale: const Locale('en')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Items injected per type'), findsOneWidget);
+    expect(find.textContaining('When a type exceeds this limit'), findsNothing);
+    expect(find.byType(MemoryTipIcon), findsOneWidget);
+  });
+
+  testWidgets('editor shows one field, in the language the model is sent', (
+    tester,
+  ) async {
+    final settings = await _createSettings();
+    await settings.setMemoryPromptLang('zh');
+
+    await tester.pumpWidget(_wrap(settings, locale: const Locale('zh')));
+    await tester.pumpAndSettle();
+
+    final l10n = await AppLocalizations.delegate.load(const Locale('zh'));
+    await _openRulesEditor(tester, l10n.memoryPromptEditRulesTitle);
+
+    // A single editor, holding the Chinese template — no language tabs.
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.byType(TabBar), findsNothing);
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller!.text, MemoryPrompts.rulesZh);
+  });
+
+  testWidgets('editor follows an explicit English prompt language', (
+    tester,
+  ) async {
+    final settings = await _createSettings();
+    await settings.setMemoryPromptLang('en');
+
+    // Interface is Chinese, but prompts were pinned to English, so the editor
+    // must edit the template that actually reaches the model.
+    await tester.pumpWidget(_wrap(settings, locale: const Locale('zh')));
+    await tester.pumpAndSettle();
+
+    final l10n = await AppLocalizations.delegate.load(const Locale('zh'));
+    await _openRulesEditor(tester, l10n.memoryPromptEditRulesTitle);
+
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller!.text, MemoryPrompts.rulesEn);
+  });
+
+  testWidgets('saving writes only the active language template', (
+    tester,
+  ) async {
+    final settings = await _createSettings();
+    await settings.setMemoryPromptLang('zh');
+
+    await tester.pumpWidget(_wrap(settings, locale: const Locale('zh')));
+    await tester.pumpAndSettle();
+
+    final l10n = await AppLocalizations.delegate.load(const Locale('zh'));
+    await _openRulesEditor(tester, l10n.memoryPromptEditRulesTitle);
+
+    await tester.enterText(find.byType(TextField), '自定义规则');
+    await tester.tap(find.byTooltip(l10n.memoryPromptEditSave));
+    await tester.pumpAndSettle();
+
+    expect(settings.memoryRulesPromptZh, '自定义规则');
+    expect(settings.memoryRulesPromptEn, MemoryPrompts.rulesEn);
+  });
+}
