@@ -309,7 +309,7 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
                 child: SectionCard(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
                       child: Row(
                         children: [
                           Expanded(
@@ -375,7 +375,7 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
                 child: SectionCard(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
                       child: Row(
                         children: [
                           Expanded(
@@ -602,7 +602,7 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
                 child: SectionCard(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
                       child: Row(
                         children: [
                           Expanded(
@@ -1149,7 +1149,7 @@ class _LocalSnapshotDesktopSection extends StatelessWidget {
     return SectionCard(
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
           child: Text(
             l10n.localSnapshotSectionTitle,
             style: TextStyle(fontSize: 15, fontWeight: AppFontWeights.semibold),
@@ -1181,7 +1181,7 @@ class _LocalSnapshotDesktopSection extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
           child: Text(
             l10n.localSnapshotEnabledSubtitle,
             style: TextStyle(
@@ -1205,7 +1205,7 @@ class _BackupReminderDesktopSection extends StatelessWidget {
     return SectionCard(
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
           child: Text(
             l10n.backupReminderSectionTitle,
             style: TextStyle(fontSize: 15, fontWeight: AppFontWeights.semibold),

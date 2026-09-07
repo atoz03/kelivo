@@ -118,7 +118,7 @@ class _DesktopNetworkProxyPaneState extends State<DesktopNetworkProxyPane> {
               SectionCard(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
                     child: Row(
                       children: [
                         Expanded(
