@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:Kelivo/core/database/business_data.dart';
 import 'package:Kelivo/core/database/business_settings_router.dart';
-import 'package:Kelivo/core/models/assistant_memory.dart';
 
 Map<String, Object?> _completeEntityRowIds({
   String? sourceKey,
@@ -390,39 +389,6 @@ void main() {
       );
     });
 
-    test('projects distinct numeric ids for id-less memories at runtime', () {
-      final snapshot = BusinessSettingsRouter.normalizeAndRoute({
-        'assistant_memories_v1': jsonEncode([
-          {'assistantId': 'assistant-1', 'content': 'Remember this'},
-          {'assistantId': 'assistant-1', 'content': 'Remember that'},
-        ]),
-      });
-      final rows = snapshot.entities[BusinessEntityKind.assistantMemory]!;
-
-      expect(rows, hasLength(2));
-      expect(
-        rows.map((row) => jsonDecode(row.payload)),
-        everyElement(isNot(contains('id'))),
-      );
-      final published = BusinessSettingsRouter.exportSnapshot(snapshot);
-      expect(
-        jsonDecode(published['assistant_memories_v1']! as String) as List,
-        everyElement(isNot(contains('id'))),
-      );
-
-      final runtime = BusinessSettingsRouter.exportRuntimeSnapshot(snapshot);
-      final runtimePayloads =
-          (jsonDecode(runtime['assistant_memories_v1']! as String) as List)
-              .cast<Map>()
-              .map((payload) => payload.cast<String, dynamic>())
-              .toList();
-      final ids = runtimePayloads
-          .map((payload) => AssistantMemory.fromJson(payload).id)
-          .toList();
-      expect(ids, everyElement(lessThan(0)));
-      expect(ids.toSet(), hasLength(2));
-    });
-
     test('normalizes legacy embedding overrides before discarding version', () {
       final snapshot = BusinessSettingsRouter.normalizeAndRoute({
         'provider_configs_v1': jsonEncode({
@@ -618,18 +584,6 @@ void main() {
             'tools': <Object?>[],
           },
         ]),
-        'world_books_v1': jsonEncode([
-          {
-            'id': 'book-1',
-            'enabled': true,
-            'entries': [
-              {'id': 'entry-1', 'content': 'World'},
-            ],
-          },
-        ]),
-        'assistant_memories_v1': jsonEncode([
-          {'id': 1, 'assistantId': 'assistant-1', 'content': 'Memory'},
-        ]),
         'quick_phrases_v1': jsonEncode([
           {
             'id': 'phrase-1',
@@ -649,28 +603,8 @@ void main() {
             'apiKey': 'tts-secret',
           },
         ]),
-        'instruction_injections_v1': jsonEncode([
-          {'id': 'injection-1', 'title': 'Learn', 'prompt': 'Explain'},
-        ]),
         'assistant_tags_v1': jsonEncode([
           {'id': 'tag-1', 'name': 'Work'},
-        ]),
-        'memory_entries_v1': jsonEncode([
-          {
-            'id': 'mem_a1b2c3d4',
-            'scope': 'global',
-            'type': 'identity',
-            'content': 'User likes Flutter.',
-            'createdAt': 1786012880106000,
-            'updatedAt': 1786012880106000,
-          },
-        ]),
-        'user_profile_fields_v1': jsonEncode([
-          {
-            'id': 'preferred_name',
-            'value': 'Psyche',
-            'updatedAt': 1786012880106000,
-          },
         ]),
       });
 
@@ -683,14 +617,6 @@ void main() {
       expect(
         () => BusinessSettingsRouter.normalizeAndRoute({
           'assistants_v1': jsonEncode({'id': 'not-a-list'}),
-        }),
-        throwsA(isA<FormatException>()),
-      );
-      expect(
-        () => BusinessSettingsRouter.normalizeAndRoute({
-          'assistant_memories_v1': jsonEncode([
-            {'id': 1, 'content': 'missing assistant id'},
-          ]),
         }),
         throwsA(isA<FormatException>()),
       );
@@ -713,20 +639,11 @@ void main() {
         'mcp_servers_v1': [
           {'id': 'mcp-1', 'tools': <String, Object?>{}},
         ],
-        'world_books_v1': [
-          {'id': 'book-1', 'entries': <String, Object?>{}},
-        ],
-        'assistant_memories_v1': [
-          {'id': 'one', 'assistantId': 'assistant-1', 'content': 'memory'},
-        ],
         'quick_phrases_v1': [
           {'id': 'phrase-1', 'isGlobal': 'yes'},
         ],
         'search_services_v1': [
           {'id': 'search-1', 'type': 1},
-        ],
-        'instruction_injections_v1': [
-          {'id': 'injection-1', 'prompt': 1},
         ],
       };
 
@@ -783,20 +700,6 @@ void main() {
             'args': [1],
             'env': {'PORT': 8080},
           },
-        ]),
-        'world_books_v1': jsonEncode([
-          {
-            'id': 'book-1',
-            'entries': [
-              {
-                'id': 'entry-1',
-                'keywords': [1],
-              },
-            ],
-          },
-        ]),
-        'assistant_memories_v1': jsonEncode([
-          {'id': 1, 'assistantId': 'assistant-1', 'content': 42},
         ]),
         'tts_services_v1': jsonEncode([
           {'id': 1, 'enabled': 'yes', 'speed': 'fast'},

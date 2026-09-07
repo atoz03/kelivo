@@ -705,9 +705,7 @@ class _DesktopMcpEditDialogState extends State<_DesktopMcpEditDialog>
 
   bool _isDesktopPlatform() {
     if (kIsWeb) return false;
-    return defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.linux;
+    return defaultTargetPlatform == TargetPlatform.macOS;
   }
 
   List<String> _parseArgs(String text) {

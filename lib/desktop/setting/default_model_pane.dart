@@ -132,39 +132,6 @@ class DesktopDefaultModelPane extends StatelessWidget {
 
                   const SizedBox(height: 16),
                   _ModelCard(
-                    icon: lucide.Lucide.FileText,
-                    title: l10n.defaultModelPageSummaryModelTitle,
-                    subtitle: l10n.defaultModelPageSummaryModelSubtitle,
-                    modelProvider: settings.summaryModelProvider,
-                    modelId: settings.summaryModelId,
-                    fallbackProvider:
-                        settings.titleModelProvider ??
-                        settings.currentModelProvider,
-                    fallbackModelId:
-                        settings.titleModelId ?? settings.currentModelId,
-                    onReset: () async {
-                      await context
-                          .read<SettingsProvider>()
-                          .resetSummaryModel();
-                    },
-                    onPick: () async {
-                      final settingsProvider = context.read<SettingsProvider>();
-                      final sel = await pickConfiguredModel(
-                        settings.summaryModelProvider,
-                        settings.summaryModelId,
-                      );
-                      if (sel != null) {
-                        await settingsProvider.setSummaryModel(
-                          sel.providerKey,
-                          sel.modelId,
-                        );
-                      }
-                    },
-                    configAction: () => _showSummaryPromptDialog(context),
-                  ),
-
-                  const SizedBox(height: 16),
-                  _ModelCard(
                     icon: lucide.Lucide.MessagesSquare,
                     title: l10n.defaultModelPageSuggestionModelTitle,
                     subtitle: l10n.defaultModelPageSuggestionModelSubtitle,
@@ -214,13 +181,10 @@ class DesktopDefaultModelPane extends StatelessWidget {
                     modelProvider: settings.compressModelProvider,
                     modelId: settings.compressModelId,
                     fallbackProvider:
-                        settings.summaryModelProvider ??
                         settings.titleModelProvider ??
                         settings.currentModelProvider,
                     fallbackModelId:
-                        settings.summaryModelId ??
-                        settings.titleModelId ??
-                        settings.currentModelId,
+                        settings.titleModelId ?? settings.currentModelId,
                     onReset: () async {
                       await context
                           .read<SettingsProvider>()
@@ -589,105 +553,6 @@ class DesktopDefaultModelPane extends StatelessWidget {
                         },
                       ),
                     ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _showSummaryPromptDialog(BuildContext context) async {
-    final cs = Theme.of(context).colorScheme;
-    final l10n = AppLocalizations.of(context)!;
-    final sp = context.read<SettingsProvider>();
-    final ctrl = TextEditingController(text: sp.summaryPrompt);
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) {
-        return Dialog(
-          backgroundColor: context.overlaySurface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          insetPadding: const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 24,
-          ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const _ThinkingSwitchRow(
-                    task: _BackgroundModelTask.summary,
-                    trailing: SizedBox.shrink(),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          l10n.defaultModelPagePromptLabel,
-                          style: TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: AppFontWeights.emphasis,
-                          ),
-                        ),
-                      ),
-                      _SmallIconBtn(
-                        icon: lucide.Lucide.X,
-                        onTap: () => Navigator.of(ctx).maybePop(),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  _promptEditor(
-                    ctx,
-                    controller: ctrl,
-                    hintText: l10n.defaultModelPageSummaryPromptHint,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _DeskIosButton(
-                        label: l10n.defaultModelPageResetDefault,
-                        filled: false,
-                        dense: true,
-                        onTap: () async {
-                          await sp.resetSummaryPrompt();
-                          await sp.resetSummaryGenerationThinkingEnabled();
-                          ctrl.text = sp.summaryPrompt;
-                        },
-                      ),
-                      const Spacer(),
-                      _DeskIosButton(
-                        label: l10n.defaultModelPageSave,
-                        filled: true,
-                        dense: true,
-                        onTap: () async {
-                          await sp.setSummaryPrompt(ctrl.text.trim());
-                          if (ctx.mounted) Navigator.of(ctx).maybePop();
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    l10n.defaultModelPageSummaryVars(
-                      '{previous_summary}',
-                      '{user_messages}',
-                    ),
-                    style: TextStyle(
-                      color: cs.onSurface.withValues(alpha: 0.6),
-                      fontSize: 12,
-                    ),
                   ),
                 ],
               ),
@@ -1167,14 +1032,7 @@ class _PerChatModelCard extends StatelessWidget {
   }
 }
 
-enum _BackgroundModelTask {
-  title,
-  summary,
-  suggestion,
-  compress,
-  translate,
-  ocr,
-}
+enum _BackgroundModelTask { title, suggestion, compress, translate, ocr }
 
 class _ThinkingSwitchRow extends StatelessWidget {
   const _ThinkingSwitchRow({required this.task, required this.trailing});
@@ -1192,10 +1050,6 @@ class _ThinkingSwitchRow extends StatelessWidget {
           _BackgroundModelTask.title => (
             settings.titleGenerationThinkingEnabled,
             settings.setTitleGenerationThinkingEnabled,
-          ),
-          _BackgroundModelTask.summary => (
-            settings.summaryGenerationThinkingEnabled,
-            settings.setSummaryGenerationThinkingEnabled,
           ),
           _BackgroundModelTask.suggestion => (
             settings.suggestionGenerationThinkingEnabled,

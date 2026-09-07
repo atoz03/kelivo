@@ -188,11 +188,7 @@ class _PromptTabState extends State<_PromptTab> {
 
   Future<void> _openSystemPromptEditor() async {
     final platform = Theme.of(context).platform;
-    final bool isDesktop =
-        kIsWeb ||
-        platform == TargetPlatform.macOS ||
-        platform == TargetPlatform.linux ||
-        platform == TargetPlatform.windows;
+    final bool isDesktop = kIsWeb || platform == TargetPlatform.macOS;
     final initial = _sysCtrl.text;
     final String? next = isDesktop
         ? await _showSystemPromptDesktopDialog(initial)
@@ -203,7 +199,7 @@ class _PromptTabState extends State<_PromptTab> {
 
   Future<void> _onAppendCurrentTimeChanged(Assistant a, bool enabled) async {
     if (enabled) {
-      final hits = MemoryPrompts.detectTimeVariablesInSystemPrompt(
+      final hits = PromptTransformer.detectTimeVariablesInSystemPrompt(
         _sysCtrl.text,
       );
       if (hits.isNotEmpty) {
@@ -275,9 +271,8 @@ class _PromptTabState extends State<_PromptTab> {
     final cs = Theme.of(context).colorScheme;
     final ap = context.watch<AssistantProvider>();
     final a = ap.getById(widget.assistantId)!;
-    final timeVarsInPrompt = MemoryPrompts.detectTimeVariablesInSystemPrompt(
-      _sysCtrl.text,
-    );
+    final timeVarsInPrompt =
+        PromptTransformer.detectTimeVariablesInSystemPrompt(_sysCtrl.text);
 
     // Sample preview for message template
     final now = DateTime.now();
@@ -589,10 +584,7 @@ class _PromptTabState extends State<_PromptTab> {
     Widget presetCard() {
       final a = ap.getById(widget.assistantId)!;
       final items = a.presetMessages;
-      final isDesktop =
-          Theme.of(context).platform == TargetPlatform.macOS ||
-          Theme.of(context).platform == TargetPlatform.linux ||
-          Theme.of(context).platform == TargetPlatform.windows;
+      final isDesktop = Theme.of(context).platform == TargetPlatform.macOS;
 
       Widget dragWrapper({required int index, required Widget child}) {
         return isDesktop
@@ -1476,10 +1468,7 @@ Future<void> _showEditPresetDialog(
   final cs = Theme.of(context).colorScheme;
   final controller = TextEditingController(text: m.content);
   final platform = Theme.of(context).platform;
-  final isDesktop =
-      platform == TargetPlatform.macOS ||
-      platform == TargetPlatform.linux ||
-      platform == TargetPlatform.windows;
+  final isDesktop = platform == TargetPlatform.macOS;
   Future<void> save() async {
     final text = controller.text.trim();
     if (text.isEmpty) return;

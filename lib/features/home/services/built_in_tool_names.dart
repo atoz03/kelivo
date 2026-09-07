@@ -11,7 +11,6 @@ abstract final class BuiltInToolNames {
     SearchToolService.toolName,
     'builtin_search',
     ...MemoryTools.allToolNames,
-    ...MemoryTools.legacyToolNames,
     ...LocalToolNames.all,
   };
 }

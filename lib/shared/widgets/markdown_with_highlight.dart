@@ -4034,9 +4034,7 @@ String _rowsToCsv(List<List<String>> rows) {
 bool _markdownTableTargetPlatformIsDesktop() {
   final override = markdownTableTargetPlatformOverride;
   if (override != null) {
-    return override == TargetPlatform.macOS ||
-        override == TargetPlatform.windows ||
-        override == TargetPlatform.linux;
+    return override == TargetPlatform.macOS;
   }
   return Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 }

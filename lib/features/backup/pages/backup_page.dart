@@ -1408,7 +1408,7 @@ class _BackupPageState extends State<BackupPage> {
 
     try {
       if (!context.mounted) return;
-      final isMobile = Platform.isAndroid || Platform.isIOS;
+      final isMobile = Platform.isAndroid;
       if (isMobile) {
         try {
           final saved = await NativeFileSave.saveFileFromPath(

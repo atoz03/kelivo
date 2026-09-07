@@ -13,19 +13,13 @@ class AppDirectories {
 
   /// Gets the root directory for application data storage.
   ///
-  /// - Windows/macOS/Linux: Application Support directory
-  /// - Android/iOS: Application Documents directory
+  /// - macOS: Application Support directory
+  /// - Android: Application Documents directory
   static Future<Directory> getAppDataDirectory() async {
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.windows:
-      case TargetPlatform.macOS:
-      case TargetPlatform.linux:
-        return await getApplicationSupportDirectory();
-      case TargetPlatform.android:
-      case TargetPlatform.iOS:
-      case TargetPlatform.fuchsia:
-        return await getApplicationDocumentsDirectory();
+    if (defaultTargetPlatform == TargetPlatform.macOS) {
+      return getApplicationSupportDirectory();
     }
+    return getApplicationDocumentsDirectory();
   }
 
   /// Gets the directory for uploaded files.
@@ -50,6 +44,12 @@ class AppDirectories {
   static Future<Directory> getFontsDirectory() async {
     final root = await getAppDataDirectory();
     return Directory('${root.path}/fonts');
+  }
+
+  /// Gets the directory holding the Markdown memory files.
+  static Future<Directory> getMemoryDirectory() async {
+    final root = await getAppDataDirectory();
+    return Directory('${root.path}/memory');
   }
 
   /// Gets the directory for cache files.

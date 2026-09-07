@@ -123,13 +123,8 @@ class ChatInputBar extends StatefulWidget {
     this.onPickCamera,
     this.onPickPhotos,
     this.onUploadFiles,
-    this.onToggleLearningMode,
-    this.onOpenWorldBook,
     this.onClearContext,
     this.onCompressContext,
-    this.onLongPressLearning,
-    this.learningModeActive = false,
-    this.worldBookActive = false,
     this.showMoreButton = true,
     this.showQuickPhraseButton = false,
     this.onQuickPhrase,
@@ -175,13 +170,8 @@ class ChatInputBar extends StatefulWidget {
   final VoidCallback? onPickCamera;
   final VoidCallback? onPickPhotos;
   final VoidCallback? onUploadFiles;
-  final VoidCallback? onToggleLearningMode;
-  final VoidCallback? onOpenWorldBook;
   final VoidCallback? onClearContext;
   final VoidCallback? onCompressContext;
-  final VoidCallback? onLongPressLearning;
-  final bool learningModeActive;
-  final bool worldBookActive;
   final bool showMoreButton;
   final bool showQuickPhraseButton;
   final VoidCallback? onQuickPhrase;
@@ -234,9 +224,6 @@ class _ChatInputBarState extends State<ChatInputBar>
   Future<void> _textPasteWriteTail = Future<void>.value();
   final List<DocumentAttachment> _docs =
       <DocumentAttachment>[]; // files to upload
-  final Map<LogicalKeyboardKey, Timer?> _repeatTimers = {};
-  static const Duration _repeatInitialDelay = Duration(milliseconds: 300);
-  static const Duration _repeatPeriod = Duration(milliseconds: 35);
   // Anchor for the responsive overflow menu on the left action bar
   final GlobalKey _leftOverflowAnchorKey = GlobalKey(
     debugLabel: 'left-overflow-anchor',
@@ -568,12 +555,6 @@ class _ChatInputBarState extends State<ChatInputBar>
     final asr = widget.asrProvider;
     asr?.removeListener(_handleAsrChanged);
     if (_ownsVoiceSession && asr != null) unawaited(asr.cancel());
-    for (final timer in _repeatTimers.values) {
-      try {
-        timer?.cancel();
-      } catch (_) {}
-    }
-    _repeatTimers.clear();
     _pendingImagePasteIds.clear();
     _pendingTextPasteIds.clear();
     _discardImageState(_images.map((image) => image.id));
@@ -977,7 +958,7 @@ class _ChatInputBarState extends State<ChatInputBar>
         setState(() {});
         // Keep focus on desktop so user can continue typing
         try {
-          if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+          if (Platform.isMacOS) {
             widget.focusNode?.requestFocus();
           }
         } catch (_) {}
@@ -1105,103 +1086,6 @@ class _ChatInputBarState extends State<ChatInputBar>
     if (_suppressContextMenu) {
       return const SizedBox.shrink();
     }
-    if (Platform.isIOS) {
-      final items = <ContextMenuButtonItem>[];
-      try {
-        final appL10n = AppLocalizations.of(context)!;
-        final materialL10n = MaterialLocalizations.of(context);
-        final value = _controller.value;
-        final selection = value.selection;
-        final hasSelection = selection.isValid && !selection.isCollapsed;
-        final hasText = value.text.isNotEmpty;
-
-        // Cut
-        if (hasSelection) {
-          items.add(
-            ContextMenuButtonItem(
-              onPressed: () async {
-                try {
-                  final start = selection.start;
-                  final end = selection.end;
-                  final text = value.text.substring(start, end);
-                  await Clipboard.setData(ClipboardData(text: text));
-                  final newText = value.text.replaceRange(start, end, '');
-                  _controller.value = value.copyWith(
-                    text: newText,
-                    selection: TextSelection.collapsed(offset: start),
-                  );
-                } catch (_) {}
-                state.hideToolbar();
-              },
-              label: materialL10n.cutButtonLabel,
-            ),
-          );
-        }
-
-        // Copy
-        if (hasSelection) {
-          items.add(
-            ContextMenuButtonItem(
-              onPressed: () async {
-                try {
-                  final start = selection.start;
-                  final end = selection.end;
-                  final text = value.text.substring(start, end);
-                  await Clipboard.setData(ClipboardData(text: text));
-                } catch (_) {}
-                state.hideToolbar();
-              },
-              label: materialL10n.copyButtonLabel,
-            ),
-          );
-        }
-
-        // Paste (text or image via _handlePasteFromClipboard)
-        items.add(
-          ContextMenuButtonItem(
-            onPressed: () {
-              _handlePasteFromClipboard();
-              state.hideToolbar();
-            },
-            label: materialL10n.pasteButtonLabel,
-          ),
-        );
-
-        // Insert newline
-        items.add(
-          ContextMenuButtonItem(
-            onPressed: () {
-              _insertNewlineAtCursor();
-              state.hideToolbar();
-            },
-            label: appL10n.chatInputBarInsertNewline,
-          ),
-        );
-
-        // Select all
-        if (hasText) {
-          items.add(
-            ContextMenuButtonItem(
-              onPressed: () {
-                try {
-                  _controller.selection = TextSelection(
-                    baseOffset: 0,
-                    extentOffset: value.text.length,
-                  );
-                } catch (_) {}
-                state.hideToolbar();
-              },
-              label: materialL10n.selectAllButtonLabel,
-            ),
-          );
-        }
-      } catch (_) {}
-      return AdaptiveTextSelectionToolbar.buttonItems(
-        anchors: state.contextMenuAnchors,
-        buttonItems: items,
-      );
-    }
-
     final items = state.contextMenuButtonItems
         .map((item) {
           if (item.type != ContextMenuButtonType.paste) return item;
@@ -1223,16 +1107,12 @@ class _ChatInputBarState extends State<ChatInputBar>
     // Enhance hardware keyboard behavior
     final w = MediaQuery.sizeOf(node.context!).width;
     final isTabletOrDesktop = w >= AppBreakpoints.tablet;
-    final isIosTablet = Platform.isIOS && isTabletOrDesktop;
 
     final isDown = event is KeyDownEvent;
     final key = event.logicalKey;
     final isEnter =
         key == LogicalKeyboardKey.enter ||
         key == LogicalKeyboardKey.numpadEnter;
-    final isArrow =
-        key == LogicalKeyboardKey.arrowLeft ||
-        key == LogicalKeyboardKey.arrowRight;
     final isPasteV = key == LogicalKeyboardKey.keyV;
 
     // Enter handling on tablet/desktop: configurable shortcut
@@ -1294,55 +1174,7 @@ class _ChatInputBarState extends State<ChatInputBar>
       }
     }
 
-    // Arrow repeat fix only needed on iOS tablets
-    if (!isIosTablet || !isArrow) return KeyEventResult.ignored;
-
-    final keys = HardwareKeyboard.instance.logicalKeysPressed;
-    final shift =
-        keys.contains(LogicalKeyboardKey.shiftLeft) ||
-        keys.contains(LogicalKeyboardKey.shiftRight);
-    final alt =
-        keys.contains(LogicalKeyboardKey.altLeft) ||
-        keys.contains(LogicalKeyboardKey.altRight) ||
-        keys.contains(LogicalKeyboardKey.metaLeft) ||
-        keys.contains(LogicalKeyboardKey.metaRight) ||
-        keys.contains(LogicalKeyboardKey.controlLeft) ||
-        keys.contains(LogicalKeyboardKey.controlRight);
-
-    void moveOnce() {
-      if (key == LogicalKeyboardKey.arrowLeft) {
-        _moveCaret(-1, extend: shift, byWord: alt);
-      } else if (key == LogicalKeyboardKey.arrowRight) {
-        _moveCaret(1, extend: shift, byWord: alt);
-      }
-    }
-
-    if (event is KeyDownEvent) {
-      // Initial move
-      moveOnce();
-      // Start repeat timer if not already
-      if (!_repeatTimers.containsKey(key)) {
-        Timer? periodic;
-        final starter = Timer(_repeatInitialDelay, () {
-          periodic = Timer.periodic(_repeatPeriod, (_) => moveOnce());
-          _repeatTimers[key] = periodic!;
-        });
-        // Store starter temporarily; replace when periodic begins
-        _repeatTimers[key] = starter;
-      }
-      return KeyEventResult.handled;
-    }
-
-    if (event is KeyUpEvent) {
-      // Key up -> cancel repeat
-      final t = _repeatTimers.remove(key);
-      try {
-        t?.cancel();
-      } catch (_) {}
-      return KeyEventResult.handled;
-    }
-
-    return KeyEventResult.handled;
+    return KeyEventResult.ignored;
   }
 
   Future<String?> _savePastedImageBytes(String format, Uint8List bytes) async {
@@ -1553,7 +1385,7 @@ class _ChatInputBarState extends State<ChatInputBar>
     // 3) Try files via platform channel on desktop (Finder/Explorer copies)
     bool handledFiles = false;
     try {
-      if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+      if (Platform.isMacOS) {
         final filePaths = await ClipboardImages.getFilePaths();
         if (filePaths.isNotEmpty) {
           final imagePaths = <String>[];
@@ -2012,45 +1844,6 @@ class _ChatInputBarState extends State<ChatInputBar>
           );
         }
 
-        if (widget.onToggleLearningMode != null) {
-          actions.add(
-            _OverflowAction(
-              width: normalButtonW,
-              builder: () => _CompactIconButton(
-                tooltip: l10n.instructionInjectionTitle,
-                icon: Lucide.Layers,
-                active: widget.learningModeActive,
-                onTap: lockTap(widget.onToggleLearningMode),
-                onLongPress: lockTap(widget.onLongPressLearning),
-              ),
-              menu: DesktopContextMenuItem(
-                icon: Lucide.Layers,
-                label: l10n.instructionInjectionTitle,
-                onTap: lockTap(widget.onToggleLearningMode),
-              ),
-            ),
-          );
-        }
-
-        if (widget.onOpenWorldBook != null) {
-          actions.add(
-            _OverflowAction(
-              width: normalButtonW,
-              builder: () => _CompactIconButton(
-                tooltip: l10n.worldBookTitle,
-                icon: Lucide.BookOpen,
-                active: widget.worldBookActive,
-                onTap: lockTap(widget.onOpenWorldBook),
-              ),
-              menu: DesktopContextMenuItem(
-                icon: Lucide.BookOpen,
-                label: l10n.worldBookTitle,
-                onTap: lockTap(widget.onOpenWorldBook),
-              ),
-            ),
-          );
-        }
-
         if (widget.onClearContext != null) {
           void showContextMenu() {
             showDesktopAnchoredMenu(
@@ -2267,51 +2060,6 @@ class _ChatInputBarState extends State<ChatInputBar>
         deleteSourcesAfterProcessing: true,
       );
     } catch (_) {}
-  }
-
-  void _moveCaret(int dir, {bool extend = false, bool byWord = false}) {
-    final text = _controller.text;
-    if (text.isEmpty) return;
-    TextSelection sel = _controller.selection;
-    if (!sel.isValid) {
-      final off = dir < 0 ? text.length : 0;
-      _controller.selection = TextSelection.collapsed(offset: off);
-      return;
-    }
-
-    int nextOffset(int from, int direction) {
-      if (!byWord) return (from + direction).clamp(0, text.length);
-      // Move by simple word boundary: skip whitespace; then skip non-whitespace
-      int i = from;
-      if (direction < 0) {
-        // Move left
-        while (i > 0 && text[i - 1].trim().isEmpty) {
-          i--;
-        }
-        while (i > 0 && text[i - 1].trim().isNotEmpty) {
-          i--;
-        }
-      } else {
-        // Move right
-        while (i < text.length && text[i].trim().isEmpty) {
-          i++;
-        }
-        while (i < text.length && text[i].trim().isNotEmpty) {
-          i++;
-        }
-      }
-      return i.clamp(0, text.length);
-    }
-
-    if (extend) {
-      final newExtent = nextOffset(sel.extentOffset, dir);
-      _controller.selection = sel.copyWith(extentOffset: newExtent);
-    } else {
-      final base = dir < 0 ? sel.start : sel.end;
-      final collapsed = nextOffset(base, dir);
-      _controller.selection = TextSelection.collapsed(offset: collapsed);
-    }
-    setState(() {});
   }
 
   Widget _buildInlineAttachmentPreviews(BuildContext context, bool isDark) {
@@ -2659,7 +2407,6 @@ class _ChatInputBarState extends State<ChatInputBar>
                                         // Desktop: show a right-click context menu with paste/cut/copy/select all
                                         // Future<void> _showDesktopContextMenu(Offset globalPos) async {
                                         //   bool isDesktop = false;
-                                        //   try { isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux; } catch (_) {}
                                         //   if (!isDesktop) return;
                                         //   // Ensure input has focus so operations apply correctly
                                         //   try { widget.focusNode?.requestFocus(); } catch (_) {}
@@ -2786,10 +2533,7 @@ class _ChatInputBarState extends State<ChatInputBar>
                                             style: TextStyle(
                                               color:
                                                   theme.colorScheme.onSurface,
-                                              fontSize:
-                                                  (Platform.isWindows ||
-                                                      Platform.isLinux ||
-                                                      Platform.isMacOS)
+                                              fontSize: Platform.isMacOS
                                                   ? 14
                                                   : 15,
                                             ),
@@ -3211,8 +2955,7 @@ class _CompactIconButton extends StatelessWidget {
     final fgColor = active
         ? theme.colorScheme.primary
         : theme.colorScheme.onSurface.withValues(alpha: isDark ? 0.70 : 0.54);
-    final bool isDesktop =
-        Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+    final bool isDesktop = Platform.isMacOS;
 
     // Keep overall button size constant. For model icon with child, enlarge child slightly
     // and reduce padding so (2*padding + childSize) stays unchanged.

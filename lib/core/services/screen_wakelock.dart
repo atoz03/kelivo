@@ -131,11 +131,9 @@ class ScreenWakelock {
     }
   }
 
-  static bool get _isIOS =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
   static bool get _isAndroid =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
-  static bool get _isMobile => _isIOS || _isAndroid;
+  static bool get _isMobile => _isAndroid;
 
   @visibleForTesting
   static bool get debugEnabled => _enabled;

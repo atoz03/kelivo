@@ -2676,8 +2676,6 @@ class McpProvider extends ChangeNotifier {
 
   bool _isDesktopPlatform() {
     if (kIsWeb) return false;
-    return defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux ||
-        defaultTargetPlatform == TargetPlatform.macOS;
+    return defaultTargetPlatform == TargetPlatform.macOS;
   }
 }

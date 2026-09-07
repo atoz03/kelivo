@@ -1,6 +1,4 @@
 import 'package:Kelivo/core/services/logging/context_log_models.dart';
-import 'package:Kelivo/core/services/memory/memory_block_builder.dart';
-import 'package:Kelivo/core/services/memory/memory_prompts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -21,10 +19,10 @@ void main() {
               tokens: 5,
             ),
             ContextSegment(
-              source: ContextSource.worldBook,
-              text: 'Lore',
+              source: ContextSource.memory,
+              text: 'Memory',
               tokens: 1,
-              meta: {'position': 'AFTER_SYSTEM_PROMPT'},
+              meta: {'kind': 'full'},
             ),
           ],
         ),
@@ -39,10 +37,7 @@ void main() {
     expect(decoded.totalTokens, 6);
     expect(decoded.messages, hasLength(1));
     expect(decoded.messages.first.segments, hasLength(2));
-    expect(
-      decoded.messages.first.segments.last.meta?['position'],
-      'AFTER_SYSTEM_PROMPT',
-    );
+    expect(decoded.messages.first.segments.last.meta?['kind'], 'full');
   });
 
   test('last tagged segment absorbs content that grew after tagging', () {
@@ -51,7 +46,7 @@ void main() {
       'content': 'PREFIX user text with data:image/png;base64,QUJDREVGR0g=',
       kelivoContextSegmentsKey: [
         ContextSegmentTags.item(
-          source: ContextSource.memorySnapshot,
+          source: ContextSource.memory,
           length: 6,
           meta: {'kind': 'full'},
         ),
@@ -61,43 +56,10 @@ void main() {
 
     final segments = segmentsFromTaggedMessage(message);
     expect(segments, hasLength(2));
-    expect(segments.first.source, ContextSource.memorySnapshot);
+    expect(segments.first.source, ContextSource.memory);
     expect(segments.first.text, 'PREFIX');
     expect(segments.last.source, ContextSource.chatHistory);
     expect(segments.last.text, contains('<omitted'));
     expect(segments.last.text, isNot(contains('QUJDREVGR0g=')));
-  });
-
-  test('combined frozen snapshot is split from the user turn', () {
-    final prefix = MemoryBlockBuilder.buildFullSnapshotPrefix(
-      MemoryBlockBuilder.buildProfileBlock(
-        fields: const [],
-        lang: MemoryPromptLang.zh,
-      ),
-      MemoryBlockBuilder.buildMemoryBlock(
-        visible: const [],
-        totalByType: const {},
-        lang: MemoryPromptLang.zh,
-        maxItems: 10,
-      ),
-      MemoryPromptLang.zh,
-    );
-    final message = <String, dynamic>{
-      'role': 'user',
-      'content': '$prefix用户本轮输入',
-      kelivoContextSegmentsKey: [
-        ContextSegmentTags.item(
-          source: ContextSource.memorySnapshot,
-          length: prefix.length + '用户本轮输入'.length,
-        ),
-      ],
-    };
-
-    final segments = segmentsFromTaggedMessage(message);
-    expect(segments, hasLength(2));
-    expect(segments.first.source, ContextSource.memorySnapshot);
-    expect(segments.first.text, prefix);
-    expect(segments.last.source, ContextSource.chatHistory);
-    expect(segments.last.text, '用户本轮输入');
   });
 }

@@ -17,10 +17,7 @@ import '../../../theme/app_semantic_colors.dart';
 import '../../../theme/custom_theme.dart';
 import '../../../theme/palettes.dart';
 
-bool get _isDesktop =>
-    defaultTargetPlatform == TargetPlatform.macOS ||
-    defaultTargetPlatform == TargetPlatform.windows ||
-    defaultTargetPlatform == TargetPlatform.linux;
+bool get _isDesktop => defaultTargetPlatform == TargetPlatform.macOS;
 
 // ---------------------------------------------------------------------------
 // Presentation shells (match the app's custom sheet/dialog idioms — no

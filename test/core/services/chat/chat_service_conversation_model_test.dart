@@ -203,8 +203,6 @@ void main() {
         id: 'carried',
         title: 'Carried',
         summary: 'a summary',
-        injectedMemoryHash: 'hash-1',
-        lastMemoryExtractedOrder: 7,
         chatModelProvider: 'OpenAI',
         chatModelId: 'gpt-5',
       );
@@ -215,8 +213,6 @@ void main() {
       expect(restored.chatModelProvider, 'OpenAI');
       expect(restored.chatModelId, 'gpt-5');
       expect(restored.summary, 'a summary');
-      expect(restored.injectedMemoryHash, 'hash-1');
-      expect(restored.lastMemoryExtractedOrder, 7);
     });
 
     test('the override survives a JSON round trip', () {

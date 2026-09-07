@@ -13,15 +13,11 @@ void main() {
         SearchToolService.toolName,
         'builtin_search',
         ...MemoryTools.allToolNames,
-        ...MemoryTools.legacyToolNames,
         ...LocalToolNames.all,
       ]),
     );
     expect(SearchToolService.toolName, 'search_web');
-    expect(
-      BuiltInToolNames.all,
-      containsAll(const ['create_memory', 'edit_memory', 'delete_memory']),
-    );
+    expect(BuiltInToolNames.all, containsAll(MemoryTools.allToolNames));
     expect(LocalToolNames.all, [
       LocalToolNames.timeInfo,
       LocalToolNames.clipboard,

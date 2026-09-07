@@ -59,18 +59,6 @@ void main() {
     expect(values.last.payload, contains('updated'));
   });
 
-  test('assistant memories use their projection for filtered reads', () async {
-    await repository.replaceEntities(BusinessEntityKind.assistantMemory, [
-      row('2', 1, assistantId: 'assistant-b'),
-      row('1', 2, assistantId: 'assistant-a'),
-      row('3', 0, assistantId: 'assistant-a'),
-    ]);
-
-    final values = await repository.readMemoriesForAssistant('assistant-a');
-    expect(values.map((value) => value.id), <String>['3', '1']);
-    expect(values.every((value) => value.assistantId == 'assistant-a'), isTrue);
-  });
-
   test(
     'preference values preserve their JSON scalar and string-list types',
     () async {
@@ -160,7 +148,6 @@ void main() {
       final replacement = BusinessSnapshot(
         entities: {
           BusinessEntityKind.assistant: [row('new', 0)],
-          BusinessEntityKind.assistantMemory: [row('1', 0, assistantId: 'new')],
         },
         preferences: const {
           'theme_mode_v1': 'dark',
@@ -284,25 +271,8 @@ END;
         ),
         throwsA(isA<ArgumentError>()),
       );
-      await expectLater(
-        repository.upsertEntity(
-          BusinessEntityKind.assistantMemory,
-          row(
-            'memory',
-            0,
-            assistantId: 'assistant-a',
-            payload: '{"id":"memory","assistantId":"assistant-b"}',
-          ),
-        ),
-        throwsA(isA<ArgumentError>()),
-      );
-
       expect(
         await repository.readEntities(BusinessEntityKind.assistant),
-        isEmpty,
-      );
-      expect(
-        await repository.readEntities(BusinessEntityKind.assistantMemory),
         isEmpty,
       );
     },

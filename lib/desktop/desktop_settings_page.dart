@@ -53,8 +53,6 @@ import 'setting/mcp_pane.dart';
 import 'setting/tts_services_pane.dart';
 import 'setting/memory_settings_pane.dart';
 import 'setting/quick_phrases_pane.dart';
-import 'setting/instruction_injection_pane.dart';
-import 'setting/world_book_pane.dart';
 import 'setting/backup_pane.dart';
 import 'setting/hotkeys_pane.dart';
 import 'setting/network_proxy_pane.dart';
@@ -77,7 +75,7 @@ import 'package:Kelivo/theme/app_semantic_colors.dart';
 import '../theme/custom_theme.dart';
 import '../features/settings/widgets/custom_theme_widgets.dart';
 import '../features/settings/pages/message_style_settings_page.dart';
-import '../features/settings/widgets/memory_ui.dart';
+import '../shared/widgets/setting_tip_icon.dart';
 
 part 'setting/assistants_pane.dart';
 part 'setting/providers_pane.dart';
@@ -104,8 +102,6 @@ enum _SettingsMenuItem {
   toolSchemas,
   mcp,
   quickPhrases,
-  instructionInjection,
-  worldBook,
   memory,
   tts,
   networkProxy,
@@ -238,14 +234,6 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
                           return const DesktopQuickPhrasesPane(
                             key: ValueKey('quickPhrases'),
                           );
-                        case _SettingsMenuItem.instructionInjection:
-                          return const DesktopInstructionInjectionPane(
-                            key: ValueKey('instructionInjection'),
-                          );
-                        case _SettingsMenuItem.worldBook:
-                          return const DesktopWorldBookPane(
-                            key: ValueKey('worldBook'),
-                          );
                         case _SettingsMenuItem.memory:
                           return const DesktopMemorySettingsPane(
                             key: ValueKey('memory'),
@@ -311,16 +299,6 @@ class _SettingsMenu extends StatelessWidget {
         _SettingsMenuItem.quickPhrases,
         lucide.Lucide.Zap,
         l10n.settingsPageQuickPhrase,
-      ),
-      (
-        _SettingsMenuItem.instructionInjection,
-        lucide.Lucide.Layers,
-        l10n.settingsPageInstructionInjection,
-      ),
-      (
-        _SettingsMenuItem.worldBook,
-        lucide.Lucide.BookOpen,
-        l10n.settingsPageWorldBook,
       ),
       (_SettingsMenuItem.memory, lucide.Lucide.Brain, l10n.settingsPageMemory),
       (_SettingsMenuItem.tts, lucide.Lucide.Volume2, l10n.settingsPageTts),

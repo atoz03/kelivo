@@ -44,18 +44,7 @@ Future<void> _openJoinUrl(String url) async {
   }
 }
 
-bool get _isDesktopTarget {
-  switch (defaultTargetPlatform) {
-    case TargetPlatform.macOS:
-    case TargetPlatform.windows:
-    case TargetPlatform.linux:
-      return true;
-    case TargetPlatform.android:
-    case TargetPlatform.iOS:
-    case TargetPlatform.fuchsia:
-      return false;
-  }
-}
+bool get _isDesktopTarget => defaultTargetPlatform == TargetPlatform.macOS;
 
 /// Shows the "join QQ group" picker: a bottom sheet on mobile, a dialog on
 /// desktop. Tapping an entry opens its join link directly.

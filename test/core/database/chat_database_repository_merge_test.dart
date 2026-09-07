@@ -719,7 +719,7 @@ void main() {
       expect(await live.getAllConversations(), hasLength(2));
     });
 
-    test('删除中间消息后的稀疏 order 可导入、稳定去重并保留水位', () async {
+    test('删除中间消息后的稀疏 order 可导入并稳定去重', () async {
       await putSparseConversation(
         conversationId: 'sparse',
         messagePrefix: 'sparse',
@@ -737,10 +737,6 @@ void main() {
       ]);
       expect(await live.getMessageIndex('sparse', 'sparse-a'), 0);
       expect(await live.getMessageIndex('sparse', 'sparse-c'), 2);
-      expect(
-        (await live.getConversation('sparse'))?.lastMemoryExtractedOrder,
-        2,
-      );
 
       final second = await live.mergeBackupSnapshot(sourceFile);
       expect(second.importedConversations, 0);
@@ -775,7 +771,6 @@ void main() {
         0,
       );
       expect(await live.getMessageIndex(remappedId, imported.messageIds[1]), 2);
-      expect(imported.lastMemoryExtractedOrder, 2);
     });
 
     test('非法 order 仅跳过所属会话并计数', () async {

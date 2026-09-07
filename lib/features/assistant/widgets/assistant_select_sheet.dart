@@ -25,10 +25,7 @@ Future<String?> showAssistantMoveSelector(
   BuildContext context, {
   String? excludeAssistantId,
 }) async {
-  final isDesktop =
-      defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.linux;
+  final isDesktop = defaultTargetPlatform == TargetPlatform.macOS;
   final ap = context.read<AssistantProvider>();
   final List<Assistant> assistants = excludeAssistantId == null
       ? List.of(ap.assistants)

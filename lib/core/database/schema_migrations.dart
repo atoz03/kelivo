@@ -100,15 +100,16 @@ final class SchemaMigrations {
 
   /// The oldest schema that can read a backup written by this build.
   ///
-  /// Forward compatibility only started at schema 2 — schema 1 builds reject
-  /// anything but their own version — so this can never usefully be lower.
+  /// Schema 4 dropped required tables, so a schema-3 build cannot read a
+  /// schema-4 backup: it would fail structure validation on tables this build
+  /// no longer writes.
   ///
   /// Raise this to [AppDatabase.currentSchemaVersion] in any release whose
   /// schema change is NOT purely additive: a renamed or repurposed column, a
   /// new value in an existing column that older builds would misread, or a
   /// tightened constraint. Leaving it low in that case lets an older build
   /// silently import data it misunderstands.
-  static const minimumReadableSchemaVersion = 2;
+  static const minimumReadableSchemaVersion = 4;
 
   /// Classifies a backup from its manifest.
   ///

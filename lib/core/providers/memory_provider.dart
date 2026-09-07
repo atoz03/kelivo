@@ -1,68 +1,56 @@
 import 'package:flutter/foundation.dart';
-import '../database/business_preferences.dart';
-import '../models/assistant_memory.dart';
-import '../services/memory_store.dart';
 
+import '../services/memory/memory_file_store.dart';
+
+/// UI-facing view of the Markdown memory directory.
+///
+/// Holds only the index (file name + heading); bodies are read on demand so
+/// opening the settings page never loads every memory into RAM.
 class MemoryProvider extends ChangeNotifier {
-  MemoryProvider({required BusinessPreferences preferences})
-    : _store = MemoryStore(preferences);
+  MemoryProvider();
 
-  final MemoryStore _store;
-  List<AssistantMemory> _memories = <AssistantMemory>[];
-  bool _initialized = false;
-  Future<void>? _initializationFuture;
+  /// Injects a store rooted somewhere other than the app data directory.
+  MemoryProvider.withStore(this._store);
 
-  List<AssistantMemory> get memories => List.unmodifiable(_memories);
+  MemoryFileStore? _store;
+  List<MemoryFileSummary> _files = const <MemoryFileSummary>[];
+  bool _loaded = false;
+  Future<void>? _loading;
 
-  List<AssistantMemory> getForAssistant(String assistantId) =>
-      _memories.where((m) => m.assistantId == assistantId).toList();
+  List<MemoryFileSummary> get files => List.unmodifiable(_files);
+  bool get isLoaded => _loaded;
+
+  /// The backing store, opened on first use.
+  Future<MemoryFileStore> get store async =>
+      _store ??= await MemoryFileStore.open();
 
   Future<void> initialize() {
-    if (_initialized) return Future<void>.value();
-    return _initializationFuture ??= _initialize();
+    if (_loaded) return Future<void>.value();
+    return _loading ??= refresh().whenComplete(() => _loading = null);
   }
 
-  Future<void> _initialize() async {
+  Future<void> refresh() async {
     try {
-      await loadAll();
-      _initialized = true;
-    } finally {
-      _initializationFuture = null;
-    }
-  }
-
-  Future<void> loadAll() async {
-    try {
-      _memories = await _store.getAll();
-      notifyListeners();
+      _files = await (await store).list();
     } catch (e) {
-      debugPrint('Failed to load memories: $e');
-      _memories = <AssistantMemory>[];
-      notifyListeners();
+      debugPrint('MemoryProvider.refresh failed: $e');
+      _files = const <MemoryFileSummary>[];
     }
+    _loaded = true;
+    notifyListeners();
   }
 
-  Future<AssistantMemory> add({
-    required String assistantId,
-    required String content,
-  }) async {
-    final mem = await _store.add(assistantId: assistantId, content: content);
-    await loadAll();
-    return mem;
+  Future<String?> read(String name) async => (await store).read(name);
+
+  Future<String> write(String name, String content) async {
+    final stored = await (await store).write(name, content);
+    await refresh();
+    return stored;
   }
 
-  Future<AssistantMemory?> update({
-    required int id,
-    required String content,
-  }) async {
-    final mem = await _store.update(id: id, content: content);
-    await loadAll();
-    return mem;
-  }
-
-  Future<bool> delete({required int id}) async {
-    final ok = await _store.delete(id: id);
-    await loadAll();
-    return ok;
+  Future<bool> delete(String name) async {
+    final removed = await (await store).delete(name);
+    if (removed) await refresh();
+    return removed;
   }
 }

@@ -59,10 +59,7 @@ class _DesktopToolSchemasPaneState extends State<DesktopToolSchemasPane> {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final settings = context.watch<SettingsProvider>();
-    final catalog = BuiltInToolCatalog.entries(
-      lang: settings.resolvedMemoryPromptLang,
-      legacyMemoryMode: settings.legacyMemoryMode,
-    );
+    final catalog = BuiltInToolCatalog.entries();
     if (catalog.isEmpty) {
       return const SizedBox.shrink();
     }

@@ -10,7 +10,7 @@ class _DisplaySettingsBody extends StatelessWidget {
     return Container(
       alignment: Alignment.topCenter,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 22),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 960),
           child: Column(
@@ -887,8 +887,8 @@ class _AutoRetryRow extends StatelessWidget {
       label: l10n.settingsPageAutoRetry,
       trailing: _DesktopFontDropdownButton(
         display: enabled
-            ? l10n.iosBackgroundStatusOn
-            : l10n.iosBackgroundStatusOff,
+            ? l10n.androidBackgroundStatusOn
+            : l10n.androidBackgroundStatusOff,
         onTap: () => showDesktopAutoRetryDialog(context),
       ),
     );
@@ -3088,7 +3088,7 @@ class _ToggleRow extends StatelessWidget {
               ],
             ),
           ),
-          if (tip != null) MemoryTipIcon(message: tip!),
+          if (tip != null) SettingTipIcon(message: tip!),
           const SizedBox(width: 12),
           IosSwitch(value: value, onChanged: onChanged),
         ],

@@ -2,20 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:Kelivo/core/models/assistant.dart';
-import 'package:Kelivo/core/models/instruction_injection.dart';
 import 'package:Kelivo/core/models/quick_phrase.dart';
-import 'package:Kelivo/core/models/world_book.dart';
 import 'package:Kelivo/core/providers/assistant_provider.dart';
 import 'package:Kelivo/core/providers/backup_reminder_provider.dart';
-import 'package:Kelivo/core/providers/instruction_injection_group_provider.dart';
-import 'package:Kelivo/core/providers/instruction_injection_provider.dart';
 import 'package:Kelivo/core/providers/mcp_provider.dart';
 import 'package:Kelivo/core/providers/tag_provider.dart';
 import 'package:Kelivo/core/providers/user_provider.dart';
-import 'package:Kelivo/core/services/instruction_injection_store.dart';
-import 'package:Kelivo/core/services/memory_store.dart';
 import 'package:Kelivo/core/services/quick_phrase_store.dart';
-import 'package:Kelivo/core/services/world_book_store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -31,93 +24,22 @@ void main() {
       addTearDown(fixture.dispose);
 
       final first = await fixture.open();
-      final worldBooks = WorldBookStore(first.preferences);
-      final memories = MemoryStore(first.preferences);
       final phrases = QuickPhraseStore(first.preferences);
-      final injections = InstructionInjectionStore(first.preferences);
-
-      await worldBooks.save(const <WorldBook>[
-        WorldBook(id: 'book-b', name: 'B'),
-        WorldBook(id: 'book-a', name: 'A'),
-      ]);
-      await worldBooks.setActiveIds(const <String>[
-        'book-a',
-        'book-a',
-        'book-b',
-      ], assistantId: 'assistant-a');
-      await worldBooks.setCollapsed('book-b', true);
-
-      final firstMemory = await memories.add(
-        assistantId: 'assistant-a',
-        content: 'remember A',
-      );
-      await memories.add(assistantId: 'assistant-b', content: 'remember B');
 
       await phrases.save(const <QuickPhrase>[
         QuickPhrase(id: 'phrase-b', title: 'B', content: 'second'),
         QuickPhrase(id: 'phrase-a', title: 'A', content: 'first'),
       ]);
 
-      await injections.save(const <InstructionInjection>[
-        InstructionInjection(id: 'injection-b', title: 'B', prompt: 'second'),
-        InstructionInjection(id: 'injection-a', title: 'A', prompt: 'first'),
-      ]);
-      await injections.setActiveIds(const <String>[
-        'injection-a',
-      ], assistantId: 'assistant-a');
-
       await first.close();
 
       final reopened = await fixture.open();
-      final reopenedWorldBooks = WorldBookStore(reopened.preferences);
-      final reopenedMemories = MemoryStore(reopened.preferences);
       final reopenedPhrases = QuickPhraseStore(reopened.preferences);
-      final reopenedInjections = InstructionInjectionStore(
-        reopened.preferences,
-      );
 
-      expect(
-        (await reopenedWorldBooks.getAll()).map((book) => book.id),
-        <String>['book-b', 'book-a'],
-      );
-      expect(
-        await reopenedWorldBooks.getActiveIds(assistantId: 'assistant-a'),
-        <String>['book-a', 'book-b'],
-      );
-      expect(await reopenedWorldBooks.getCollapsedBooksMap(), <String, bool>{
-        'book-b': true,
-      });
-      expect(
-        await reopenedMemories.getForAssistant('assistant-a'),
-        hasLength(1),
-      );
-      expect(
-        (await reopenedMemories.getForAssistant('assistant-a')).single.id,
-        firstMemory.id,
-      );
       expect(
         (await reopenedPhrases.getAll()).map((phrase) => phrase.id),
         <String>['phrase-b', 'phrase-a'],
       );
-      expect(
-        (await reopenedInjections.getAll()).map((item) => item.id),
-        <String>['injection-b', 'injection-a'],
-      );
-      expect(
-        await reopenedInjections.getActiveIds(assistantId: 'assistant-a'),
-        <String>['injection-a'],
-      );
-      expect(
-        reopened.preferences.containsKey('instruction_injections_active_id_v1'),
-        isFalse,
-      );
-      expect(
-        reopened.preferences.containsKey(
-          'instruction_injections_active_ids_v1',
-        ),
-        isFalse,
-      );
-
       await reopened.close();
     },
   );
@@ -139,9 +61,6 @@ void main() {
     final assistants = AssistantProvider(preferences: first.preferences);
     final tags = TagProvider(preferences: first.preferences);
     final user = UserProvider(preferences: first.preferences);
-    final groups = InstructionInjectionGroupProvider(
-      preferences: first.preferences,
-    );
     final reminders = BackupReminderProvider(
       preferences: first.preferences,
       autoLoad: false,
@@ -149,13 +68,11 @@ void main() {
     addTearDown(assistants.dispose);
     addTearDown(tags.dispose);
     addTearDown(user.dispose);
-    addTearDown(groups.dispose);
     addTearDown(reminders.dispose);
 
     await Future.wait(<Future<void>>[
       assistants.loaded,
       _nextNotification(tags),
-      _nextNotification(groups),
     ]);
     await reminders.load(startTimer: false);
 
@@ -168,7 +85,6 @@ void main() {
     await tags.setCollapsed(tagId, true);
     await user.setName('Taylor');
     await user.setAvatarEmoji('🌿');
-    await groups.setCollapsed('Pinned', true);
     await reminders.saveSchedule(
       enabled: true,
       intervalDays: 14,
@@ -184,9 +100,6 @@ void main() {
     );
     final restoredTags = TagProvider(preferences: reopened.preferences);
     final restoredUser = UserProvider(preferences: reopened.preferences);
-    final restoredGroups = InstructionInjectionGroupProvider(
-      preferences: reopened.preferences,
-    );
     final restoredReminders = BackupReminderProvider(
       preferences: reopened.preferences,
       autoLoad: false,
@@ -194,14 +107,12 @@ void main() {
     addTearDown(restoredAssistants.dispose);
     addTearDown(restoredTags.dispose);
     addTearDown(restoredUser.dispose);
-    addTearDown(restoredGroups.dispose);
     addTearDown(restoredReminders.dispose);
 
     await Future.wait(<Future<void>>[
       restoredAssistants.loaded,
       _nextNotification(restoredTags),
       _nextNotification(restoredUser),
-      _nextNotification(restoredGroups),
     ]);
     await restoredReminders.load(startTimer: false);
 
@@ -213,42 +124,11 @@ void main() {
     expect(restoredUser.name, 'Taylor');
     expect(restoredUser.avatarType, 'emoji');
     expect(restoredUser.avatarValue, '🌿');
-    expect(restoredGroups.isCollapsed('Pinned'), isTrue);
     expect(restoredReminders.enabled, isTrue);
     expect(restoredReminders.intervalDays, 14);
     expect(restoredReminders.reminderMinutesOfDay, 21 * 60 + 15);
     expect(restoredReminders.enabledAt, DateTime(2026, 7, 18, 9));
 
-    await reopened.close();
-  });
-
-  test('concurrent instruction initialization seeds one default', () async {
-    final fixture = await BusinessPreferencesTestHarness.create();
-    addTearDown(fixture.dispose);
-    final session = await fixture.open();
-    final provider = InstructionInjectionProvider(
-      preferences: session.preferences,
-    );
-    addTearDown(provider.dispose);
-
-    await Future.wait(<Future<void>>[
-      provider.initialize(),
-      provider.initialize(),
-      provider.initialize(),
-    ]);
-
-    expect(provider.items, hasLength(1));
-    expect(provider.items.single.prompt, isNotEmpty);
-    await session.close();
-
-    final reopened = await fixture.open();
-    final restored = InstructionInjectionProvider(
-      preferences: reopened.preferences,
-    );
-    addTearDown(restored.dispose);
-    await restored.initialize();
-    expect(restored.items, hasLength(1));
-    expect(restored.items.single.id, provider.items.single.id);
     await reopened.close();
   });
 

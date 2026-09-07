@@ -1558,10 +1558,7 @@ class _MessageListViewState extends State<MessageListView> {
     return shift;
   }
 
-  bool get _isDesktopPlatform =>
-      defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.linux;
+  bool get _isDesktopPlatform => defaultTargetPlatform == TargetPlatform.macOS;
 
   ScrollViewKeyboardDismissBehavior get _keyboardDismissBehavior {
     if (_isDesktopPlatform) {

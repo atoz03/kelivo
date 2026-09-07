@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:Kelivo/theme/app_font_weights.dart';
-import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, TargetPlatform;
 import 'desktop_nav_rail.dart';
 import 'desktop_chat_page.dart';
-import 'window_title_bar.dart';
 import 'desktop_settings_page.dart';
 import 'desktop_translate_page.dart';
 import '../features/settings/pages/storage_space_page.dart';
-import '../l10n/app_localizations.dart';
 import 'package:window_manager/window_manager.dart';
 import 'dart:async';
 import 'hotkeys/hotkey_event_bus.dart';
@@ -160,8 +155,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     const minWidth = 960.0;
     const minHeight = 640.0;
 
-    final isWindows = defaultTargetPlatform == TargetPlatform.windows;
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
@@ -237,29 +230,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
           ],
         );
 
-        // Wrap with Windows custom title bar when on Windows platform.
-        final content = isWindows
-            ? Column(
-                children: [
-                  WindowTitleBar(
-                    leftChildren: [
-                      SizedBox(width: DesktopNavRail.width / 2 - 8 - 6 - 12),
-                      const _TitleBarLeading(),
-                    ],
-                  ),
-                  Expanded(
-                    child: Stack(
-                      children: [
-                        body,
-                        // Inject the lazily-built settings page into the IndexedStack when needed
-                        // to pass initialProviderKey without dropping chat state.
-                        if (_tabIndex == 3) const SizedBox.shrink(),
-                      ],
-                    ),
-                  ),
-                ],
-              )
-            : body;
+        final content = body;
 
         // if (!needsWidthPad && !needsHeightPad) return content;
 
@@ -297,37 +268,3 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 }
 
 // No extra router/shim; we import DesktopSettingsPage directly above.
-
-class _TitleBarLeading extends StatelessWidget {
-  const _TitleBarLeading();
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // App icon
-        Image.asset(
-          'assets/icons/kelivo.png',
-          width: 16,
-          height: 16,
-          filterQuality: FilterQuality.medium,
-        ),
-        const SizedBox(width: 8),
-        // App name
-        Text(
-          l10n.aboutPageAppName,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: AppFontWeights.semibold,
-            color: cs.onSurface.withValues(alpha: 0.8),
-            // Avoid accidental underline when not under a Material ancestor in edge cases
-            decoration: TextDecoration.none,
-          ),
-        ),
-      ],
-    );
-  }
-}

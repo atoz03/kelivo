@@ -1190,7 +1190,6 @@ void main() {
       updatedAt: baseTime.add(const Duration(hours: 1)),
       truncateIndex: -7,
       lastSummarizedMessageCount: -3,
-      lastMemoryExtractedOrder: -9,
     );
     final messages = [
       // Device clock rolled back mid-generation: negative duration and a
@@ -1272,7 +1271,6 @@ void main() {
     expect(migratedConversation, isNotNull);
     expect(migratedConversation!.truncateIndex, -1);
     expect(migratedConversation.lastSummarizedMessageCount, 0);
-    expect(migratedConversation.lastMemoryExtractedOrder, -1);
   });
 
   test(

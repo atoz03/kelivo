@@ -8,7 +8,6 @@ import 'package:Kelivo/core/database/business_data.dart';
 import 'package:Kelivo/core/database/business_preferences.dart';
 import 'package:Kelivo/core/database/business_repository.dart';
 import 'package:Kelivo/core/database/business_settings_router.dart';
-import 'package:Kelivo/core/services/memory_store.dart';
 
 void main() {
   late AppDatabase database;
@@ -260,54 +259,6 @@ void main() {
     expect(reloadedItems[0]['id'], originalIdByContent['two']);
     expect(reloadedItems[1]['id'], originalIdByContent['one']);
   });
-
-  test(
-    'id-less memories keep unique CRUD identities without payload ids',
-    () async {
-      await repository.replaceSnapshot(
-        BusinessSettingsRouter.normalizeAndRoute({
-          'assistant_memories_v1': jsonEncode([
-            {'assistantId': 'assistant-1', 'content': 'first'},
-            {'assistantId': 'assistant-1', 'content': 'second'},
-          ]),
-        }),
-      );
-      final originalFirstRowId = (await repository.readEntities(
-        BusinessEntityKind.assistantMemory,
-      )).first.id;
-      final preferences = BusinessPreferences(repository);
-      final store = MemoryStore(preferences);
-      final initial = await store.getAll();
-      expect(initial.map((memory) => memory.id), everyElement(lessThan(0)));
-      expect(initial.map((memory) => memory.id).toSet(), hasLength(2));
-
-      expect(
-        await store.update(id: initial.first.id, content: 'first updated'),
-        isNotNull,
-      );
-      expect(await store.delete(id: initial.last.id), isTrue);
-      final added = await store.add(
-        assistantId: 'assistant-1',
-        content: 'third',
-      );
-      expect(added.id, greaterThan(0));
-
-      final persisted = await repository.readEntities(
-        BusinessEntityKind.assistantMemory,
-      );
-      expect(persisted, hasLength(2));
-      expect(persisted.first.id, originalFirstRowId);
-      final payloads = persisted
-          .map((row) => jsonDecode(row.payload) as Map<String, dynamic>)
-          .toList();
-      expect(payloads.first, {
-        'assistantId': 'assistant-1',
-        'content': 'first updated',
-      });
-      expect(payloads.last['id'], added.id);
-      expect(payloads.last['content'], 'third');
-    },
-  );
 
   test('flushPendingWrites drains the serialized write queue', () async {
     final preferences = BusinessPreferences(repository);

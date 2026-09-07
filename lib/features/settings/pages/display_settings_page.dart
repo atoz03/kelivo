@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:io' show Platform;
 import '../../../core/services/android_background.dart';
-import '../../../core/services/ios_background_generation.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../icons/lucide_adapter.dart';
 import 'package:syncfusion_flutter_sliders/sliders.dart';
@@ -16,7 +15,7 @@ import 'theme_settings_page.dart';
 import '../../../theme/palettes.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ios_switch.dart';
-import '../widgets/memory_ui.dart';
+import '../../../shared/widgets/setting_tip_icon.dart';
 import '../../../core/services/haptics.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:Kelivo/theme/app_font_weights.dart';
@@ -227,33 +226,6 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                   onTap: () => _showAndroidBackgroundChatSheet(context),
                 ),
               if (Platform.isAndroid) _iosDivider(context),
-              if (Platform.isIOS)
-                _iosNavRow(
-                  context,
-                  icon: Lucide.Activity,
-                  label: l10n.displaySettingsPageIosBackgroundChatTitle,
-                  detailBuilder: (ctx) {
-                    final sp = ctx.watch<SettingsProvider>();
-                    return Text(
-                      sp.iosBackgroundGenerationEnabled
-                          ? l10n.iosBackgroundStatusOn
-                          : l10n.iosBackgroundStatusOff,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      softWrap: false,
-                      style: TextStyle(
-                        color: cs.onSurface.withValues(alpha: 0.6),
-                        fontSize: 13,
-                      ),
-                    );
-                  },
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const IosBackgroundSettingsPage(),
-                    ),
-                  ),
-                ),
-              if (Platform.isIOS) _iosDivider(context),
               _iosNavRow(
                 context,
                 icon: Lucide.Type,
@@ -1191,69 +1163,6 @@ Widget _iosDivider(BuildContext context) {
   );
 }
 
-Widget _noticeCard(
-  BuildContext context, {
-  required String title,
-  required String body,
-}) {
-  final cs = Theme.of(context).colorScheme;
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-  return Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: cs.primaryContainer.withValues(alpha: isDark ? 0.20 : 0.35),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: cs.primary.withValues(alpha: 0.10), width: 0.6),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(Lucide.BadgeInfo, size: 18, color: cs.primary),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: cs.onSurface,
-                  fontSize: 13,
-                  fontWeight: AppFontWeights.semibold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                body,
-                style: TextStyle(
-                  color: cs.onSurface.withValues(alpha: 0.72),
-                  fontSize: 12,
-                  height: 1.35,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _plainFootnote(BuildContext context, String text) {
-  final cs = Theme.of(context).colorScheme;
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 12),
-    child: Text(
-      text,
-      style: TextStyle(
-        color: cs.onSurface.withValues(alpha: 0.58),
-        fontSize: 12,
-        height: 1.35,
-      ),
-    ),
-  );
-}
-
 class _AnimatedPressColor extends StatelessWidget {
   const _AnimatedPressColor({
     required this.pressed,
@@ -1505,7 +1414,7 @@ Widget _iosSwitchRow(
             },
           ),
         ),
-        if (tip != null) MemoryTipIcon(message: tip),
+        if (tip != null) SettingTipIcon(message: tip),
         const SizedBox(width: 12),
         IosSwitch(value: value, onChanged: onChanged),
       ],
@@ -1847,7 +1756,7 @@ class RenderingSettingsPage extends StatelessWidget {
                 _iosDivider(context),
                 const _AutoCollapseCodeBlockLinesRow(),
               ],
-              if (Platform.isAndroid || Platform.isIOS) ...[
+              if (Platform.isAndroid) ...[
                 _iosDivider(context),
                 _iosSwitchRow(
                   context,
@@ -2120,7 +2029,7 @@ class BehaviorStartupSettingsPage extends StatelessWidget {
                 onChanged: (v) =>
                     context.read<SettingsProvider>().setShowAppUpdates(v),
               ),
-              if (Platform.isAndroid || Platform.isIOS) ...[
+              if (Platform.isAndroid) ...[
                 _iosDivider(context),
                 _iosSwitchRow(
                   context,
@@ -2377,170 +2286,6 @@ class _LongPasteAsFileThresholdRowState
               color: cs.onSurface.withValues(alpha: 0.6),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class IosBackgroundSettingsPage extends StatefulWidget {
-  const IosBackgroundSettingsPage({super.key});
-
-  @override
-  State<IosBackgroundSettingsPage> createState() =>
-      _IosBackgroundSettingsPageState();
-}
-
-class _IosBackgroundSettingsPageState extends State<IosBackgroundSettingsPage> {
-  late Future<IosBackgroundGenerationStatus> _statusFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _statusFuture = IosBackgroundGenerationService.instance.getStatus();
-  }
-
-  void _refreshStatus() {
-    setState(() {
-      _statusFuture = IosBackgroundGenerationService.instance.getStatus();
-    });
-  }
-
-  Future<void> _setBackgroundNotificationsEnabled(bool enabled) async {
-    final settings = context.read<SettingsProvider>();
-    if (!enabled) {
-      await settings.setIosBackgroundNotificationsEnabled(false);
-      _refreshStatus();
-      return;
-    }
-
-    final granted = await IosBackgroundGenerationService.instance
-        .requestNotificationAuthorization();
-    if (!mounted) return;
-    await settings.setIosBackgroundNotificationsEnabled(granted);
-    _refreshStatus();
-  }
-
-  Future<void> _openAppSettings() async {
-    await IosBackgroundGenerationService.instance.openAppSettings();
-    if (!mounted) return;
-    _refreshStatus();
-  }
-
-  Future<void> _openNotificationSettings() async {
-    await IosBackgroundGenerationService.instance.openNotificationSettings();
-    if (!mounted) return;
-    _refreshStatus();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final l10n = AppLocalizations.of(context)!;
-    final sp = context.watch<SettingsProvider>();
-
-    return Scaffold(
-      appBar: AppBar(
-        leading: Tooltip(
-          message: l10n.settingsPageBackButton,
-          child: _TactileIconButton(
-            icon: Lucide.ArrowLeft,
-            color: cs.onSurface,
-            size: 22,
-            onTap: () => Navigator.of(context).maybePop(),
-          ),
-        ),
-        title: Text(l10n.iosBackgroundSettingsPageTitle),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        children: [
-          _noticeCard(
-            context,
-            title: l10n.iosBackgroundLimitNoticeTitle,
-            body: l10n.iosBackgroundLimitNoticeBody,
-          ),
-          const SizedBox(height: 12),
-          SectionCard(
-            children: [
-              _iosSwitchRow(
-                context,
-                icon: Lucide.Activity,
-                label: l10n.iosBackgroundGenerationEnableTitle,
-                subtitle: l10n.iosBackgroundGenerationEnableSubtitle,
-                value: sp.iosBackgroundGenerationEnabled,
-                onChanged: (v) => context
-                    .read<SettingsProvider>()
-                    .setIosBackgroundGenerationEnabled(v),
-              ),
-              _iosDivider(context),
-              _iosSwitchRow(
-                context,
-                icon: Lucide.RefreshCw,
-                label: l10n.iosBackgroundTaskRefreshTitle,
-                subtitle: l10n.iosBackgroundTaskRefreshSubtitle,
-                value: sp.iosBackgroundTaskRefreshEnabled,
-                onChanged: (v) => context
-                    .read<SettingsProvider>()
-                    .setIosBackgroundTaskRefreshEnabled(v),
-              ),
-              _iosDivider(context),
-              _iosSwitchRow(
-                context,
-                icon: Lucide.Timer,
-                label: l10n.iosLiveActivityTitle,
-                subtitle: l10n.iosLiveActivitySubtitle,
-                value: sp.iosLiveActivityEnabled,
-                onChanged: (v) => context
-                    .read<SettingsProvider>()
-                    .setIosLiveActivityEnabled(v),
-              ),
-              _iosDivider(context),
-              _iosSwitchRow(
-                context,
-                icon: Lucide.MessageCircle,
-                label: l10n.iosBackgroundNotificationsTitle,
-                subtitle: l10n.iosBackgroundNotificationsSubtitle,
-                value: sp.iosBackgroundNotificationsEnabled,
-                onChanged: _setBackgroundNotificationsEnabled,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          FutureBuilder<IosBackgroundGenerationStatus>(
-            future: _statusFuture,
-            builder: (context, snapshot) {
-              final status = snapshot.data;
-              return SectionCard(
-                children: [
-                  _iosNavRow(
-                    context,
-                    icon: Lucide.BadgeInfo,
-                    label: l10n.iosBackgroundNativeStatusTitle,
-                    detailText: status == null
-                        ? l10n.iosBackgroundNativeStatusUnavailable
-                        : status.liveActivitiesEnabled
-                        ? l10n.iosBackgroundLiveActivityAvailable
-                        : l10n.iosBackgroundLiveActivityUnavailable,
-                    onTap: _openAppSettings,
-                  ),
-                  _iosDivider(context),
-                  _iosNavRow(
-                    context,
-                    icon: Lucide.MessageCircle,
-                    label: status?.notificationsAuthorized == true
-                        ? l10n.iosBackgroundNotificationsAuthorized
-                        : l10n.iosBackgroundNotificationsNotAuthorized,
-                    onTap: _openNotificationSettings,
-                  ),
-                ],
-              );
-            },
-          ),
-          if (sp.iosLiveActivityEnabled) ...[
-            const SizedBox(height: 12),
-            _plainFootnote(context, l10n.iosBackgroundUnsupportedLiveActivity),
-          ],
         ],
       ),
     );

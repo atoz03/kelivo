@@ -55,7 +55,6 @@ final class RestoreLeaseLock {
   static bool _isUnavailable(FileSystemException error) {
     final code = error.osError?.errorCode;
     if (code == null) return false;
-    if (Platform.isWindows) return code == 32 || code == 33;
     return code == 11 || code == 13 || code == 35;
   }
 }

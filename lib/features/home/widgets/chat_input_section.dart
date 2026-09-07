@@ -8,8 +8,6 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/assistant_provider.dart';
 import '../../../core/providers/mcp_provider.dart';
 import '../../../core/providers/quick_phrase_provider.dart';
-import '../../../core/providers/instruction_injection_provider.dart';
-import '../../../core/providers/world_book_provider.dart';
 import 'chat_input_bar.dart';
 import 'model_icon.dart';
 
@@ -133,7 +131,6 @@ class ChatInputSection extends StatelessWidget {
     final asr = context.watch<AsrProvider>();
     final ap = context.watch<AssistantProvider>();
     final a = ap.currentAssistant;
-    final assistantId = a?.id;
 
     final pk = chatModelProviderKey;
     final mid = chatModelId;
@@ -146,9 +143,6 @@ class ChatInputSection extends StatelessWidget {
     }
 
     final isDesktop = _isDesktopPlatform(context);
-    final hasWorldBooks =
-        isTablet && context.watch<WorldBookProvider>().books.isNotEmpty;
-
     return ChatInputBar(
       key: inputBarKey,
       chatModelProviderKey: pk,
@@ -213,21 +207,6 @@ class ChatInputSection extends StatelessWidget {
       onPickCamera: isTablet ? (isDesktop ? null : onPickCamera) : null,
       onPickPhotos: isTablet ? (isDesktop ? null : onPickPhotos) : null,
       onUploadFiles: isTablet ? onUploadFiles : null,
-      onToggleLearningMode: isTablet ? onToggleLearningMode : null,
-      onOpenWorldBook: hasWorldBooks ? onOpenWorldBook : null,
-      onLongPressLearning: isTablet ? onLongPressLearning : null,
-      learningModeActive: isTablet
-          ? context
-                .watch<InstructionInjectionProvider>()
-                .activeIdsFor(assistantId)
-                .isNotEmpty
-          : false,
-      worldBookActive: isTablet
-          ? context
-                .watch<WorldBookProvider>()
-                .activeBookIdsFor(assistantId)
-                .isNotEmpty
-          : false,
       showMoreButton: !isTablet,
       onClearContext: isTablet ? onClearContext : null,
       onCompressContext: isTablet ? onCompressContext : null,
@@ -239,9 +218,7 @@ class ChatInputSection extends StatelessWidget {
 
   bool _isDesktopPlatform(BuildContext context) {
     final platform = Theme.of(context).platform;
-    return platform == TargetPlatform.macOS ||
-        platform == TargetPlatform.windows ||
-        platform == TargetPlatform.linux;
+    return platform == TargetPlatform.macOS;
   }
 
   void _enforceModelCapabilities(

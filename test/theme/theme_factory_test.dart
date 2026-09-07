@@ -16,16 +16,10 @@ void main() {
       expect(getPlatformFontFallback(), kAndroidFontFamilyFallback);
     });
 
-    test('keeps CJK fallback on iOS', () {
-      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    test('keeps the CJK fallback on macOS', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
 
       expect(getPlatformFontFallback(), kDefaultFontFamilyFallback);
-    });
-
-    test('keeps Windows fallback on Windows', () {
-      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
-
-      expect(getPlatformFontFallback(), kWindowsFontFamilyFallback);
     });
   });
 

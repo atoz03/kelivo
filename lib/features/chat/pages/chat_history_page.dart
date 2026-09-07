@@ -254,8 +254,7 @@ class _ChatHistoryPageState extends State<ChatHistoryPage>
     );
 
     final platform = Theme.of(context).platform;
-    final isMobilePlatform =
-        platform == TargetPlatform.android || platform == TargetPlatform.iOS;
+    final isMobilePlatform = platform == TargetPlatform.android;
     if (!isMobilePlatform) return tile;
 
     final l10n = AppLocalizations.of(context)!;

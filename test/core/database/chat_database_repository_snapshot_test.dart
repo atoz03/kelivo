@@ -407,31 +407,6 @@ CREATE TABLE message_asset_rows (
       },
     );
 
-    test('rejects a same-version database missing the memory index', () async {
-      await sourceRepository.close();
-      sourceClosed = true;
-      final raw = sqlite.sqlite3.open(sourceFile.path);
-      try {
-        raw.execute('DROP INDEX idx_assistant_memories_assistant;');
-      } finally {
-        raw.close();
-      }
-
-      expect(
-        () => ChatDatabaseRepository.inspectInstalledDatabase(
-          sourceFile,
-          validateContents: true,
-        ),
-        throwsA(
-          isA<StateError>().having(
-            (error) => error.message,
-            'message',
-            'index_schema:idx_assistant_memories_assistant',
-          ),
-        ),
-      );
-    });
-
     test('rejects a same-version database missing the asset index', () async {
       await sourceRepository.close();
       sourceClosed = true;

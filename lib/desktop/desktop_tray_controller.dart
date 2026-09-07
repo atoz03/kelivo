@@ -30,10 +30,7 @@ class DesktopTrayController with TrayListener, WindowListener {
     required bool minimizeToTrayOnClose,
   }) async {
     if (kIsWeb) return;
-    final isDesktop =
-        defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.linux;
+    final isDesktop = defaultTargetPlatform == TargetPlatform.macOS;
     if (!isDesktop) return;
     _isDesktop = true;
 
@@ -83,28 +80,14 @@ class DesktopTrayController with TrayListener, WindowListener {
   Future<void> _ensureTrayIconAndMenu(AppLocalizations l10n) async {
     if (!_isDesktop) return;
 
-    // Use platform-specific tray icons (mirrors Gopeed's approach):
-    // - Windows: multi-size ICO for crisp scaling
-    // - macOS: template PNG so the system can adapt to light/dark menu bar
-    // - Linux/others: regular PNG asset
-    final platform = defaultTargetPlatform;
+    // A template PNG lets the system adapt the icon to a light/dark menu bar.
     try {
-      if (platform == TargetPlatform.windows) {
-        await trayManager.setIcon('assets/app_icon.ico');
-      } else if (platform == TargetPlatform.macOS) {
-        await trayManager.setIcon('assets/icon_mac.png', isTemplate: true);
-      } else {
-        await trayManager.setIcon('assets/icons/kelivo.png');
-      }
+      await trayManager.setIcon('assets/icon_mac.png', isTemplate: true);
     } catch (_) {}
 
-    // Some Linux environments do not support tooltip; keep the call
-    // consistent with Gopeed and skip it there.
-    if (platform != TargetPlatform.linux) {
-      try {
-        await trayManager.setToolTip('Kelivo');
-      } catch (_) {}
-    }
+    try {
+      await trayManager.setToolTip('Kelivo');
+    } catch (_) {}
     try {
       final menu = Menu(
         items: [
@@ -146,22 +129,7 @@ class DesktopTrayController with TrayListener, WindowListener {
           onTimeout: () {},
         );
       } catch (_) {}
-      // On Windows we may have `preventClose` enabled to support
-      // "close to tray". Temporarily disable it and send a normal
-      // close so the window can exit immediately without being
-      // intercepted by the minimize‑to‑tray logic.
-      if (defaultTargetPlatform == TargetPlatform.windows) {
-        try {
-          await windowManager.setPreventClose(false);
-        } catch (_) {}
-        try {
-          await windowManager.close();
-          return;
-        } catch (_) {}
-      }
-
-      // Other desktop platforms (and Windows fallback): destroy the
-      // window so the process exits cleanly.
+      // Destroy the window so the process exits cleanly.
       await windowManager.destroy();
     } catch (_) {}
   }
@@ -185,13 +153,6 @@ class DesktopTrayController with TrayListener, WindowListener {
     }
     _contextMenuOpen = true;
     try {
-      // Windows 环境下建议在弹出菜单前尝试聚焦窗口，
-      // 以避免部分环境中菜单不会在点击其他地方时自动关闭。
-      if (defaultTargetPlatform == TargetPlatform.windows) {
-        try {
-          await windowManager.focus();
-        } catch (_) {}
-      }
       await trayManager.popUpContextMenu();
     } catch (_) {}
     // 无论是点击菜单项还是点击其他地方关闭菜单，

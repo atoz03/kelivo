@@ -17,7 +17,6 @@ import '../../../shared/widgets/ios_switch.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../utils/app_directories.dart';
 import '../../../core/providers/settings_provider.dart';
-import '../../../core/models/world_book.dart';
 import '../../../core/services/logging/context_log_models.dart';
 import '../../../core/services/logging/context_log_tail_reader.dart';
 import '../../../core/services/logging/log_payload_elider.dart';
@@ -1378,27 +1377,11 @@ class _ContextMessageGroup extends StatelessWidget {
   }
 }
 
-/// Turn raw segment meta (world book position, snapshot kind) into readable text.
+/// Turn raw segment meta (snapshot kind) into readable text.
 String _contextSegmentMetaLabel(AppLocalizations l10n, ContextSegment segment) {
   final meta = segment.meta;
   if (meta == null) return '';
   final bits = <String>[];
-  final position = (meta['position'] ?? '').toString().trim();
-  if (position.isNotEmpty) {
-    final parsed = WorldBookInjectionPositionJson.fromJson(position);
-    bits.add(switch (parsed) {
-      WorldBookInjectionPosition.beforeSystemPrompt =>
-        l10n.worldBookInjectionPositionBeforeSystemPrompt,
-      WorldBookInjectionPosition.afterSystemPrompt =>
-        l10n.worldBookInjectionPositionAfterSystemPrompt,
-      WorldBookInjectionPosition.topOfChat =>
-        l10n.worldBookInjectionPositionTopOfChat,
-      WorldBookInjectionPosition.bottomOfChat =>
-        l10n.worldBookInjectionPositionBottomOfChat,
-      WorldBookInjectionPosition.atDepth =>
-        l10n.worldBookInjectionPositionAtDepth,
-    });
-  }
   final kind = (meta['kind'] ?? '').toString().trim();
   if (kind == 'full') {
     bits.add(l10n.contextLogKindFull);
@@ -2006,17 +1989,11 @@ String _trimSurroundingBlankLines(String text) {
 
 Color _contextSourceColor(BuildContext context, ContextSource source) {
   final cs = Theme.of(context).colorScheme;
-  final colors = context.appColors;
   switch (source) {
     case ContextSource.systemPrompt:
       return cs.primary;
-    case ContextSource.memoryRules:
-    case ContextSource.memorySnapshot:
+    case ContextSource.memory:
       return cs.tertiary;
-    case ContextSource.worldBook:
-      return colors.success;
-    case ContextSource.instructionInjection:
-      return colors.warning;
     case ContextSource.searchPrompt:
       return cs.secondary;
     case ContextSource.chatHistory:
@@ -2031,16 +2008,10 @@ String _contextSourceLabel(AppLocalizations l10n, ContextSource source) {
   switch (source) {
     case ContextSource.systemPrompt:
       return l10n.contextLogSourceSystemPrompt;
-    case ContextSource.memoryRules:
-      return l10n.contextLogSourceMemoryRules;
+    case ContextSource.memory:
+      return l10n.contextLogSourceMemory;
     case ContextSource.searchPrompt:
       return l10n.contextLogSourceSearchPrompt;
-    case ContextSource.instructionInjection:
-      return l10n.contextLogSourceInstructionInjection;
-    case ContextSource.worldBook:
-      return l10n.contextLogSourceWorldBook;
-    case ContextSource.memorySnapshot:
-      return l10n.contextLogSourceMemorySnapshot;
     case ContextSource.chatHistory:
       return l10n.contextLogSourceChatHistory;
     case ContextSource.toolCall:

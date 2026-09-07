@@ -145,28 +145,6 @@ final class BusinessKeyRegistry {
     'mobile_assistant_edit_tab_order_v1',
     'mobile_assistant_edit_tab_hidden_v1',
     'mobile_assistant_detail_outline_enabled_v1',
-    'memory_model_v1',
-    'memory_model_thinking_enabled_v1',
-    'memory_prompt_lang_v1',
-    'memory_trace_enabled_v1',
-    'memory_legacy_mode_v1',
-    'memory_legacy_prompt_zh_v1',
-    'memory_legacy_prompt_en_v1',
-    'memory_rules_prompt_zh_v1',
-    'memory_rules_prompt_en_v1',
-    'memory_gate_prompt_zh_v1',
-    'memory_gate_prompt_en_v1',
-    'memory_extract_prompt_zh_v1',
-    'memory_extract_prompt_en_v1',
-    'memory_smart_add_prompt_zh_v1',
-    'memory_smart_add_prompt_en_v1',
-    'memory_smart_add_batch_prompt_zh_v1',
-    'memory_smart_add_batch_prompt_en_v1',
-    'memory_profile_distill_prompt_zh_v1',
-    'memory_profile_distill_prompt_en_v1',
-    'memory_migrate_prompt_zh_v1',
-    'memory_migrate_prompt_en_v1',
-    'memory_migration_batch_size_v1',
     'chat_bubble_style_overrides_v1',
     'chat_bubble_style_overrides_user_v1',
     'tool_schema_overrides_v1',
@@ -318,9 +296,6 @@ final class BusinessSettingsRouter {
       if (kind == BusinessEntityKind.provider) continue;
       final rows = List<BusinessEntityValue>.of(snapshot.entities[kind]!)
         ..sort(_compareRows);
-      final projectedMemoryIds = kind == BusinessEntityKind.assistantMemory
-          ? _projectMemoryIds(rows)
-          : const <String, int>{};
       result[kind.sourceKey] = jsonEncode([
         for (final row in rows)
           () {
@@ -331,9 +306,7 @@ final class BusinessSettingsRouter {
             );
             final rawId = payload['id'];
             if (rawId == null || rawId.toString().trim().isEmpty) {
-              payload['id'] = kind == BusinessEntityKind.assistantMemory
-                  ? projectedMemoryIds[row.id]!
-                  : row.id;
+              payload['id'] = row.id;
             }
             return payload;
           }(),
@@ -449,19 +422,10 @@ final class BusinessSettingsRouter {
     final id = hasPayloadId
         ? rawId.toString()
         : rowId ?? _stableGeneratedId(kind.sourceKey, index, payload);
-    String? assistantId;
-    if (kind == BusinessEntityKind.assistantMemory) {
-      final rawAssistantId = payload['assistantId'];
-      if (rawAssistantId is! String || rawAssistantId.trim().isEmpty) {
-        throw FormatException(kind.sourceKey);
-      }
-      assistantId = rawAssistantId;
-    }
     return BusinessEntityValue(
       id: id,
       sortOrder: index,
       payload: jsonEncode(payload),
-      assistantId: assistantId,
     );
   }
 
@@ -485,8 +449,6 @@ final class BusinessSettingsRouter {
             'systemPrompt',
             'messageTemplate',
             'background',
-            'memorySmartAddMode',
-            'memoryWriteScope',
           },
           booleans: const {
             'useAssistantAvatar',
@@ -495,11 +457,6 @@ final class BusinessSettingsRouter {
             'streamOutput',
             'searchEnabled',
             'enableMemory',
-            // Read as a fallback for allowPastConversationRecall in old backups.
-            'enableRecentChatsReference',
-            'autoOrganizeMemory',
-            'allowPastConversationRecall',
-            'generateConversationSummary',
             'appendCurrentTimeToUserMessage',
           },
           numbers: const {
@@ -508,8 +465,6 @@ final class BusinessSettingsRouter {
             'contextMessageSize',
             'thinkingBudget',
             'maxTokens',
-            'recentChatsSummaryMessageCount',
-            'memoryOrganizeEveryNTurns',
           },
           lists: const {
             'customHeaders',
@@ -594,19 +549,6 @@ final class BusinessSettingsRouter {
           );
         }
         return;
-      case BusinessEntityKind.worldBook:
-        _validateKnownFields(
-          kind,
-          payload,
-          strings: const {'id', 'name', 'description'},
-          booleans: const {'enabled'},
-          lists: const {'entries'},
-        );
-        _validateWorldBookChildren(kind, payload);
-        return;
-      case BusinessEntityKind.assistantMemory:
-        _validateKnownFields(kind, payload, numbers: const {'id'});
-        return;
       case BusinessEntityKind.quickPhrase:
         _validateKnownFields(
           kind,
@@ -620,89 +562,10 @@ final class BusinessSettingsRouter {
         return;
       case BusinessEntityKind.ttsService:
         return;
-      case BusinessEntityKind.instructionInjection:
-        _validateKnownFields(
-          kind,
-          payload,
-          strings: const {'id', 'title', 'prompt', 'group'},
-        );
-        return;
       case BusinessEntityKind.assistantTag:
-        return;
-      case BusinessEntityKind.memoryEntry:
-        _validateKnownFields(
-          kind,
-          payload,
-          requiredStrings: const {'id', 'scope', 'type', 'content'},
-          strings: const {'status', 'source', 'assistantId'},
-          numbers: const {'createdAt', 'updatedAt'},
-          stringLists: const {'relatedIds', 'migrationIds'},
-        );
-        final scope = payload['scope'] as String;
-        if (scope != 'global' && scope != 'assistant') {
-          throw FormatException(kind.sourceKey);
-        }
-        final type = payload['type'] as String;
-        if (type != 'identity' &&
-            type != 'workflow' &&
-            type != 'voice' &&
-            type != 'instruction') {
-          throw FormatException(kind.sourceKey);
-        }
-        final status = payload['status'];
-        if (status != null && status != 'active' && status != 'archived') {
-          throw FormatException(kind.sourceKey);
-        }
-        final source = payload['source'];
-        if (source != null &&
-            source != 'manual' &&
-            source != 'tool' &&
-            source != 'extracted' &&
-            source != 'distilled') {
-          throw FormatException(kind.sourceKey);
-        }
-        final assistantId = payload['assistantId'];
-        if (scope == 'global') {
-          if (assistantId != null) {
-            throw FormatException(kind.sourceKey);
-          }
-        } else if (assistantId is! String || assistantId.trim().isEmpty) {
-          throw FormatException(kind.sourceKey);
-        }
-        if (payload['createdAt'] is! num || payload['updatedAt'] is! num) {
-          throw FormatException(kind.sourceKey);
-        }
-        final content = payload['content'] as String;
-        if (content.trim().isEmpty) {
-          throw FormatException(kind.sourceKey);
-        }
-        return;
-      case BusinessEntityKind.userProfileField:
-        _validateKnownFields(
-          kind,
-          payload,
-          requiredStrings: const {'id', 'value'},
-          numbers: const {'updatedAt'},
-        );
-        final id = payload['id'] as String;
-        if (!_userProfileFieldIdPattern.hasMatch(id)) {
-          throw FormatException(kind.sourceKey);
-        }
-        final value = payload['value'] as String;
-        if (value.trim().isEmpty) {
-          throw FormatException(kind.sourceKey);
-        }
-        if (payload['updatedAt'] is! num) {
-          throw FormatException(kind.sourceKey);
-        }
         return;
     }
   }
-
-  static final _userProfileFieldIdPattern = RegExp(
-    r'^(preferred_name|gender|pronouns|preferred_language|timezone|'
-    r'occupation|location|custom\.[A-Za-z0-9_\-]{1,32})$',
-  );
 
   static void _validateKnownFields(
     BusinessEntityKind kind,
@@ -881,27 +744,6 @@ final class BusinessSettingsRouter {
           'authorizationServer',
           'registrationSource',
         },
-      );
-    }
-  }
-
-  static void _validateWorldBookChildren(
-    BusinessEntityKind kind,
-    Map<String, Object?> payload,
-  ) {
-    for (final entry in _mappedObjects(payload['entries'])) {
-      _validateKnownFields(
-        kind,
-        entry,
-        strings: const {'id', 'name', 'content'},
-        booleans: const {
-          'enabled',
-          'useRegex',
-          'caseSensitive',
-          'constantActive',
-        },
-        integers: const {'priority', 'injectDepth', 'scanDepth'},
-        lists: const {'keywords'},
       );
     }
   }
@@ -1233,38 +1075,6 @@ final class BusinessSettingsRouter {
       normalized[entry.key.toString()] = override;
     }
     provider['modelOverrides'] = normalized;
-  }
-
-  static Map<String, int> _projectMemoryIds(List<BusinessEntityValue> rows) {
-    final used = <int>{};
-    final missing = <BusinessEntityValue>[];
-    for (final row in rows) {
-      final payload =
-          _decodePayload(
-                row.payload,
-                BusinessEntityKind.assistantMemory.sourceKey,
-              )!
-              as Map;
-      final rawId = payload['id'];
-      if (rawId is num) {
-        used.add(rawId.toInt());
-      } else {
-        missing.add(row);
-      }
-    }
-    missing.sort((left, right) => left.id.compareTo(right.id));
-    final projected = <String, int>{};
-    for (final row in missing) {
-      final digest = sha256.convert(utf8.encode(row.id)).toString();
-      // Keep runtime-only identities outside MemoryStore's positive ID space.
-      var candidate =
-          -((int.parse(digest.substring(0, 8), radix: 16) & 0x3fffffff) + 1);
-      while (!used.add(candidate)) {
-        candidate = candidate == -0x40000000 ? -1 : candidate - 1;
-      }
-      projected[row.id] = candidate;
-    }
-    return projected;
   }
 
   static int _compareRows(BusinessEntityValue left, BusinessEntityValue right) {

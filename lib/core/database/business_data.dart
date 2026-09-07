@@ -13,27 +13,13 @@ enum BusinessEntityKind {
     tableName: 'provider_group_rows',
   ),
   mcpServer(sourceKey: 'mcp_servers_v1', tableName: 'mcp_server_rows'),
-  worldBook(sourceKey: 'world_books_v1', tableName: 'world_book_rows'),
-  assistantMemory(
-    sourceKey: 'assistant_memories_v1',
-    tableName: 'assistant_memory_rows',
-  ),
   quickPhrase(sourceKey: 'quick_phrases_v1', tableName: 'quick_phrase_rows'),
   searchService(
     sourceKey: 'search_services_v1',
     tableName: 'search_service_rows',
   ),
   ttsService(sourceKey: 'tts_services_v1', tableName: 'tts_service_rows'),
-  instructionInjection(
-    sourceKey: 'instruction_injections_v1',
-    tableName: 'instruction_injection_rows',
-  ),
-  assistantTag(sourceKey: 'assistant_tags_v1', tableName: 'assistant_tag_rows'),
-  memoryEntry(sourceKey: 'memory_entries_v1', tableName: 'memory_entry_rows'),
-  userProfileField(
-    sourceKey: 'user_profile_fields_v1',
-    tableName: 'user_profile_field_rows',
-  );
+  assistantTag(sourceKey: 'assistant_tags_v1', tableName: 'assistant_tag_rows');
 
   const BusinessEntityKind({required this.sourceKey, required this.tableName});
 

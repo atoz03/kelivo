@@ -25,12 +25,6 @@ bool debugSkipBackupIsolateKill = false;
 /// profiler samples threads with SIGPROF, so the thread's signals are blocked
 /// first; without that the "stuck" isolate finishes in a millisecond.
 void debugNativeSleepIgnoringKill(int seconds) {
-  if (Platform.isWindows) {
-    DynamicLibrary.open('kernel32.dll')
-        .lookupFunction<Void Function(Uint32), void Function(int)>('Sleep')
-        .call(seconds * 1000);
-    return;
-  }
   final libc = DynamicLibrary.process();
   final pthreadSigmask = libc
       .lookupFunction<
@@ -48,16 +42,16 @@ void debugNativeSleepIgnoringKill(int seconds) {
           int Function(Pointer<Void>)
         >('sigfillset')
         .call(set.cast());
-    // SIG_BLOCK is 0 on Linux/Android and 1 on the BSD-derived Apple libc.
-    final sigBlock = Platform.isMacOS || Platform.isIOS ? 1 : 0;
+    // SIG_BLOCK is 0 on Android and 1 on the BSD-derived Apple libc.
+    final sigBlock = Platform.isMacOS ? 1 : 0;
     maskChanged = pthreadSigmask(sigBlock, set.cast(), oldSet.cast()) == 0;
     libc
         .lookupFunction<Int32 Function(Uint32), int Function(int)>('sleep')
         .call(seconds);
   } finally {
     if (maskChanged) {
-      // SIG_SETMASK is 2 on Linux/Android and 3 on BSD-derived Apple libc.
-      final sigSetMask = Platform.isMacOS || Platform.isIOS ? 3 : 2;
+      // SIG_SETMASK is 2 on Android and 3 on BSD-derived Apple libc.
+      final sigSetMask = Platform.isMacOS ? 3 : 2;
       pthreadSigmask(sigSetMask, oldSet.cast(), nullptr);
     }
     calloc.free(oldSet);

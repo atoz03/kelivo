@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' as system;
-import 'package:haptic_feedback/haptic_feedback.dart' as hfp;
 
 /// Centralized gentle haptics using the `haptic_feedback` plugin.
 ///
@@ -19,9 +18,7 @@ class Haptics {
   /// Very light tap feedback (e.g., small UI taps or success tick).
   static void light() {
     if (!enabled) return;
-    if (_isIOS) {
-      _safe(() => hfp.Haptics.vibrate(hfp.HapticsType.light));
-    } else if (_isAndroid) {
+    if (_isAndroid) {
       _safe(() => system.HapticFeedback.lightImpact());
     }
   }
@@ -29,18 +26,14 @@ class Haptics {
   /// Medium tap feedback (e.g., opening/closing drawer, toggles).
   static void medium() {
     if (!enabled) return;
-    if (_isIOS) {
-      _safe(() => hfp.Haptics.vibrate(hfp.HapticsType.medium));
-    } else if (_isAndroid) {
+    if (_isAndroid) {
       _safe(() => system.HapticFeedback.mediumImpact());
     }
   }
 
   static void soft() {
     if (!enabled) return;
-    if (_isIOS) {
-      _safe(() => hfp.Haptics.vibrate(hfp.HapticsType.soft));
-    } else if (_isAndroid) {
+    if (_isAndroid) {
       // Closest built-in equivalent to a very gentle tap
       _safe(() => system.HapticFeedback.selectionClick());
     }
@@ -49,9 +42,7 @@ class Haptics {
   /// Drawer-specific pulse; tuned to feel present but not harsh.
   static void drawerPulse() {
     if (!enabled) return;
-    if (_isIOS) {
-      _safe(() => hfp.Haptics.vibrate(hfp.HapticsType.soft));
-    } else if (_isAndroid) {
+    if (_isAndroid) {
       _safe(() => system.HapticFeedback.selectionClick());
     }
   }
@@ -73,8 +64,6 @@ class Haptics {
     }
   }
 
-  static bool get _isIOS =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
   static bool get _isAndroid =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 }

@@ -29,16 +29,10 @@ import 'core/providers/assistant_provider.dart';
 import 'core/providers/tag_provider.dart';
 import 'core/providers/update_provider.dart';
 import 'core/providers/quick_phrase_provider.dart';
-import 'core/providers/instruction_injection_provider.dart';
-import 'core/providers/instruction_injection_group_provider.dart';
-import 'core/providers/world_book_provider.dart';
 import 'core/providers/memory_provider.dart';
-import 'core/providers/memory_provider_v2.dart';
 import 'core/providers/backup_provider.dart';
 import 'core/providers/local_snapshot_provider.dart';
 import 'features/backup/local_snapshot_scheduler.dart';
-import 'core/services/memory/memory_pipeline.dart';
-import 'core/services/memory/memory_repository.dart';
 import 'core/providers/s3_backup_provider.dart';
 import 'core/providers/backup_reminder_provider.dart';
 import 'core/providers/hotkey_provider.dart';
@@ -419,19 +413,10 @@ HiveToSqliteMigrationDecision _legacyMigrationDecision(
 
 Future<void> _initRestoreFailureWindow() async {
   if (kIsWeb) return;
-  final isDesktop =
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.linux;
+  final isDesktop = defaultTargetPlatform == TargetPlatform.macOS;
   if (!isDesktop) return;
   try {
     await windowManager.ensureInitialized();
-    if (defaultTargetPlatform == TargetPlatform.windows) {
-      await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
-      await windowManager.show();
-      await windowManager.focus();
-      return;
-    }
     await windowManager.waitUntilReadyToShow(
       const WindowOptions(title: 'Kelivo'),
       () async {
@@ -498,10 +483,6 @@ class _RestoreFailureApp extends StatelessWidget {
 Future<void> _initDesktopWindow() async {
   if (kIsWeb) return;
   try {
-    if (defaultTargetPlatform == TargetPlatform.windows) {
-      await windowManager.ensureInitialized();
-      await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
-    }
     // Initialize and show desktop window with persisted size/position
     await DesktopWindowController.instance.initializeAndShow(title: 'Kelivo');
   } catch (_) {
@@ -518,10 +499,7 @@ AppLifecycleListener? _exitFlushListener;
 /// need draining before exit.
 void _installExitFlush(BusinessPreferences businessPreferences) {
   if (kIsWeb) return;
-  final isDesktop =
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.linux;
+  final isDesktop = defaultTargetPlatform == TargetPlatform.macOS;
   if (!isDesktop || _exitFlushListener != null) return;
   AppExitFlush.register(businessPreferences.flushPendingWrites);
   AppExitFlush.register(ChatActions.flushActiveGenerationProgress);
@@ -642,40 +620,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => QuickPhraseProvider(preferences: businessPreferences),
         ),
-        ChangeNotifierProvider(
-          create: (_) =>
-              InstructionInjectionProvider(preferences: businessPreferences),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => InstructionInjectionGroupProvider(
-            preferences: businessPreferences,
-          ),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => WorldBookProvider(preferences: businessPreferences),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => MemoryProvider(preferences: businessPreferences),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => MemoryProviderV2(
-            repository: MemoryRepository(businessPreferences),
-            chatRepository: databaseLease.chatRepository,
-          ),
-        ),
-        Provider<MemoryPipelineService>(
-          create: (ctx) {
-            final memoryV2 = ctx.read<MemoryProviderV2>();
-            return MemoryPipelineService(
-              chatService: ctx.read<ChatService>(),
-              repository: memoryV2.repository,
-              chatRepository: memoryV2.chatRepository,
-              settings: () => ctx.read<SettingsProvider>(),
-              assistants: () => ctx.read<AssistantProvider>(),
-              memoryV2: () => ctx.read<MemoryProviderV2>(),
-            );
-          },
-        ),
+        ChangeNotifierProvider(create: (_) => MemoryProvider()),
         ChangeNotifierProvider(
           create: (_) =>
               BackupReminderProvider(preferences: businessPreferences),
@@ -734,10 +679,7 @@ class MyApp extends StatelessWidget {
           WidgetsBinding.instance.addPostFrameCallback((_) async {
             try {
               final isDesktop =
-                  !kIsWeb &&
-                  (defaultTargetPlatform == TargetPlatform.windows ||
-                      defaultTargetPlatform == TargetPlatform.macOS ||
-                      defaultTargetPlatform == TargetPlatform.linux);
+                  !kIsWeb && (defaultTargetPlatform == TargetPlatform.macOS);
               if (!isDesktop) return;
               // Selected system app/code fonts (not local alias)
               final wantsAppSystem =
@@ -804,9 +746,7 @@ class MyApp extends StatelessWidget {
                 try {
                   final isDesktop =
                       !kIsWeb &&
-                      (defaultTargetPlatform == TargetPlatform.windows ||
-                          defaultTargetPlatform == TargetPlatform.macOS ||
-                          defaultTargetPlatform == TargetPlatform.linux);
+                      (defaultTargetPlatform == TargetPlatform.macOS);
                   if (isDesktop) {
                     await context.read<HotkeyProvider>().initialize();
                   }
@@ -982,9 +922,7 @@ class MyApp extends StatelessWidget {
                       try {
                         final isDesktop =
                             !kIsWeb &&
-                            (defaultTargetPlatform == TargetPlatform.windows ||
-                                defaultTargetPlatform == TargetPlatform.macOS ||
-                                defaultTargetPlatform == TargetPlatform.linux);
+                            (defaultTargetPlatform == TargetPlatform.macOS);
                         if (!isDesktop) return;
                         final sp = ctx.read<SettingsProvider>();
                         await DesktopTrayController.instance.syncFromSettings(
@@ -997,30 +935,8 @@ class MyApp extends StatelessWidget {
                     });
                   }
 
-                  final mq = MediaQuery.of(ctx);
-                  final display = View.of(ctx).display;
-                  final displaySize = display.size / display.devicePixelRatio;
-                  final isFloatingIpad =
-                      defaultTargetPlatform == TargetPlatform.iOS &&
-                      displaySize.shortestSide >= 600 &&
-                      (mq.size.shortestSide < displaySize.shortestSide - 1 ||
-                          mq.size.longestSide < displaySize.longestSide - 1);
-                  final systemTop = mq.viewPadding.top;
-                  final controlsTop = systemTop < 56 ? 56.0 : systemTop;
-                  final appWithOverlays = MediaQuery(
-                    data: isFloatingIpad
-                        ? mq.copyWith(
-                            padding: mq.padding.copyWith(top: controlsTop),
-                            viewPadding: mq.viewPadding.copyWith(
-                              top: controlsTop,
-                            ),
-                          )
-                        : mq,
-                    child: LocalSnapshotScheduler(
-                      child: AppOverlays(
-                        child: child ?? const SizedBox.shrink(),
-                      ),
-                    ),
+                  final appWithOverlays = LocalSnapshotScheduler(
+                    child: AppOverlays(child: child ?? const SizedBox.shrink()),
                   );
                   // Enforce app font as a default across the tree for Texts without explicit family
                   return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -1045,10 +961,7 @@ class MyApp extends StatelessWidget {
 Widget _selectHome() {
   // Mobile remains the default platform. Desktop is an added platform.
   if (kIsWeb) return const HomePage();
-  final isDesktop =
-      defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.linux;
+  final isDesktop = defaultTargetPlatform == TargetPlatform.macOS;
   return isDesktop ? const DesktopHomePage() : const HomePage();
 }
 

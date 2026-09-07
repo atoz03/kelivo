@@ -40,10 +40,7 @@ class _ToolSchemaSettingsPageState extends State<ToolSchemaSettingsPage> {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final settings = context.watch<SettingsProvider>();
-    final catalog = BuiltInToolCatalog.entries(
-      lang: settings.resolvedMemoryPromptLang,
-      legacyMemoryMode: settings.legacyMemoryMode,
-    );
+    final catalog = BuiltInToolCatalog.entries();
 
     return Scaffold(
       backgroundColor: cs.surface,

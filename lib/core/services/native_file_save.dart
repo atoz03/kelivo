@@ -54,10 +54,8 @@ class NativeFileSave {
     required String sourcePath,
     String? fileName,
   }) async {
-    if (!Platform.isAndroid && !Platform.isIOS) {
-      throw UnsupportedError(
-        'Native file save is only supported on Android and iOS.',
-      );
+    if (!Platform.isAndroid) {
+      throw UnsupportedError('Native file save is only supported on Android.');
     }
 
     final result = await _channel.invokeMethod<dynamic>('saveFileFromPath', {

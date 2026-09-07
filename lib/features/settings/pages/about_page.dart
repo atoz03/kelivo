@@ -46,14 +46,8 @@ class _AboutPageState extends State<AboutPage> {
     String sys;
     if (Platform.isAndroid) {
       sys = 'Android';
-    } else if (Platform.isIOS) {
-      sys = 'iOS';
     } else if (Platform.isMacOS) {
       sys = 'macOS';
-    } else if (Platform.isWindows) {
-      sys = 'Windows';
-    } else if (Platform.isLinux) {
-      sys = 'Linux';
     } else {
       sys = Platform.operatingSystem;
     }
@@ -145,7 +139,7 @@ class _AboutPageState extends State<AboutPage> {
                         child: SingleChildScrollView(
                           child: Column(
                             children: [
-                              if (Platform.isAndroid || Platform.isIOS) ...[
+                              if (Platform.isAndroid) ...[
                                 const SizedBox(height: 24),
                                 const Divider(),
                                 const SizedBox(height: 16),

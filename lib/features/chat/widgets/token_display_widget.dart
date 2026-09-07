@@ -47,10 +47,7 @@ class _TokenDisplayWidgetState extends State<TokenDisplayWidget>
 
   ScrollPosition? _scrollPosition;
 
-  bool get _isDesktop =>
-      defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.linux;
+  bool get _isDesktop => defaultTargetPlatform == TargetPlatform.macOS;
 
   bool get _hasDetailData =>
       (widget.promptTokens != null && widget.promptTokens! > 0) ||

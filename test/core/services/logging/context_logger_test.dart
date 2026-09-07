@@ -69,10 +69,7 @@ void main() {
               source: ContextSource.systemPrompt,
               length: 3,
             ),
-            ContextSegmentTags.item(
-              source: ContextSource.memoryRules,
-              length: 7,
-            ),
+            ContextSegmentTags.item(source: ContextSource.memory, length: 7),
           ],
         },
         {'role': 'user', 'content': 'hello'},
@@ -103,10 +100,7 @@ void main() {
       snapshot.messages.first.segments.first.source,
       ContextSource.systemPrompt,
     );
-    expect(
-      snapshot.messages.first.segments.last.source,
-      ContextSource.memoryRules,
-    );
+    expect(snapshot.messages.first.segments.last.source, ContextSource.memory);
     expect(snapshot.totalTokens, greaterThan(0));
   });
 }

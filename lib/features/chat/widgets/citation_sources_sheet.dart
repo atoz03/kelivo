@@ -323,18 +323,7 @@ class _CitationSourceList extends StatelessWidget {
   }
 }
 
-bool get _isDesktopTarget {
-  switch (defaultTargetPlatform) {
-    case TargetPlatform.macOS:
-    case TargetPlatform.windows:
-    case TargetPlatform.linux:
-      return true;
-    case TargetPlatform.android:
-    case TargetPlatform.iOS:
-    case TargetPlatform.fuchsia:
-      return false;
-  }
-}
+bool get _isDesktopTarget => defaultTargetPlatform == TargetPlatform.macOS;
 
 class CitationSourceCard extends StatelessWidget {
   const CitationSourceCard({

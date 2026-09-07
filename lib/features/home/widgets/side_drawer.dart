@@ -149,10 +149,7 @@ class SideDrawer extends StatefulWidget {
 }
 
 class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
-  bool get _isDesktop =>
-      defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.linux;
+  bool get _isDesktop => defaultTargetPlatform == TargetPlatform.macOS;
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
   final GlobalKey _assistantTileKey = GlobalKey();
@@ -265,10 +262,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
         .read<SettingsProvider>()
         .isTitleGenerationEnabled;
     final isPinned = chat.isPinned;
-    final isDesktop =
-        defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux;
+    final isDesktop = defaultTargetPlatform == TargetPlatform.macOS;
 
     if (isDesktop) {
       // Desktop: glass anchored menu near cursor/button
@@ -4310,10 +4304,7 @@ class _ChatTile extends StatefulWidget {
 class _ChatTileState extends State<_ChatTile> {
   bool _hovered = false;
   bool _prefetchTriggered = false;
-  bool get _isDesktop =>
-      defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.linux;
+  bool get _isDesktop => defaultTargetPlatform == TargetPlatform.macOS;
 
   /// Desktop hover warm-up (cache plan measure 14): fills the service cache
   /// so a subsequent tap hits the in-memory fast path. Cache-only;
@@ -4867,10 +4858,7 @@ class _AssistantInlineTile extends StatefulWidget {
 
 class _AssistantInlineTileState extends State<_AssistantInlineTile> {
   bool _hovered = false;
-  bool get _isDesktop =>
-      defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.linux;
+  bool get _isDesktop => defaultTargetPlatform == TargetPlatform.macOS;
 
   @override
   Widget build(BuildContext context) {

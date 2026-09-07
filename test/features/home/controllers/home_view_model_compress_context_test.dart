@@ -566,8 +566,8 @@ void main() {
       final resolved = resolveCompressContextModel(
         compressProvider: 'OpenAI',
         compressModelId: 'gpt-4o-mini',
-        summaryProvider: 'Gemini',
-        summaryModelId: 'gemini-2.5-flash',
+        titleProvider: 'Gemini',
+        titleModelId: 'gemini-2.5-flash',
         currentProvider: 'DeepSeek',
         currentModelId: 'deepseek-chat',
       );
@@ -576,18 +576,7 @@ void main() {
       expect(resolved.modelId, 'gpt-4o-mini');
     });
 
-    test('未设置压缩模型时按 summary → title → assistant → current 回退', () {
-      expect(
-        resolveCompressContextModel(
-          summaryProvider: 'Gemini',
-          summaryModelId: 'gemini-2.5-flash',
-          titleProvider: 'OpenAI',
-          titleModelId: 'gpt-4o-mini',
-          currentProvider: 'DeepSeek',
-          currentModelId: 'deepseek-chat',
-        ),
-        (providerKey: 'Gemini', modelId: 'gemini-2.5-flash'),
-      );
+    test('未设置压缩模型时按 title → assistant → current 回退', () {
       expect(
         resolveCompressContextModel(
           titleProvider: 'OpenAI',

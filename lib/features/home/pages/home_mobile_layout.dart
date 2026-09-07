@@ -138,10 +138,7 @@ class HomeMobileScaffold extends StatelessWidget {
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context, ColorScheme cs) {
-    final isDesktopPlatform =
-        defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux;
+    final isDesktopPlatform = defaultTargetPlatform == TargetPlatform.macOS;
     final useNewAssistantAvatarUx = context
         .watch<SettingsProvider>()
         .useNewAssistantAvatarUx;

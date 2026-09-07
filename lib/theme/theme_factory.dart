@@ -17,21 +17,10 @@ const List<String> kDefaultFontFamilyFallback = <String>[
 
 const List<String> kAndroidFontFamilyFallback = <String>['sans-serif'];
 
-// Windows-specific font fallback to fix Chinese font rendering issues
-const List<String> kWindowsFontFamilyFallback = <String>[
-  'Twemoji Country Flags',
-  'Segoe UI',
-  'Microsoft YaHei',
-  'SimHei',
-];
-
 // Get platform-appropriate font fallback list
 List<String> getPlatformFontFallback() {
   if (defaultTargetPlatform == TargetPlatform.android) {
     return kAndroidFontFamilyFallback;
-  }
-  if (defaultTargetPlatform == TargetPlatform.windows) {
-    return kWindowsFontFamilyFallback;
   }
   return kDefaultFontFamilyFallback;
 }

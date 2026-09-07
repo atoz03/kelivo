@@ -2497,9 +2497,9 @@ A-->B
   );
 
   testWidgets(
-    'MarkdownWithCodeHighlight forwards Windows CJK fonts to math fallbacks',
+    'MarkdownWithCodeHighlight forwards CJK fonts to math fallbacks',
     (tester) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
       try {
         await tester.pumpWidget(
           _markdownHarness(
@@ -2516,7 +2516,7 @@ A-->B
         expect(cjkGlyph.text.style?.fontFamily, contains('KaTeX_Main'));
         expect(
           cjkGlyph.text.style?.fontFamilyFallback,
-          containsAllInOrder(kWindowsFontFamilyFallback),
+          containsAllInOrder(kDefaultFontFamilyFallback),
         );
       } finally {
         debugDefaultTargetPlatformOverride = null;

@@ -71,8 +71,7 @@ class _RestoreFailureScreenState extends State<RestoreFailureScreen> {
   String? _integrityError;
   List<LocalCopy> _localCopies = const <LocalCopy>[];
 
-  bool get _isDesktop =>
-      Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+  bool get _isDesktop => Platform.isMacOS;
 
   bool get _isLeaseUnavailable =>
       _report.diagnosticCode == 'RestoreBusinessLeaseUnavailable';

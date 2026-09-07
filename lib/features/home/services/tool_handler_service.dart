@@ -7,14 +7,12 @@ import '../../../core/models/assistant.dart';
 import '../../../core/providers/assistant_provider.dart';
 import '../../../core/providers/mcp_provider.dart';
 import '../../../core/providers/memory_provider.dart';
-import '../../../core/providers/memory_provider_v2.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/tts_provider.dart';
 import '../../../core/services/api/chat_api_service.dart';
 import '../../../core/services/api/json_schema_utils.dart';
 import '../../../core/services/chat/chat_service.dart';
 import '../../../core/services/mcp/mcp_tool_service.dart';
-import '../../../core/services/memory/memory_pipeline.dart';
 import '../../../core/services/memory/memory_tools.dart';
 import '../../../core/services/search/search_tool_service.dart';
 import '../../../core/services/tools/tool_schema_overrides.dart';
@@ -244,21 +242,12 @@ class ToolHandlerService {
       toolDefs.add(SearchToolService.getToolDefinition());
     }
 
-    // Memory tools (§10.1)
-    if (settings.legacyMemoryMode) {
-      if (assistant?.enableMemory == true && supportsTools) {
-        toolDefs.addAll(
-          MemoryTools.legacyDefinitions(settings.resolvedMemoryPromptLang),
-        );
-      }
-    } else if (supportsTools && assistant != null) {
+    // Memory tools
+    if (supportsTools && assistant != null) {
       toolDefs.addAll(
         MemoryTools.buildDefinitions(
-          lang: settings.resolvedMemoryPromptLang,
-          writeScope: assistant.memoryWriteScope,
           enableMemory: assistant.enableMemory,
-          allowPastConversationRecall: assistant.allowPastConversationRecall,
-          allowMemoryWrites: !_isTemporaryConversation(),
+          allowWrites: !_isTemporaryConversation(),
         ),
       );
     }
@@ -439,12 +428,7 @@ class ToolHandlerService {
         }
 
         // Memory tools
-        final memoryResult = await _handleMemoryToolCall(
-          name,
-          args,
-          assistant,
-          conversationId: conversationId,
-        );
+        final memoryResult = await _handleMemoryToolCall(name, args, assistant);
         if (memoryResult != null) {
           return memoryResult;
         }
@@ -541,169 +525,22 @@ class ToolHandlerService {
     };
   }
 
-  /// Handle memory tool calls (§10).
+  /// Handle memory tool calls.
   ///
-  /// Returns null if the tool is not a memory tool or the relevant gate is off.
+  /// Returns null if the tool is not a memory tool or memory is off.
   Future<String?> _handleMemoryToolCall(
-    String name,
-    Map<String, dynamic> args,
-    Assistant? assistant, {
-    String? conversationId,
-  }) async {
-    final settings = contextProvider.read<SettingsProvider>();
-    if (settings.legacyMemoryMode) {
-      if (MemoryTools.allToolNames.contains(name)) return null;
-      return _handleLegacyMemoryToolCall(name, args, assistant);
-    }
-
-    if (assistant == null) return null;
-    if (!MemoryTools.allToolNames.contains(name)) return null;
-
-    final memoryV2 = contextProvider.read<MemoryProviderV2>();
-    ChatService? chatService;
-    try {
-      chatService = contextProvider.read<ChatService>();
-    } catch (_) {
-      chatService = null;
-    }
-
-    MemoryPipelineService? pipeline;
-    try {
-      pipeline = contextProvider.read<MemoryPipelineService>();
-    } catch (_) {
-      pipeline = null;
-    }
-
-    Future<String> Function(String prompt)? memoryLlmCall;
-    final provKey = settings.memoryModelProvider;
-    final mdlId = settings.memoryModelId;
-    if (provKey != null && mdlId != null) {
-      final cfg = settings.getProviderConfig(provKey);
-      final budget = settings.memoryModelThinkingEnabled
-          ? (assistant.thinkingBudget ?? settings.thinkingBudget)
-          : 0;
-      memoryLlmCall = (prompt) => ChatApiService.generateText(
-        conversationId: conversationId,
-        config: cfg,
-        modelId: mdlId,
-        prompt: prompt,
-        thinkingBudget: budget,
-      );
-    }
-
-    final temporary =
-        chatService?.isTemporaryConversation(conversationId) ?? false;
-    return MemoryTools.handle(
-      name: name,
-      args: args,
-      assistant: assistant,
-      repository: memoryV2.repository,
-      chatRepository: memoryV2.chatRepository,
-      chatService: chatService,
-      conversationId: conversationId,
-      // Reload without changing which assistants the open memory UI is showing.
-      onMutated: memoryV2.reloadCurrentScope,
-      smartAdd: pipeline?.smartAdd,
-      promptLang: settings.resolvedMemoryPromptLang,
-      memoryLlmCall: memoryLlmCall,
-      smartAddPromptZh: settings.memorySmartAddPromptZh,
-      smartAddPromptEn: settings.memorySmartAddPromptEn,
-      // Temporary chats are discarded on exit; their tool traces must not linger.
-      traceRecorder: temporary ? null : pipeline?.traceRecorder,
-      conversationTitle: conversationId == null
-          ? null
-          : chatService?.getConversation(conversationId)?.title,
-    );
-  }
-
-  /// Handle legacy create/edit/delete_memory calls via [MemoryProvider].
-  ///
-  /// Returns null if memory is disabled or [name] is not a legacy memory tool.
-  Future<String?> _handleLegacyMemoryToolCall(
     String name,
     Map<String, dynamic> args,
     Assistant? assistant,
   ) async {
     if (assistant?.enableMemory != true) return null;
-    if (name != 'create_memory' &&
-        name != 'edit_memory' &&
-        name != 'delete_memory') {
-      return null;
-    }
-
-    try {
-      final mp = contextProvider.read<MemoryProvider>();
-
-      if (name == 'create_memory') {
-        final content = (args['content'] ?? '').toString();
-        if (content.isEmpty) {
-          return _toolError(
-            error: 'invalid_memory_content',
-            message: 'Memory content must not be empty.',
-            tool: name,
-          );
-        }
-        final m = await mp.add(assistantId: assistant!.id, content: content);
-        return m.content;
-      } else if (name == 'edit_memory') {
-        final id = (args['id'] as num?)?.toInt() ?? -1;
-        final content = (args['content'] ?? '').toString();
-        if (id <= 0) {
-          return _toolError(
-            error: 'invalid_memory_id',
-            message: 'Memory id must be a positive integer.',
-            tool: name,
-          );
-        }
-        if (content.isEmpty) {
-          return _toolError(
-            error: 'invalid_memory_content',
-            message: 'Memory content must not be empty.',
-            tool: name,
-          );
-        }
-        final m = await mp.update(id: id, content: content);
-        if (m == null) {
-          return _toolError(
-            error: 'memory_not_found',
-            message: 'No memory record was found for id $id.',
-            tool: name,
-            instruction:
-                'Use the available memory records shown in context, or create a new memory instead of editing a missing one.',
-          );
-        }
-        return m.content;
-      } else if (name == 'delete_memory') {
-        final id = (args['id'] as num?)?.toInt() ?? -1;
-        if (id <= 0) {
-          return _toolError(
-            error: 'invalid_memory_id',
-            message: 'Memory id must be a positive integer.',
-            tool: name,
-          );
-        }
-        final ok = await mp.delete(id: id);
-        if (!ok) {
-          return _toolError(
-            error: 'memory_not_found',
-            message: 'No memory record was found for id $id.',
-            tool: name,
-            instruction:
-                'Use the available memory records shown in context, or skip deleting a missing memory.',
-          );
-        }
-        return 'deleted';
-      }
-    } catch (e) {
-      return _toolError(
-        error: 'memory_execution_error',
-        message: e.toString(),
-        tool: name,
-        instruction:
-            'The memory tool failed. Retry only after correcting the parameters, or inform the user about the issue.',
-      );
-    }
-
-    return null;
+    if (!MemoryTools.allToolNames.contains(name)) return null;
+    final memory = contextProvider.read<MemoryProvider>();
+    return MemoryTools.handle(
+      name: name,
+      args: args,
+      store: await memory.store,
+      onMutated: memory.refresh,
+    );
   }
 }

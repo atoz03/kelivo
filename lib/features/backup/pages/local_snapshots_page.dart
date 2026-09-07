@@ -337,7 +337,7 @@ class _LocalSnapshotsPageState extends State<LocalSnapshotsPage> {
     String fileName,
     AppLocalizations l10n,
   ) async {
-    if (Platform.isAndroid || Platform.isIOS) {
+    if (Platform.isAndroid) {
       return NativeFileSave.saveFileFromPath(
         sourcePath: source.path,
         fileName: fileName,

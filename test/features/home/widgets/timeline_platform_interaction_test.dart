@@ -8,10 +8,7 @@ import 'package:super_sliver_list/super_sliver_list.dart';
 void main() {
   const platforms = <TargetPlatform>[
     TargetPlatform.android,
-    TargetPlatform.iOS,
     TargetPlatform.macOS,
-    TargetPlatform.windows,
-    TargetPlatform.linux,
   ];
 
   for (final platform in platforms) {
@@ -52,10 +49,7 @@ void main() {
       );
 
       final list = tester.widget<SuperListView>(find.byType(SuperListView));
-      final desktop =
-          platform == TargetPlatform.macOS ||
-          platform == TargetPlatform.windows ||
-          platform == TargetPlatform.linux;
+      final desktop = platform == TargetPlatform.macOS;
       expect(
         list.keyboardDismissBehavior,
         desktop

@@ -23,9 +23,7 @@ class AssistantEntryActions {
   const AssistantEntryActions._();
 
   static bool get _isDesktopPlatform =>
-      defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.linux;
+      defaultTargetPlatform == TargetPlatform.macOS;
 
   static void openAssistantSettings(
     BuildContext context,

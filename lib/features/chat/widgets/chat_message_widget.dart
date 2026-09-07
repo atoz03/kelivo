@@ -61,6 +61,7 @@ import 'weather_tool_ui.dart';
 import 'tool_detail_text_section.dart';
 import '../../../theme/app_font_weights.dart';
 import '../../home/controllers/streaming_content_notifier.dart';
+import '../../../shared/widgets/copyable_selection_area.dart';
 
 final RegExp _urlSchemeRe = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*:');
 
@@ -928,7 +929,7 @@ class _ToolDetailBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return SelectionArea(
+    return CopyableSelectionArea(
       child: CustomScrollView(
         controller: scrollController,
         slivers: [
@@ -1595,9 +1596,8 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     Widget avatarContent;
 
     if (avatarType == 'emoji' && avatarValue != null) {
-      final bool isIOS = defaultTargetPlatform == TargetPlatform.iOS;
       final double fs = 18;
-      final Offset? nudge = isIOS ? Offset(fs * 0.065, fs * -0.05) : null;
+      const Offset? nudge = null;
       avatarContent = Center(
         child: EmojiText(
           avatarValue,
@@ -1811,18 +1811,12 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
           // Message content (context menu: long-press on mobile, right-click on desktop)
           GestureDetector(
             onLongPressStart: (_) {
-              final isDesktop =
-                  defaultTargetPlatform == TargetPlatform.macOS ||
-                  defaultTargetPlatform == TargetPlatform.windows ||
-                  defaultTargetPlatform == TargetPlatform.linux;
+              final isDesktop = defaultTargetPlatform == TargetPlatform.macOS;
               if (isDesktop) return; // Desktop uses right-click menu
               _showUserContextMenu();
             },
             onSecondaryTapDown: (details) {
-              final isDesktop =
-                  defaultTargetPlatform == TargetPlatform.macOS ||
-                  defaultTargetPlatform == TargetPlatform.windows ||
-                  defaultTargetPlatform == TargetPlatform.linux;
+              final isDesktop = defaultTargetPlatform == TargetPlatform.macOS;
               if (!isDesktop) return; // Mobile keeps long-press
               _showUserContextMenuAt(details.globalPosition);
             },
@@ -1922,11 +1916,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                             key: _moreBtnKey1,
                             onTapDown: (d) {
                               final isDesktop =
-                                  defaultTargetPlatform ==
-                                      TargetPlatform.macOS ||
-                                  defaultTargetPlatform ==
-                                      TargetPlatform.windows ||
-                                  defaultTargetPlatform == TargetPlatform.linux;
+                                  defaultTargetPlatform == TargetPlatform.macOS;
                               if (isDesktop) {
                                 try {
                                   DesktopMenuAnchor.setPosition(
@@ -1937,11 +1927,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                             },
                             onTap: () {
                               final isDesktop =
-                                  defaultTargetPlatform ==
-                                      TargetPlatform.macOS ||
-                                  defaultTargetPlatform ==
-                                      TargetPlatform.windows ||
-                                  defaultTargetPlatform == TargetPlatform.linux;
+                                  defaultTargetPlatform == TargetPlatform.macOS;
                               if (isDesktop) {
                                 _setAnchorFromKey(_moreBtnKey1);
                               }
@@ -2039,10 +2025,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     String visualText,
     bool enableUserMarkdown,
   ) {
-    final bool isDesktop =
-        defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux;
+    final bool isDesktop = defaultTargetPlatform == TargetPlatform.macOS;
     final double baseUser = isDesktop ? 14.0 : 15.5;
 
     Widget content;
@@ -2066,7 +2049,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     }
 
     return isDesktop
-        ? SelectionArea(
+        ? CopyableSelectionArea(
             key: ValueKey('user_${widget.message.id}'),
             child: content,
           )
@@ -2417,10 +2400,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     Map<String, String> citationIndexLookup, {
     String contentKey = '',
   }) {
-    final bool isDesktop =
-        defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux;
+    final bool isDesktop = defaultTargetPlatform == TargetPlatform.macOS;
     final double baseAssistant = isDesktop ? 14.0 : 15.7;
 
     Widget assistantContent;
@@ -2458,7 +2438,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     );
 
     return RepaintBoundary(
-      child: SelectionArea(
+      child: CopyableSelectionArea(
         key: ValueKey(
           contentKey.isEmpty
               ? 'assistant_${widget.message.id}'
@@ -3096,11 +3076,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                     builder: (context) {
                                       final bool isDesktop =
                                           defaultTargetPlatform ==
-                                              TargetPlatform.macOS ||
-                                          defaultTargetPlatform ==
-                                              TargetPlatform.windows ||
-                                          defaultTargetPlatform ==
-                                              TargetPlatform.linux;
+                                          TargetPlatform.macOS;
                                       return Text(
                                         l10n.chatMessageWidgetTranslating,
                                         style: TextStyle(
@@ -3118,7 +3094,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                             Padding(
                               padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
                               child: RepaintBoundary(
-                                child: SelectionArea(
+                                child: CopyableSelectionArea(
                                   key: ValueKey(
                                     'translation_${widget.message.id}',
                                   ),
@@ -3126,11 +3102,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                     builder: (context) {
                                       final bool isDesktop =
                                           defaultTargetPlatform ==
-                                              TargetPlatform.macOS ||
-                                          defaultTargetPlatform ==
-                                              TargetPlatform.windows ||
-                                          defaultTargetPlatform ==
-                                              TargetPlatform.linux;
+                                          TargetPlatform.macOS;
                                       final double baseTranslation = isDesktop
                                           ? 14.0
                                           : 15.5;
@@ -3305,11 +3277,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                 onTapDown: (d) {
                                   final isDesktop =
                                       defaultTargetPlatform ==
-                                          TargetPlatform.macOS ||
-                                      defaultTargetPlatform ==
-                                          TargetPlatform.windows ||
-                                      defaultTargetPlatform ==
-                                          TargetPlatform.linux;
+                                      TargetPlatform.macOS;
                                   if (isDesktop) {
                                     try {
                                       DesktopMenuAnchor.setPosition(
@@ -3321,11 +3289,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                 onTap: () {
                                   final isDesktop =
                                       defaultTargetPlatform ==
-                                          TargetPlatform.macOS ||
-                                      defaultTargetPlatform ==
-                                          TargetPlatform.windows ||
-                                      defaultTargetPlatform ==
-                                          TargetPlatform.linux;
+                                      TargetPlatform.macOS;
                                   if (isDesktop) {
                                     _setAnchorFromKey(_translateBtnKey2);
                                   }
@@ -3351,11 +3315,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                 onTapDown: (d) {
                                   final isDesktop =
                                       defaultTargetPlatform ==
-                                          TargetPlatform.macOS ||
-                                      defaultTargetPlatform ==
-                                          TargetPlatform.windows ||
-                                      defaultTargetPlatform ==
-                                          TargetPlatform.linux;
+                                      TargetPlatform.macOS;
                                   if (isDesktop) {
                                     try {
                                       DesktopMenuAnchor.setPosition(
@@ -3367,11 +3327,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                 onTap: () {
                                   final isDesktop =
                                       defaultTargetPlatform ==
-                                          TargetPlatform.macOS ||
-                                      defaultTargetPlatform ==
-                                          TargetPlatform.windows ||
-                                      defaultTargetPlatform ==
-                                          TargetPlatform.linux;
+                                      TargetPlatform.macOS;
                                   if (isDesktop) {
                                     _setAnchorFromKey(_moreBtnKey2);
                                   }
@@ -3658,9 +3614,8 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
         return _assistantInitial(cs);
       }
       // treat as emoji or single char label
-      final bool isIOS = defaultTargetPlatform == TargetPlatform.iOS;
       final double fs = 18;
-      final Offset? nudge = isIOS ? Offset(fs * 0.065, fs * -0.05) : null;
+      const Offset? nudge = null;
       return Container(
         width: 32,
         height: 32,
@@ -5213,17 +5168,19 @@ class _ChainOfThoughtReasoningStepState
                 child: SingleChildScrollView(
                   controller: _scroll,
                   physics: const BouncingScrollPhysics(),
-                  child: SelectionArea(child: reasoningContent(display)),
+                  child: CopyableSelectionArea(
+                    child: reasoningContent(display),
+                  ),
                 ),
               )
             : SingleChildScrollView(
                 controller: _scroll,
                 physics: const NeverScrollableScrollPhysics(),
-                child: SelectionArea(child: reasoningContent(display)),
+                child: CopyableSelectionArea(child: reasoningContent(display)),
               ),
       );
     } else if (state == _ReasoningStepState.expanded) {
-      content = SelectionArea(child: reasoningContent(display));
+      content = CopyableSelectionArea(child: reasoningContent(display));
     }
 
     final hasToggle =
@@ -7252,7 +7209,7 @@ class _ReasoningSectionState extends State<_ReasoningSection> {
     }
 
     // Enable long-press text selection in reasoning body
-    body = SelectionArea(child: body);
+    body = CopyableSelectionArea(child: body);
 
     return AnimatedSize(
       duration: const Duration(milliseconds: 300),

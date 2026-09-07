@@ -6,10 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:Kelivo/core/database/app_database.dart';
 import 'package:Kelivo/core/database/business_data.dart';
 import 'package:Kelivo/core/database/business_migration_engine.dart';
-import 'package:Kelivo/core/database/business_preferences.dart';
 import 'package:Kelivo/core/database/business_repository.dart';
 import 'package:Kelivo/core/database/business_settings_router.dart';
-import 'package:Kelivo/core/services/instruction_injection_store.dart';
 
 void main() {
   late AppDatabase database;
@@ -131,20 +129,6 @@ void main() {
     },
   );
 
-  test('preserves an explicitly empty legacy instruction list', () async {
-    final legacy = FakeLegacyBusinessPreferences({
-      'instruction_injections_v1': jsonEncode(const <Object>[]),
-    });
-
-    await BusinessMigrationEngine(
-      repository: repository,
-      legacyPreferences: legacy,
-    ).run();
-
-    final store = InstructionInjectionStore(BusinessPreferences(repository));
-    expect(await store.getAll(), isEmpty);
-  });
-
   test(
     'cleanup interruption is retryable without repeating migration',
     () async {
@@ -248,35 +232,13 @@ void main() {
                 'provider-b': {'id': 'provider-b', 'apiKey': 'secret-b'},
               })
             : jsonEncode([
-                if (kind == BusinessEntityKind.memoryEntry)
-                  {
-                    'id': 'mem_a1b2c3d4',
-                    'scope': 'global',
-                    'type': 'identity',
-                    'content': 'Migrated memory.',
-                    'createdAt': 1786012880106000,
-                    'updatedAt': 1786012880106000,
-                    'opaque': kind.name,
-                  }
-                else if (kind == BusinessEntityKind.userProfileField)
-                  {
-                    'id': 'preferred_name',
-                    'value': 'Psyche',
-                    'updatedAt': 1786012880106000,
-                    'opaque': kind.name,
-                  }
-                else
-                  {
-                    'id': kind == BusinessEntityKind.assistantMemory
-                        ? 1
-                        : '${kind.name}-a',
-                    if (kind == BusinessEntityKind.assistantMemory)
-                      'assistantId': 'assistant-a',
-                    if (kind == BusinessEntityKind.searchService)
-                      'type': 'bing_local',
-                    if (kind == BusinessEntityKind.ttsService) 'kind': 'openai',
-                    'opaque': kind.name,
-                  },
+                {
+                  'id': '${kind.name}-a',
+                  if (kind == BusinessEntityKind.searchService)
+                    'type': 'bing_local',
+                  if (kind == BusinessEntityKind.ttsService) 'kind': 'openai',
+                  'opaque': kind.name,
+                },
               ]),
       'providers_order_v1': <String>['provider-b', 'provider-a'],
       'pinned_models_v1': <String>['provider-a::model-a'],

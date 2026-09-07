@@ -5,10 +5,7 @@ import 'package:Kelivo/core/database/app_database.dart';
 import 'package:Kelivo/core/database/business_data.dart';
 import 'package:Kelivo/core/database/business_preferences.dart';
 import 'package:Kelivo/core/database/business_repository.dart';
-import 'package:Kelivo/core/models/instruction_injection.dart';
 import 'package:Kelivo/core/models/quick_phrase.dart';
-import 'package:Kelivo/core/services/instruction_injection_store.dart';
-import 'package:Kelivo/core/services/memory_store.dart';
 import 'package:Kelivo/core/services/quick_phrase_store.dart';
 
 void main() {
@@ -26,22 +23,6 @@ void main() {
   tearDown(() => database.close());
 
   group('serialized read-modify-write', () {
-    test('concurrent memory writes keep every record', () async {
-      final store = MemoryStore(preferences);
-      await Future.wait([
-        for (var index = 0; index < 10; index++)
-          store.add(assistantId: 'assistant-a', content: 'memory-$index'),
-      ]);
-
-      final all = await store.getAll();
-      expect(all, hasLength(10));
-      expect(all.map((memory) => memory.id).toSet(), hasLength(10));
-      expect(
-        all.map((memory) => memory.content),
-        containsAll([for (var index = 0; index < 10; index++) 'memory-$index']),
-      );
-    });
-
     test('concurrent quick phrase writes keep every record', () async {
       final store = QuickPhraseStore(preferences);
       await Future.wait([
@@ -60,28 +41,6 @@ void main() {
       expect(
         all.map((phrase) => phrase.id).toSet(),
         containsAll([for (var index = 0; index < 10; index++) 'phrase-$index']),
-      );
-    });
-
-    test('concurrent instruction injection writes keep every record', () async {
-      final store = InstructionInjectionStore(preferences);
-      final seeded = await store.getAll();
-      await Future.wait([
-        for (var index = 0; index < 10; index++)
-          store.add(
-            InstructionInjection(
-              id: 'item-$index',
-              title: 'title-$index',
-              prompt: 'prompt-$index',
-            ),
-          ),
-      ]);
-
-      final all = await store.getAll();
-      expect(all, hasLength(seeded.length + 10));
-      expect(
-        all.map((item) => item.id).toSet(),
-        containsAll([for (var index = 0; index < 10; index++) 'item-$index']),
       );
     });
   });
@@ -104,30 +63,6 @@ void main() {
       );
     }
 
-    test('memory store refuses writes and preserves stored rows', () async {
-      await seedCorruptRow(
-        BusinessEntityKind.assistantMemory,
-        assistantId: 'assistant-a',
-      );
-      final store = MemoryStore(preferences);
-
-      await expectLater(store.getAll(), throwsStateError);
-      await expectLater(
-        store.add(assistantId: 'assistant-a', content: 'new'),
-        throwsStateError,
-      );
-      await expectLater(
-        store.deleteForAssistant('assistant-a'),
-        throwsStateError,
-      );
-
-      final rows = await repository.readEntities(
-        BusinessEntityKind.assistantMemory,
-      );
-      expect(rows, hasLength(1));
-      expect(rows.single.id, 'corrupt');
-    });
-
     test(
       'quick phrase store refuses writes and preserves stored rows',
       () async {
@@ -145,29 +80,6 @@ void main() {
 
         final rows = await repository.readEntities(
           BusinessEntityKind.quickPhrase,
-        );
-        expect(rows, hasLength(1));
-        expect(rows.single.id, 'corrupt');
-      },
-    );
-
-    test(
-      'instruction injection store refuses writes and preserves stored rows',
-      () async {
-        await seedCorruptRow(BusinessEntityKind.instructionInjection);
-        final store = InstructionInjectionStore(preferences);
-
-        await expectLater(store.getAll(), throwsStateError);
-        await expectLater(
-          store.add(
-            const InstructionInjection(id: 'new', title: '', prompt: 'prompt'),
-          ),
-          throwsStateError,
-        );
-        await expectLater(store.delete('corrupt'), throwsStateError);
-
-        final rows = await repository.readEntities(
-          BusinessEntityKind.instructionInjection,
         );
         expect(rows, hasLength(1));
         expect(rows.single.id, 'corrupt');

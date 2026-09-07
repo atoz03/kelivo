@@ -30,4 +30,4 @@ Avoid harsh monochrome outlines, decorative recovery screens, diagnostic-only de
 
 ## Accessibility & Inclusion
 
-Support light and dark themes, dynamic color, localization, scalable text, keyboard and touch input, sufficient text contrast, meaningful semantics, and reduced-motion-friendly state changes across Android, iOS, Windows, macOS, and Linux.
+Support light and dark themes, dynamic color, localization, scalable text, keyboard and touch input, sufficient text contrast, meaningful semantics, and reduced-motion-friendly state changes across Android and macOS.

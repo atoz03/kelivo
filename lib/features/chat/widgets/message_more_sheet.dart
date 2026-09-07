@@ -36,10 +36,7 @@ Future<MessageMoreAction?> showMessageMoreSheet(
   required bool canDeleteAllVersions,
   required bool canCreateBranch,
 }) async {
-  final isDesktop =
-      defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.linux;
+  final isDesktop = defaultTargetPlatform == TargetPlatform.macOS;
   if (!isDesktop) {
     return showModalBottomSheet<MessageMoreAction?>(
       context: context,

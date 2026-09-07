@@ -5,7 +5,6 @@ import 'package:window_manager/window_manager.dart';
 
 import 'window_size_manager.dart';
 import 'dart:async';
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 
 /// Handles desktop window initialization and persistence (size/position/maximized).
 class DesktopWindowController with WindowListener {
@@ -21,70 +20,22 @@ class DesktopWindowController with WindowListener {
 
   Future<void> initializeAndShow({String? title}) async {
     if (kIsWeb) return;
-    if (!(defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.linux)) {
+    if (!(defaultTargetPlatform == TargetPlatform.macOS)) {
       return;
     }
 
     await windowManager.ensureInitialized();
     _attachListeners();
-    // Windows custom title bar is handled in main (TitleBarStyle.hidden)
 
-    final initialSize = await _sizeMgr.getInitialSize();
-    const minSize = Size(
-      WindowSizeManager.minWindowWidth,
-      WindowSizeManager.minWindowHeight,
-    );
-    const maxSize = Size(
-      WindowSizeManager.maxWindowWidth,
-      WindowSizeManager.maxWindowHeight,
-    );
-
-    final isMac = defaultTargetPlatform == TargetPlatform.macOS;
-    final options = WindowOptions(
-      // On macOS, let Cocoa autosave restore the last frame to avoid jumps.
-      size: isMac ? null : initialSize,
-      // Avoid imposing min/max on macOS to prevent subtle size corrections.
-      minimumSize: isMac ? null : minSize,
-      maximumSize: isMac ? null : maxSize,
-      title: title,
-    );
-
-    final savedPos = await _sizeMgr.getPosition();
-    final wasMax = await _sizeMgr.getWindowMaximized();
-
-    if (defaultTargetPlatform == TargetPlatform.windows) {
-      await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
-      doWhenWindowReady(() async {
-        appWindow.minSize = options.minimumSize;
-        appWindow.maxSize = options.maximumSize;
-        appWindow.size = initialSize;
-
-        if (savedPos != null) {
-          appWindow.position = savedPos;
-        }
-
-        /// on Windows we maximize the window if it was previously closed
-        /// from a maximized state.
-        if (wasMax) {
-          appWindow.maximize();
-        }
-      });
-    } else {
-      await windowManager.waitUntilReadyToShow(options, () async {
-        // Show first, then restore position to avoid macOS jump/flicker.
+    // Let Cocoa autosave restore the last frame instead of setting the size,
+    // position, or min/max from Dart — doing so makes the window jump.
+    await windowManager.waitUntilReadyToShow(
+      WindowOptions(title: title),
+      () async {
         await windowManager.show();
         await windowManager.focus();
-        // On macOS rely on native autosave. Do not set position from Dart.
-        final shouldRestorePos = savedPos != null && !isMac;
-        if (shouldRestorePos) {
-          try {
-            await windowManager.setPosition(savedPos);
-          } catch (_) {}
-        }
-      });
-    }
+      },
+    );
   }
 
   void _attachListeners() {

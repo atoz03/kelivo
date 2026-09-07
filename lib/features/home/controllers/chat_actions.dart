@@ -17,9 +17,7 @@ import '../../../core/services/api/chat_api_service.dart';
 import '../../../core/services/api/retry_policy.dart';
 import '../../../core/services/api/stream/stream_chunk.dart';
 import '../../../core/services/chat/chat_service.dart';
-import '../../../core/services/ios_background_generation.dart';
 import '../../../core/services/logging/flutter_logger.dart';
-import '../../../l10n/app_localizations.dart';
 import '../../../utils/assistant_regex.dart';
 import '../../../core/models/assistant_regex.dart';
 import '../services/ask_user_interaction_service.dart';
@@ -260,9 +258,6 @@ class ChatActions {
   /// Called when stream finishes and title may need to be generated.
   void Function(String conversationId)? onMaybeGenerateTitle;
 
-  /// Called when summary may need to be generated (every N messages).
-  void Function(String conversationId)? onMaybeGenerateSummary;
-
   /// Called when chat suggestions may need to be generated.
   void Function(String conversationId)? onMaybeGenerateSuggestions;
 
@@ -286,86 +281,6 @@ class ChatActions {
   // ============================================================================
   // Private Helpers
   // ============================================================================
-
-  AppLocalizations? get _l10n => AppLocalizations.of(contextProvider);
-
-  void _logIosBackgroundGenerationFailure(
-    String operation,
-    Object error,
-    StackTrace stackTrace,
-  ) {
-    debugPrint('[IosBackgroundGeneration] $operation failed: $error');
-    debugPrint('$stackTrace');
-  }
-
-  Future<void> _startIosBackgroundGeneration(
-    stream_ctrl.GenerationContext ctx,
-  ) async {
-    final settings = ctx.settings;
-    final l10n = _l10n;
-    if (l10n == null) return;
-    try {
-      await IosBackgroundGenerationService.instance.start(
-        enabled: settings.iosBackgroundGenerationEnabled,
-        liveActivityEnabled: settings.iosLiveActivityEnabled,
-        notificationsEnabled: settings.iosBackgroundNotificationsEnabled,
-        refreshEnabled: settings.iosBackgroundTaskRefreshEnabled,
-        title: l10n.iosBackgroundGenerationActiveTitle,
-        detail: l10n.iosBackgroundGenerationActiveDetail,
-        tokenLabel: l10n.iosBackgroundGenerationTokenCount(0),
-      );
-    } catch (error, stackTrace) {
-      _logIosBackgroundGenerationFailure('start', error, stackTrace);
-    }
-  }
-
-  void _scheduleIosBackgroundGenerationUpdate(
-    stream_ctrl.StreamingState state,
-  ) {
-    final l10n = _l10n;
-    if (l10n == null) return;
-    IosBackgroundGenerationService.instance.scheduleUpdate(
-      detail: l10n.iosBackgroundGenerationStreamingDetail,
-      tokenLabel: l10n.iosBackgroundGenerationTokenCount(state.totalTokens),
-      tokenCount: state.totalTokens,
-      onError: (error, stackTrace) =>
-          _logIosBackgroundGenerationFailure('update', error, stackTrace),
-    );
-  }
-
-  Future<void> _finishIosBackgroundGeneration({
-    required bool success,
-    String? detail,
-  }) async {
-    final l10n = _l10n;
-    if (l10n == null) return;
-    try {
-      await IosBackgroundGenerationService.instance.finish(
-        title: success
-            ? l10n.iosBackgroundGenerationCompleteTitle
-            : l10n.iosBackgroundGenerationInterruptedTitle,
-        detail:
-            detail ??
-            (success
-                ? l10n.iosBackgroundGenerationCompleteDetail
-                : l10n.iosBackgroundGenerationInterruptedDetail),
-        success: success,
-      );
-    } catch (error, stackTrace) {
-      _logIosBackgroundGenerationFailure('finish', error, stackTrace);
-    }
-  }
-
-  Future<void> _cancelIosBackgroundGeneration() async {
-    final l10n = _l10n;
-    try {
-      await IosBackgroundGenerationService.instance.cancel(
-        detail: l10n?.iosBackgroundGenerationCancelledDetail,
-      );
-    } catch (error, stackTrace) {
-      _logIosBackgroundGenerationFailure('cancel', error, stackTrace);
-    }
-  }
 
   /// Track in-flight _finishStreaming futures so _handleStreamDone can await
   /// completion before removing notifiers or triggering rebuild.
@@ -2033,7 +1948,6 @@ class ChatActions {
         latestStreaming.content,
         immediate: true,
       );
-      await _cancelIosBackgroundGeneration();
     } else {
       chatController.publishGenerationState(cid, isGenerating: false);
     }
@@ -2077,9 +1991,7 @@ class ChatActions {
         );
 
     try {
-      await _startIosBackgroundGeneration(ctx);
       if (!_activeAssistantMessages.isActive(ctx.assistantMessage)) {
-        await _cancelIosBackgroundGeneration();
         return;
       }
       final runId = ctx.generationRunId;
@@ -2393,8 +2305,6 @@ class ChatActions {
       await _finishReasoningOnContent(state);
     }
 
-    _scheduleIosBackgroundGenerationUpdate(state);
-
     // Re-check before scheduling timer — timer creation after _finishStreaming
     // would create a new timer that periodically overwrites _messages[index]
     // with stale partial content.
@@ -2568,12 +2478,8 @@ class ChatActions {
         onMaybeGenerateTitle?.call(conversationId);
       }
 
-      // Trigger summary generation check (actual logic in HomeViewModel)
-      onMaybeGenerateSummary?.call(conversationId);
-
       // Trigger follow-up suggestions after the final assistant reply is stored.
       onMaybeGenerateSuggestions?.call(conversationId);
-      await _finishIosBackgroundGeneration(success: true);
     } finally {
       // UI lifecycle cleanup is independent from terminal persistence success.
       if (chatController.publishTerminalMessage(finalizedMessage)) {
@@ -2650,7 +2556,6 @@ class ChatActions {
       _conversationStreams.remove(conversationId);
       onStreamError?.call(errorText);
       onStreamFinished?.call(conversationId);
-      await _finishIosBackgroundGeneration(success: false, detail: errorText);
     }
   }
 

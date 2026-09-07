@@ -14,9 +14,6 @@ Future<McpOAuthCallback> openMcpOAuthCallback(Uri authorizationServer) async {
   if (Platform.isAndroid) {
     return _AndroidMcpOAuthCallback(authorizationServer);
   }
-  if (Platform.isIOS) {
-    return _IosMcpOAuthCallback(authorizationServer);
-  }
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
   return _IoMcpOAuthCallback(server);
 }
@@ -74,56 +71,6 @@ final class _AndroidMcpOAuthCallback implements McpOAuthCallback {
   @override
   Future<Uri> waitForCallback(Duration timeout) {
     throw UnsupportedError('Android OAuth callbacks are handled by the app');
-  }
-
-  @override
-  Future<void> close() => _mobileOAuthChannel.invokeMethod<void>('cancel');
-}
-
-final class _IosMcpOAuthCallback implements McpOAuthCallback {
-  _IosMcpOAuthCallback(Uri authorizationServer)
-    : redirectUri = Uri(
-        scheme: 'psyche.kelivo',
-        path:
-            '/oauth/callback/${_authorizationServerHash(authorizationServer)}',
-      );
-
-  @override
-  final Uri redirectUri;
-
-  @override
-  Future<Uri> authorize(
-    Uri authorizationUrl,
-    Duration timeout,
-    McpOAuthUrlLauncher launchAuthorizationUrl,
-  ) async {
-    try {
-      final value = await _mobileOAuthChannel
-          .invokeMethod<String>('authenticate', {
-            'url': authorizationUrl.toString(),
-            'callbackScheme': redirectUri.scheme,
-          })
-          .timeout(timeout);
-      if (value == null) {
-        throw const McpOAuthCallbackException(
-          'authorization session returned no callback URL',
-        );
-      }
-      return Uri.parse(value);
-    } on TimeoutException {
-      await _mobileOAuthChannel.invokeMethod<void>('cancel');
-      rethrow;
-    } on PlatformException catch (error) {
-      throw McpOAuthCallbackException(
-        error.message ?? 'authorization session failed',
-        cancelled: error.code == 'authorization_cancelled',
-      );
-    }
-  }
-
-  @override
-  Future<Uri> waitForCallback(Duration timeout) {
-    throw UnsupportedError('iOS OAuth callbacks are handled by the system');
   }
 
   @override

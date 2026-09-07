@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import '../../utils/token_estimator.dart';
-import '../memory/memory_block_builder.dart';
 import 'log_payload_elider.dart';
 
 /// Internal per-message key. Stripped before the request is sent.
@@ -9,11 +8,8 @@ const String kelivoContextSegmentsKey = '_kelivo_ctx_segments';
 
 enum ContextSource {
   systemPrompt,
-  memoryRules,
+  memory,
   searchPrompt,
-  instructionInjection,
-  worldBook,
-  memorySnapshot,
   chatHistory,
   toolCall,
   toolResult,
@@ -79,12 +75,12 @@ class ContextLogMessage {
     final raw = json['segments'];
     return ContextLogMessage(
       role: (json['role'] ?? '').toString(),
-      segments: splitMemorySnapshotUserText([
+      segments: [
         if (raw is List)
           for (final item in raw)
             if (item is Map)
               ContextSegment.fromJson(Map<String, dynamic>.from(item)),
-      ]),
+      ],
     );
   }
 }
@@ -288,40 +284,6 @@ List<ContextSegment> segmentsFromTaggedMessage(Map<String, dynamic> message) {
         text: text,
         tokens: estimateTokens(text),
         meta: meta,
-      ),
-    );
-  }
-  return splitMemorySnapshotUserText(out);
-}
-
-/// If a memory-snapshot segment still contains the user turn, split it.
-List<ContextSegment> splitMemorySnapshotUserText(
-  List<ContextSegment> segments,
-) {
-  final out = <ContextSegment>[];
-  for (final segment in segments) {
-    if (segment.source != ContextSource.memorySnapshot) {
-      out.add(segment);
-      continue;
-    }
-    final split = MemoryBlockBuilder.splitInjectedPrefix(segment.text);
-    if (split == null || split.rest.isEmpty) {
-      out.add(segment);
-      continue;
-    }
-    out.add(
-      ContextSegment(
-        source: ContextSource.memorySnapshot,
-        text: split.prefix,
-        tokens: estimateTokens(split.prefix),
-        meta: {...?segment.meta, 'kind': split.kind},
-      ),
-    );
-    out.add(
-      ContextSegment(
-        source: ContextSource.chatHistory,
-        text: split.rest,
-        tokens: estimateTokens(split.rest),
       ),
     );
   }

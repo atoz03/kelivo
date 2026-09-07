@@ -87,17 +87,12 @@ Conversation sanitizeLegacyConversationFields(Conversation conversation) {
   final lastSummarizedMessageCount = conversation.lastSummarizedMessageCount < 0
       ? 0
       : conversation.lastSummarizedMessageCount;
-  final lastMemoryExtractedOrder = conversation.lastMemoryExtractedOrder < -1
-      ? -1
-      : conversation.lastMemoryExtractedOrder;
   if (truncateIndex == conversation.truncateIndex &&
-      lastSummarizedMessageCount == conversation.lastSummarizedMessageCount &&
-      lastMemoryExtractedOrder == conversation.lastMemoryExtractedOrder) {
+      lastSummarizedMessageCount == conversation.lastSummarizedMessageCount) {
     return conversation;
   }
   return conversation.copyWith(
     truncateIndex: truncateIndex,
     lastSummarizedMessageCount: lastSummarizedMessageCount,
-    lastMemoryExtractedOrder: lastMemoryExtractedOrder,
   );
 }

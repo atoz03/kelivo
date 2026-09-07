@@ -160,16 +160,10 @@ class MessageGenerationService {
       }
     }
 
-    // Inject prompts first so WorldBook can scan the full untrimmed history
-    // (same keyword trigger range as before OCR-after-trim). Document/OCR work
-    // runs only after the single final context trim below.
+    // Inject prompts first. Document/OCR work runs only after the single final
+    // context trim below.
     messageBuilderService.injectSystemPrompt(apiMessages, assistant, modelId);
-    await messageBuilderService.injectMemoryAndRecentChats(
-      apiMessages,
-      assistant,
-      settings: settings,
-      currentConversationId: currentConversation?.id,
-    );
+    await messageBuilderService.injectMemory(apiMessages, assistant);
 
     final hasBuiltInSearch = messageBuilderService.hasBuiltInSearch(
       settings,
@@ -182,18 +176,10 @@ class MessageGenerationService {
       assistant,
       hasBuiltInSearch,
     );
-    await messageBuilderService.injectInstructionPrompts(
-      apiMessages,
-      assistantId,
-    );
-    await messageBuilderService.injectWorldBookPrompts(
-      apiMessages,
-      assistantId,
-    );
 
-    // Single final trim after WorldBook TOP/BOTTOM/AT_DEPTH injections. OCR and
-    // document extraction must run only on this retained set so images that will
-    // not be sent are never processed (#769).
+    // Single final context trim. OCR and document extraction must run only on
+    // this retained set so images that will not be sent are never processed
+    // (#769).
     messageBuilderService.applyContextLimit(apiMessages, assistant);
 
     // Only this step does the actual attachment work (document extraction and

@@ -1,7 +1,6 @@
 import 'package:Kelivo/core/models/message_part.dart';
 import 'dart:io';
 
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 // ignore: depend_on_referenced_packages
@@ -127,9 +126,6 @@ void main() {
       await service.updateStreamingCheckpointSilent(message, const []);
       expect(service.conversationListRevision, last);
 
-      await service.updateConversationSummary(conversation.id, 'summary', 1);
-      expect(service.conversationListRevision, last);
-
       await service.updateConversationSuggestions(conversation.id, ['s']);
       expect(service.conversationListRevision, last);
     });
@@ -156,14 +152,11 @@ void main() {
         revisionId: snapshotMessage.id,
         conversationId: conversation.id,
         payload: 'assistant A memory',
-        carriesMemorySnapshot: true,
-        injectedMemoryHash: const Value('assistant-a-hash'),
       );
       await repository.putMessagePrompt(
         revisionId: plainMessage.id,
         conversationId: conversation.id,
         payload: 'plain frozen prompt',
-        carriesMemorySnapshot: false,
       );
 
       await service.moveConversationToAssistant(
@@ -171,14 +164,9 @@ void main() {
         assistantId: 'assistant-b',
       );
 
-      expect(await repository.getMessagePrompt(snapshotMessage.id), isNull);
       expect(
         (await repository.getMessagePrompt(plainMessage.id))?.payload,
         'plain frozen prompt',
-      );
-      expect(
-        await repository.getConversationInjectedMemoryHash(conversation.id),
-        isNull,
       );
       expect(
         service.getConversation(conversation.id)?.assistantId,
@@ -372,7 +360,6 @@ void main() {
       expect(notifications, 1);
       expect(service.getConversation(a.id)?.assistantId, 'assistant-b');
       expect(service.getConversation(b.id)?.assistantId, 'assistant-b');
-      expect(service.getConversation(a.id)?.injectedMemoryHash, isNull);
     });
 
     test('moveConversationsToAssistant skips already-on-target', () async {

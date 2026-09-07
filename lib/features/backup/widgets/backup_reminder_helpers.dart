@@ -62,10 +62,7 @@ Future<int?> showBackupReminderTimePicker(
   );
 }
 
-bool get _isDesktopPlatform =>
-    defaultTargetPlatform == TargetPlatform.macOS ||
-    defaultTargetPlatform == TargetPlatform.windows ||
-    defaultTargetPlatform == TargetPlatform.linux;
+bool get _isDesktopPlatform => defaultTargetPlatform == TargetPlatform.macOS;
 
 Future<int?> _showBackupReminderMobileTimePicker(
   BuildContext context, {

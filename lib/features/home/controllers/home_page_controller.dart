@@ -16,7 +16,6 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/mcp_provider.dart';
 import '../../../core/providers/tts_provider.dart';
 import '../../../core/providers/quick_phrase_provider.dart';
-import '../../../core/providers/instruction_injection_provider.dart';
 import '../../../core/providers/memory_provider.dart';
 import '../../../core/services/chat/chat_service.dart';
 import '../../../core/services/tts/tts_text_selection.dart';
@@ -492,10 +491,8 @@ class HomePageController extends ChangeNotifier {
     final taskName = switch (task) {
       BackgroundTaskKind.ocr => l10n.defaultModelPageOcrModelTitle,
       BackgroundTaskKind.title => l10n.defaultModelPageTitleModelTitle,
-      BackgroundTaskKind.summary => l10n.defaultModelPageSummaryModelTitle,
       BackgroundTaskKind.suggestions =>
         l10n.defaultModelPageSuggestionModelTitle,
-      BackgroundTaskKind.memory => l10n.memorySettingsPageTitle,
     };
     showAppSnackBar(
       _context,
@@ -595,14 +592,6 @@ class HomePageController extends ChangeNotifier {
       Future.microtask(() async {
         try {
           await quickPhraseProvider.initialize();
-        } catch (_) {}
-      });
-    } catch (_) {}
-    try {
-      final instructionProvider = _context.read<InstructionInjectionProvider>();
-      Future.microtask(() async {
-        try {
-          await instructionProvider.initialize();
         } catch (_) {}
       });
     } catch (_) {}

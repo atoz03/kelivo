@@ -59,8 +59,7 @@ class _HiveToSqliteMigrationPageState extends State<HiveToSqliteMigrationPage> {
   bool get _usesMobileBackupFlow =>
       widget.mobileBackupSaver != null ||
       widget.mobileDirectBackupSaver != null ||
-      Platform.isAndroid ||
-      Platform.isIOS;
+      Platform.isAndroid;
 
   bool get _usesDirectMobileBackupFlow =>
       widget.mobileDirectBackupSaver != null ||

@@ -13,10 +13,7 @@ class _QuickPhraseTab extends StatelessWidget {
 
     // Desktop: custom dialog; Mobile: bottom sheet
     final platform = Theme.of(context).platform;
-    final isDesktop =
-        platform == TargetPlatform.macOS ||
-        platform == TargetPlatform.linux ||
-        platform == TargetPlatform.windows;
+    final isDesktop = platform == TargetPlatform.macOS;
     if (isDesktop) {
       await showDialog<void>(
         context: context,

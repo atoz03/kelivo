@@ -1836,7 +1836,7 @@ class _CategoryDetail extends StatelessWidget {
   }) async {
     final l10n = AppLocalizations.of(context)!;
     try {
-      if (Platform.isAndroid || Platform.isIOS) {
+      if (Platform.isAndroid) {
         final saved = await NativeFileSave.saveFileFromPath(
           sourcePath: sourcePath,
           fileName: fileName,

@@ -332,10 +332,7 @@ class _ImageViewerPageState extends State<ImageViewerPage>
   @visibleForTesting
   int get debugLiveImageSizeListenerCount => _imageSizeListeners.length;
 
-  bool get _isDesktop =>
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.linux ||
-      defaultTargetPlatform == TargetPlatform.macOS;
+  bool get _isDesktop => defaultTargetPlatform == TargetPlatform.macOS;
 
   bool get _hasImages => widget.images.isNotEmpty;
   bool get _hasMultipleImages => widget.images.length > 1;

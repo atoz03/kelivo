@@ -770,7 +770,7 @@ Future<void> _saveExportTextWithPicker(
 }) async {
   final l10n = AppLocalizations.of(context)!;
 
-  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+  if (Platform.isMacOS) {
     final String? savePath = await FilePicker.platform.saveFile(
       dialogTitle: l10n.backupPageExportToFile,
       fileName: filename,
@@ -1038,8 +1038,7 @@ Future<File?> _renderAndSaveMessageImage(
     await preRenderMermaidCodesForExport(context, codes);
   } catch (_) {}
 
-  final bool isDesktop =
-      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+  final bool isDesktop = Platform.isMacOS;
   final exportConfig = _exportImageRenderConfig(isDesktop: isDesktop);
 
   Widget buildContent() => ExportCaptureScope(
@@ -1084,8 +1083,7 @@ Future<File?> _renderAndSaveChatImage(
     await preRenderMermaidCodesForExport(context, codes);
   } catch (_) {}
 
-  final bool isDesktop =
-      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+  final bool isDesktop = Platform.isMacOS;
   final exportConfig = _exportImageRenderConfig(isDesktop: isDesktop);
 
   Widget buildContent() => ExportCaptureScope(
@@ -1853,7 +1851,7 @@ Future<void> showMessageExportSheet(
   ChatMessage message,
 ) async {
   try {
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    if (Platform.isMacOS) {
       // Desktop: show centered dialog
       await showDialog<void>(
         context: context,
@@ -1898,7 +1896,7 @@ Future<void> showChatExportSheet(
   required List<ChatMessage> selectedMessages,
 }) async {
   try {
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    if (Platform.isMacOS) {
       // Desktop: show centered dialog
       await showDialog<void>(
         context: context,

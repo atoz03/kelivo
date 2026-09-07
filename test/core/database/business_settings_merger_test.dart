@@ -113,53 +113,20 @@ void main() {
           'background': null,
         }),
       );
-      final localMemory = BusinessEntityValue(
-        id: '1',
-        sortOrder: 0,
-        payload: jsonEncode({
-          'id': 1,
-          'assistantId': 'assistant-a',
-          'content': 'Local memory',
-        }),
-        assistantId: 'assistant-a',
-      );
-      final importedMemory = BusinessEntityValue(
-        id: '1',
-        sortOrder: 0,
-        payload: jsonEncode({
-          'id': 1,
-          'assistantId': 'assistant-b',
-          'content': 'Imported memory',
-        }),
-        assistantId: 'assistant-b',
-      );
-      final importedWorldBook = BusinessEntityValue(
-        id: 'generated_world_book',
-        sortOrder: 0,
-        payload: jsonEncode({'name': 'Imported world book'}),
-      );
-
       final merged = BusinessSettingsMerger.mergeSnapshots(
         BusinessSnapshot(
           entities: {
             BusinessEntityKind.assistant: [localAssistant],
-            BusinessEntityKind.assistantMemory: [localMemory],
           },
           preferences: const {},
         ),
         BusinessSnapshot(
           entities: {
             BusinessEntityKind.assistant: [importedAssistant],
-            BusinessEntityKind.assistantMemory: [importedMemory],
-            BusinessEntityKind.worldBook: [importedWorldBook],
           },
           preferences: const {},
         ),
-        incomingKeys: const {
-          'assistants_v1',
-          'assistant_memories_v1',
-          'world_books_v1',
-        },
+        incomingKeys: const {'assistants_v1'},
       );
 
       final assistant = merged.entities[BusinessEntityKind.assistant]!.single;
@@ -170,15 +137,6 @@ void main() {
         'avatar': '/local/avatar.png',
         'background': '/local/background.png',
       });
-      final memories = merged.entities[BusinessEntityKind.assistantMemory]!;
-      expect(memories.first, same(localMemory));
-      expect(memories.last.id, '2');
-      expect(memories.last.assistantId, importedMemory.assistantId);
-      expect(jsonDecode(memories.last.payload)['id'], 2);
-      expect(
-        merged.entities[BusinessEntityKind.worldBook]!.single,
-        same(importedWorldBook),
-      );
     },
   );
 
@@ -258,105 +216,33 @@ void main() {
     expect(merged['new_preference_v1'], 'added');
   });
 
-  test(
-    'keeps list identity rules and resolves assistant memory id conflicts',
-    () {
-      final merged = BusinessSettingsMerger.merge(
-        {
-          'assistant_memories_v1': jsonEncode([
-            {'id': 1, 'assistantId': 'a', 'content': 'same'},
-            {'id': 2, 'assistantId': 'a', 'content': 'local'},
-          ]),
-          'mcp_servers_v1': jsonEncode([
-            {'id': 'mcp-a', 'name': 'Local'},
-          ]),
-          'assistant_tags_v1': jsonEncode([
-            {'id': 'tag-a', 'name': 'Local'},
-          ]),
-        },
-        {
-          'assistant_memories_v1': jsonEncode([
-            {'id': 9, 'assistantId': 'a', 'content': 'same'},
-            {'id': 2, 'assistantId': 'a', 'content': 'incoming'},
-          ]),
-          'mcp_servers_v1': jsonEncode([
-            {'id': 'mcp-a', 'name': 'Imported conflict'},
-            {'id': 'mcp-b', 'name': 'Imported new'},
-          ]),
-          'assistant_tags_v1': jsonEncode([
-            {'id': 'tag-a', 'name': 'Imported conflict'},
-            {'id': 'tag-b', 'name': 'Imported new'},
-          ]),
-        },
-      );
-
-      final memories =
-          jsonDecode(merged['assistant_memories_v1']! as String) as List;
-      final servers = jsonDecode(merged['mcp_servers_v1']! as String) as List;
-      final tags = jsonDecode(merged['assistant_tags_v1']! as String) as List;
-
-      expect(memories.map((memory) => memory['content']), [
-        'same',
-        'local',
-        'incoming',
-      ]);
-      expect(memories.last['id'], 3);
-      expect(servers.map((server) => server['name']), [
-        'Local',
-        'Imported new',
-      ]);
-      expect(tags.map((tag) => tag['name']), ['Local', 'Imported new']);
-    },
-  );
-
-  test('duplicate memory entry merge preserves migration receipts', () {
-    Map<String, Object> memory({
-      required String id,
-      required String content,
-      required List<String> migrationIds,
-    }) => <String, Object>{
-      'id': id,
-      'scope': 'global',
-      'type': 'identity',
-      'status': 'active',
-      'content': content,
-      'source': 'extracted',
-      'relatedIds': <String>[],
-      'migrationIds': migrationIds,
-      'createdAt': 1,
-      'updatedAt': 1,
-    };
-
+  test('keeps list identity rules for id-bearing entities', () {
     final merged = BusinessSettingsMerger.merge(
       {
-        'memory_entries_v1': jsonEncode([
-          memory(
-            id: 'mem_local001',
-            content: 'Same memory',
-            migrationIds: const ['local-receipt'],
-          ),
+        'mcp_servers_v1': jsonEncode([
+          {'id': 'mcp-a', 'name': 'Local'},
+        ]),
+        'assistant_tags_v1': jsonEncode([
+          {'id': 'tag-a', 'name': 'Local'},
         ]),
       },
       {
-        'memory_entries_v1': jsonEncode([
-          memory(
-            id: 'mem_import01',
-            content: ' same   MEMORY ',
-            migrationIds: const ['local-receipt', 'incoming-receipt'],
-          ),
+        'mcp_servers_v1': jsonEncode([
+          {'id': 'mcp-a', 'name': 'Imported conflict'},
+          {'id': 'mcp-b', 'name': 'Imported new'},
+        ]),
+        'assistant_tags_v1': jsonEncode([
+          {'id': 'tag-a', 'name': 'Imported conflict'},
+          {'id': 'tag-b', 'name': 'Imported new'},
         ]),
       },
     );
 
-    final memories =
-        jsonDecode(merged['memory_entries_v1']! as String) as List<dynamic>;
-    expect(memories, hasLength(1));
-    expect(memories.single['id'], 'mem_local001');
-    expect(memories.single['content'], 'Same memory');
-    expect(memories.single['migrationIds'], [
-      'local-receipt',
-      'incoming-receipt',
-    ]);
+    final servers = jsonDecode(merged['mcp_servers_v1']! as String) as List;
+    final tags = jsonDecode(merged['assistant_tags_v1']! as String) as List;
+
+    expect(servers.map((server) => server['name']), ['Local', 'Imported new']);
+    expect(tags.map((tag) => tag['name']), ['Local', 'Imported new']);
   });
 
   test(
@@ -476,10 +362,8 @@ void main() {
 
   test('merge keeps local list entities and adds imported rows', () {
     final entityKeys = <String, String>{
-      'world_books_v1': 'world-book',
       'quick_phrases_v1': 'quick-phrase',
       'tts_services_v1': 'tts',
-      'instruction_injections_v1': 'injection',
     };
     Map<String, Object?> rowLists(String origin) => {
       for (final entry in entityKeys.entries)
@@ -487,12 +371,7 @@ void main() {
           {'id': '$origin-${entry.value}'},
         ]),
     };
-    final existing = <String, Object?>{
-      ...rowLists('local'),
-      'instruction_injections_active_ids_by_assistant_v1': jsonEncode({
-        '__global__': <String>['local-injection'],
-      }),
-    };
+    final existing = <String, Object?>{...rowLists('local')};
     final emptyBackup = BusinessSettingsMerger.merge(existing, {
       for (final key in entityKeys.keys) key: jsonEncode(const <Object>[]),
     });
@@ -503,16 +382,6 @@ void main() {
         'local-${entry.value}',
       ], reason: entry.key);
     }
-    expect(
-      jsonDecode(
-        emptyBackup['instruction_injections_active_ids_by_assistant_v1']!
-            as String,
-      ),
-      {
-        '__global__': <String>['local-injection'],
-      },
-    );
-
     final merged = BusinessSettingsMerger.merge(existing, rowLists('imported'));
 
     for (final entry in entityKeys.entries) {

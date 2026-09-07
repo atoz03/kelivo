@@ -1,13 +1,7 @@
-import 'dart:io';
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_windows/webview_windows.dart' as winweb;
-import 'package:path_provider/path_provider.dart';
-import 'dart:io' as io;
 import '../l10n/app_localizations.dart';
 import '../icons/lucide_adapter.dart';
-import '../shared/widgets/snackbar.dart';
 import '../shared/widgets/ios_tactile.dart';
 import 'dart:convert';
 import '../theme/app_font_weights.dart';
@@ -17,15 +11,6 @@ Future<void> showHtmlPreviewDesktopDialog(
   BuildContext context, {
   required String html,
 }) async {
-  if (Platform.isLinux) {
-    final l10n = AppLocalizations.of(context)!;
-    showAppSnackBar(
-      context,
-      message: l10n.htmlPreviewNotSupportedOnLinux,
-      type: NotificationType.warning,
-    );
-    return;
-  }
   await showDialog(
     context: context,
     barrierDismissible: true,
@@ -42,73 +27,32 @@ class _HtmlPreviewDialog extends StatefulWidget {
 }
 
 class _HtmlPreviewDialogState extends State<_HtmlPreviewDialog> {
-  // macOS uses webview_flutter; Windows uses webview_windows.
-  WebViewController? _flutterCtrl;
-  winweb.WebviewController? _winCtrl;
-  bool _ready = false;
+  WebViewController? _controller;
   bool _loadedOnce = false;
   bool? _lastDark;
   final List<_ConsoleMessage> _console = <_ConsoleMessage>[];
-  StreamSubscription? _msgSub;
 
   @override
   void initState() {
     super.initState();
-    _init();
-  }
-
-  Future<void> _init() async {
-    if (Platform.isWindows) {
-      final c = winweb.WebviewController();
-      await c.initialize();
-      try {
-        await c.setBackgroundColor(Colors.transparent);
-      } catch (_) {}
-      _winCtrl = c;
-      // Listen to web messages (console bridge)
-      _msgSub = _winCtrl!.webMessage.listen((event) {
-        try {
-          String text;
-          final dynamic e = event;
-          if (e is String) {
-            text = e;
-          } else {
-            text = (e.content?.toString() ?? e.toString());
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..addJavaScriptChannel(
+        'Console',
+        onMessageReceived: (m) {
+          try {
+            final obj = json.decode(m.message) as Map<String, dynamic>;
+            _pushConsole(
+              level: (obj['level']?.toString() ?? 'log').toUpperCase(),
+              message: obj['message']?.toString() ?? '',
+              source: obj['source']?.toString(),
+              line: (obj['line'] as num?)?.toInt(),
+            );
+          } catch (_) {
+            _pushConsole(level: 'LOG', message: m.message);
           }
-          final obj = json.decode(text) as Map<String, dynamic>;
-          _pushConsole(
-            level: (obj['level']?.toString() ?? 'log').toUpperCase(),
-            message: obj['message']?.toString() ?? '',
-            source: obj['source']?.toString(),
-            line: (obj['line'] as num?)?.toInt(),
-          );
-        } catch (_) {}
-      });
-      _ready = true;
-      if (mounted) setState(() {});
-    } else {
-      final c = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..addJavaScriptChannel(
-          'Console',
-          onMessageReceived: (m) {
-            try {
-              final obj = json.decode(m.message) as Map<String, dynamic>;
-              _pushConsole(
-                level: (obj['level']?.toString() ?? 'log').toUpperCase(),
-                message: obj['message']?.toString() ?? '',
-                source: obj['source']?.toString(),
-                line: (obj['line'] as num?)?.toInt(),
-              );
-            } catch (_) {
-              _pushConsole(level: 'LOG', message: m.message);
-            }
-          },
-        );
-      _flutterCtrl = c;
-      _ready = true;
-      if (mounted) setState(() {});
-    }
+        },
+      );
   }
 
   @override
@@ -126,27 +70,13 @@ class _HtmlPreviewDialogState extends State<_HtmlPreviewDialog> {
     return '''<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><style>html,body{background:$bg;color:$fg;margin:0;padding:0}.container{padding:12px}img,video,canvas,iframe{max-width:100%;height:auto}pre,code{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;}</style></head><body><div class="container">$input</div></body></html>''';
   }
 
-  Future<String> _writeTempHtml(String html) async {
-    final dir = await getTemporaryDirectory();
-    final file = io.File(
-      '${dir.path}/html_preview_${DateTime.now().millisecondsSinceEpoch}.html',
-    );
-    await file.writeAsString(html, flush: true);
-    return file.path;
-  }
-
   Future<void> _loadWithTheme() async {
-    if (!_ready) return;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     if (_loadedOnce && _lastDark == isDark) return; // no change
     _lastDark = isDark;
-    final html = _wrapWithTheme(widget.html, isDark: isDark);
-    if (Platform.isWindows) {
-      final path = await _writeTempHtml(html);
-      await _winCtrl?.loadUrl(Uri.file(path).toString());
-    } else {
-      await _flutterCtrl?.loadHtmlString(html);
-    }
+    await _controller?.loadHtmlString(
+      _wrapWithTheme(widget.html, isDark: isDark),
+    );
     _loadedOnce = true;
     if (mounted) setState(() {});
   }
@@ -238,12 +168,7 @@ class _HtmlPreviewDialogState extends State<_HtmlPreviewDialog> {
                       borderRadius: BorderRadius.circular(12),
                       child: Builder(
                         builder: (context) {
-                          if (Platform.isWindows) {
-                            final c = _winCtrl;
-                            if (c == null) return const SizedBox.shrink();
-                            return winweb.Webview(c);
-                          }
-                          final c = _flutterCtrl;
+                          final c = _controller;
                           if (c == null) return const SizedBox.shrink();
                           return WebViewWidget(controller: c);
                         },
@@ -257,17 +182,6 @@ class _HtmlPreviewDialogState extends State<_HtmlPreviewDialog> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    try {
-      _msgSub?.cancel();
-    } catch (_) {}
-    try {
-      _winCtrl?.dispose();
-    } catch (_) {}
-    super.dispose();
   }
 }
 
