@@ -191,24 +191,26 @@ class _GlassPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
+    final radius = borderRadius ?? BorderRadius.circular(14);
     return ClipRRect(
-      borderRadius: borderRadius ?? BorderRadius.circular(14),
+      borderRadius: radius,
       child: BackdropFilter(
         filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: AppOverlayColors.desktopPopoverSurface(cs),
+            borderRadius: radius,
             border: Border(
               top: BorderSide(
-                color: cs.onSurface.withValues(alpha: isDark ? 0.06 : 0.18),
+                color: cs.onSurface.withValues(alpha: isDark ? 0.06 : 0.12),
                 width: 0.7,
               ),
               left: BorderSide(
-                color: cs.onSurface.withValues(alpha: isDark ? 0.04 : 0.12),
+                color: cs.onSurface.withValues(alpha: isDark ? 0.06 : 0.12),
                 width: 0.6,
               ),
               right: BorderSide(
-                color: cs.onSurface.withValues(alpha: isDark ? 0.04 : 0.12),
+                color: cs.onSurface.withValues(alpha: isDark ? 0.06 : 0.12),
                 width: 0.6,
               ),
             ),
@@ -382,8 +384,6 @@ class _SearchContent extends StatelessWidget {
       sp,
       ap,
     );
-    final builtInMode = builtInEnabled;
-
     final rows = <Widget>[];
 
     // 1) Cancel item at top
@@ -436,27 +436,26 @@ class _SearchContent extends StatelessWidget {
       }
     }
 
-    // 3) External services list (hidden when url_context is active)
-    if (!builtInMode) {
-      for (int i = 0; i < services.length; i++) {
-        final s = services[i];
-        final svc = SearchService.getService(s);
-        final name = svc.name;
-        final isSelectedActive = enabled && (i == selected);
-        rows.add(
-          _RowItem(
-            leading: _BrandIcon(name: name),
-            label: name,
-            selected: isSelectedActive,
-            onTap: () async {
-              await settingsNotifier.setSearchServiceSelected(i);
-              await _disableBuiltInSearch(sp, ap);
-              await ap.setSearchEnabledForCurrentAssistant(true);
-              done();
-            },
-          ),
-        );
-      }
+    // 3) External services remain available so users can switch directly from
+    // built-in search. Selecting one keeps the two modes mutually exclusive.
+    for (int i = 0; i < services.length; i++) {
+      final s = services[i];
+      final svc = SearchService.getService(s);
+      final name = svc.name;
+      final isSelectedActive = enabled && (i == selected);
+      rows.add(
+        _RowItem(
+          leading: _BrandIcon(name: name),
+          label: name,
+          selected: isSelectedActive,
+          onTap: () async {
+            await settingsNotifier.setSearchServiceSelected(i);
+            await _disableBuiltInSearch(sp, ap);
+            await ap.setSearchEnabledForCurrentAssistant(true);
+            done();
+          },
+        ),
+      );
     }
 
     return Padding(

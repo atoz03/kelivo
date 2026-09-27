@@ -557,6 +557,18 @@ void main() {
 
     test('accepts representative runtime payloads for every entity kind', () {
       final snapshot = BusinessSettingsRouter.normalizeAndRoute({
+        'workspaces_v1': jsonEncode([
+          {'id': 'workspace-1', 'name': 'Project'},
+        ]),
+        'skills_v1': jsonEncode([
+          {
+            'id': 'skill-1',
+            'source': 'file',
+            'enabled': false,
+            'installedAt': '2026-09-08T00:00:00Z',
+            'updatedAt': '2026-09-08T00:00:00Z',
+          },
+        ]),
         'assistants_v1': jsonEncode([
           {
             'id': 'assistant-1',
@@ -698,6 +710,38 @@ void main() {
             'search_services_v1',
           ),
         ),
+      );
+    });
+
+    test('accepts and preserves Kagi search credentials', () {
+      final snapshot = BusinessSettingsRouter.normalizeAndRoute({
+        'search_services_v1': jsonEncode([
+          {
+            'id': 'kagi-1',
+            'type': 'kagi',
+            'apiKey': 'primary-key',
+            'apiKeys': ['backup-key'],
+          },
+        ]),
+      });
+
+      final exported = BusinessSettingsRouter.exportSnapshot(snapshot);
+      expect(jsonDecode(exported['search_services_v1']! as String), [
+        {
+          'id': 'kagi-1',
+          'type': 'kagi',
+          'apiKey': 'primary-key',
+          'apiKeys': ['backup-key'],
+        },
+      ]);
+
+      expect(
+        () => BusinessSettingsRouter.normalizeAndRoute({
+          'search_services_v1': jsonEncode([
+            {'id': 'kagi-invalid', 'type': 'kagi', 'apiKey': 123},
+          ]),
+        }),
+        throwsA(isA<FormatException>()),
       );
     });
 

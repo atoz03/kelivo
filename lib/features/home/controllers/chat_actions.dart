@@ -1,3 +1,4 @@
+import '../../../core/services/auth/provider_oauth_service.dart';
 import 'dart:async';
 import 'dart:collection';
 import 'package:flutter/widgets.dart';
@@ -17,7 +18,9 @@ import '../../../core/services/api/chat_api_service.dart';
 import '../../../core/services/api/retry_policy.dart';
 import '../../../core/services/api/stream/stream_chunk.dart';
 import '../../../core/services/chat/chat_service.dart';
+import '../../../core/services/mobile_background.dart';
 import '../../../core/services/logging/flutter_logger.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../utils/assistant_regex.dart';
 import '../../../core/models/assistant_regex.dart';
 import '../services/ask_user_interaction_service.dart';
@@ -166,9 +169,13 @@ class ChatActions {
     required this.messageGenerationService,
     required this.contextProvider,
     required this.viewModel,
-  }) {
+    MobileBackgroundCoordinator? backgroundCoordinator,
+  }) : _background =
+           backgroundCoordinator ?? MobileBackgroundCoordinator.instance {
     _current = this;
   }
+
+  final MobileBackgroundCoordinator _background;
 
   /// Latest live instance. Deletion entry points that sit outside the home
   /// controller graph (e.g. the drawer's conversation delete) reach the
@@ -271,8 +278,9 @@ class ChatActions {
   /// Called when streaming finishes for [conversationId].
   void Function(String conversationId)? onStreamFinished;
 
-  /// Called when a successful assistant reply is finalized.
-  void Function(ChatMessage message)? onAssistantMessageFinished;
+  /// Called after persistence. Await downstream work's background handoff,
+  /// not its full duration, before releasing this generation's resources.
+  FutureOr<void> Function(ChatMessage message)? onAssistantMessageFinished;
 
   /// Called when file processing starts for the assistant message [messageId].
   void Function(String messageId)? onFileProcessingStarted;
@@ -284,6 +292,53 @@ class ChatActions {
   // ============================================================================
   // Private Helpers
   // ============================================================================
+
+  String _backgroundTaskId(stream_ctrl.GenerationContext ctx) =>
+      ctx.generationRunId ?? ctx.assistantMessage.id;
+
+  Future<void> _startBackgroundGeneration(
+    stream_ctrl.GenerationContext ctx,
+  ) async {
+    if (_background.supported) {
+      await _background.configureFromSettings(
+        ctx.settings,
+        AppLocalizations.of(contextProvider)!,
+      );
+    }
+    final conversationId = ctx.assistantMessage.conversationId;
+    return _background.start(
+      id: _backgroundTaskId(ctx),
+      conversationId: conversationId,
+      title: chatService.getConversation(conversationId)?.title ?? 'Kelivo',
+      cancel: () async {
+        if (!_activeAssistantMessages.isActive(ctx.assistantMessage)) return;
+        if (ctx.generationRunId != null &&
+            _generationCheckpointCursors[ctx.assistantMessage.id]?.runId !=
+                ctx.generationRunId) {
+          return;
+        }
+        await cancelStreamingById(conversationId);
+      },
+    );
+  }
+
+  void _scheduleBackgroundGenerationUpdate(stream_ctrl.StreamingState state) {
+    final tools = streamController.toolParts[state.messageId] ?? const [];
+    final loadingTools = tools.where((tool) => tool.loading);
+    final activeTool = loadingTools.isEmpty ? null : loadingTools.last;
+    _background.update(
+      _backgroundTaskId(state.ctx),
+      phase: state.retryStatus != null
+          ? BackgroundTaskPhase.retrying
+          : activeTool != null
+          ? BackgroundTaskPhase.tool
+          : !state.hasContent && state.reasoningStartAt != null
+          ? BackgroundTaskPhase.thinking
+          : BackgroundTaskPhase.generating,
+      tokens: state.totalTokens,
+      toolName: activeTool?.toolName ?? '',
+    );
+  }
 
   /// Track in-flight _finishStreaming futures so _handleStreamDone can await
   /// completion before removing notifiers or triggering rebuild.
@@ -335,8 +390,18 @@ class ChatActions {
   String? activeStreamingMessageId(String conversationId) =>
       _activeAssistantMessages[conversationId]?.id;
 
+  /// Includes preparing, finishing and cancelling runs until their final
+  /// checkpoint is handled, even after the streaming UI has stopped.
+  Set<String> get activeStreamingMessageIds =>
+      _activeAssistantMessages.messageIds;
+
+  @visibleForTesting
+  void debugTrackActiveMessage(ChatMessage message) {
+    _activeAssistantMessages.put(message);
+  }
+
   /// Rebuild retry countdown UI from surviving [StreamingState] after the
-  /// streaming notifier was wiped (new/temporary conversation).
+  /// streaming notifier was explicitly cleared.
   void restoreRetryUi(String conversationId) {
     for (final state in _streamingStates.values) {
       if (state.conversationId != conversationId) continue;
@@ -354,6 +419,7 @@ class ChatActions {
         state.messageId,
         null,
       );
+      _scheduleBackgroundGenerationUpdate(state);
       return;
     }
     final status = stream_ctrl.RetryStatus(
@@ -362,6 +428,7 @@ class ChatActions {
       retryAt: pending.deadlineAt(),
     );
     state.retryStatus = status;
+    _scheduleBackgroundGenerationUpdate(state);
     streamController.streamingContentNotifier.updateRetryStatus(
       state.messageId,
       status,
@@ -768,6 +835,12 @@ class ChatActions {
   }
 
   @visibleForTesting
+  Future<void> debugHandleStreamChunk(
+    StreamChunk chunk,
+    stream_ctrl.StreamingState state,
+  ) => _handleStreamChunk(chunk, state);
+
+  @visibleForTesting
   static StreamSubscription<T> listenSequentiallyToStream<T>({
     required Stream<T> stream,
     required Future<void> Function(T chunk) onData,
@@ -779,6 +852,12 @@ class ChatActions {
     late final StreamSubscription<T> sourceSubscription;
     Future<void>? drainFuture;
     var terminalQueued = false;
+    var pausedForBacklog = false;
+    // Leave room for a short burst, but stop reading when a slow handler falls
+    // behind. Resume below the low-water mark to avoid pause/resume per delta.
+    const highWaterMark = 128;
+    const lowWaterMark = 64;
+    const processingBudget = Duration(milliseconds: 4);
 
     Future<void> reportError(Object error, StackTrace stackTrace) async {
       try {
@@ -797,6 +876,7 @@ class ChatActions {
     }
 
     Future<void> drain() async {
+      final budget = Stopwatch()..start();
       try {
         while (events.isNotEmpty) {
           final event = events.removeFirst();
@@ -812,6 +892,16 @@ class ChatActions {
             return;
           }
           await onData(event.data as T);
+          if (pausedForBacklog && events.length <= lowWaterMark) {
+            pausedForBacklog = false;
+            sourceSubscription.resume();
+          }
+          if (events.isNotEmpty && budget.elapsed >= processingBudget) {
+            // Awaiting an already-completed handler only yields to microtasks.
+            // Give input, vsync and the other conversations an event-loop turn.
+            await Future<void>.delayed(Duration.zero);
+            budget.reset();
+          }
         }
       } catch (error, stackTrace) {
         terminalQueued = true;
@@ -833,6 +923,10 @@ class ChatActions {
       ({T? data, Object? error, StackTrace? stackTrace, bool done}) event,
     ) {
       events.add(event);
+      if (!pausedForBacklog && events.length >= highWaterMark) {
+        pausedForBacklog = true;
+        sourceSubscription.pause();
+      }
       scheduleDrain();
     }
 
@@ -1924,6 +2018,9 @@ class ChatActions {
 
       streamController.finishReasoningIfNeeded(streaming.id);
       final state = _streamingStates[streaming.id];
+      final backgroundTaskId = state == null
+          ? (_generationCheckpointCursors[streaming.id]?.runId ?? streaming.id)
+          : _backgroundTaskId(state.ctx);
       final assistantParts = await _sanitizeAssistantImageParts(
         state == null ? latestStreaming.parts : _assistantPartsForState(state),
       );
@@ -1932,17 +2029,29 @@ class ChatActions {
                   ? _messageWithCurrentReasoning(latestStreaming)
                   : _streamingMessageSnapshot(state))
               .copyWith(parts: assistantParts, isStreaming: false);
+      var cancellationPersisted = false;
       try {
         await _finalizeStreamingCheckpoint(
           finalizedMessage,
-          terminalState: GenerationRunState.cancelled,
+          terminalState: _background.wasInterrupted(backgroundTaskId)
+              ? GenerationRunState.interrupted
+              : GenerationRunState.cancelled,
+          errorCode: _background.wasInterrupted(backgroundTaskId)
+              ? 'background_interrupted'
+              : null,
         );
+        cancellationPersisted = true;
       } finally {
         _clearGenerationRuntimeState(finalizedMessage);
         if (chatController.publishTerminalMessage(finalizedMessage)) {
           onMessagesChanged?.call();
         }
         streamController.removeStreamingNotifier(streaming.id);
+        await _background.finish(
+          backgroundTaskId,
+          BackgroundTaskOutcome.cancelled,
+          resultPersisted: cancellationPersisted,
+        );
       }
 
       // If streaming output included inline base64 images, sanitize them even on manual cancel
@@ -1993,8 +2102,29 @@ class ChatActions {
           },
         );
 
+    final toolHandler = ctx.onToolCall;
+    final onToolCall = toolHandler == null
+        ? null
+        : (String name, Map<String, dynamic> args, {String? toolCallId}) async {
+            _background.update(
+              _backgroundTaskId(ctx),
+              phase: BackgroundTaskPhase.tool,
+              tokens: state.totalTokens,
+              toolName: name,
+            );
+            try {
+              return await toolHandler(name, args, toolCallId: toolCallId);
+            } finally {
+              _scheduleBackgroundGenerationUpdate(state);
+            }
+          };
     try {
+      await _startBackgroundGeneration(ctx);
       if (!_activeAssistantMessages.isActive(ctx.assistantMessage)) {
+        await _background.finish(
+          _backgroundTaskId(ctx),
+          BackgroundTaskOutcome.cancelled,
+        );
         return;
       }
       final runId = ctx.generationRunId;
@@ -2034,7 +2164,7 @@ class ChatActions {
             topP: assistant?.topP,
             maxTokens: assistant?.maxTokens,
             tools: ctx.toolDefs.isEmpty ? null : ctx.toolDefs,
-            onToolCall: ctx.onToolCall,
+            onToolCall: onToolCall,
             extraHeaders: ctx.extraHeaders,
             extraBody: ctx.extraBody,
             requestId: conversationId,
@@ -2089,7 +2219,7 @@ class ChatActions {
         topP: assistant?.topP,
         maxTokens: assistant?.maxTokens,
         tools: ctx.toolDefs.isEmpty ? null : ctx.toolDefs,
-        onToolCall: ctx.onToolCall,
+        onToolCall: onToolCall,
         extraHeaders: ctx.extraHeaders,
         extraBody: ctx.extraBody,
         requestId: conversationId,
@@ -2281,11 +2411,13 @@ class ChatActions {
   void _publishAssistantParts(stream_ctrl.StreamingState state) {
     if (!state.ctx.streamOutput || state.finishHandled) return;
     streamController.streamingContentNotifier.getNotifier(state.messageId);
-    streamController.streamingContentNotifier.updateContent(
+    streamController.schedulePartsUpdate(
       state.messageId,
-      _transformAssistantContent(state),
-      state.totalTokens,
-      parts: _assistantPartsForState(state),
+      state.conversationId,
+      contentBuilder: () => _transformAssistantContent(state),
+      partsBuilder: (visibleText) =>
+          _assistantPartsForState(state, visibleText: visibleText),
+      totalTokens: state.totalTokens,
     );
   }
 
@@ -2307,6 +2439,8 @@ class ChatActions {
     if (state.ctx.streamOutput && chunkContent.isNotEmpty) {
       await _finishReasoningOnContent(state);
     }
+
+    _scheduleBackgroundGenerationUpdate(state);
 
     // Re-check before scheduling timer — timer creation after _finishStreaming
     // would create a new timer that periodically overwrites _messages[index]
@@ -2475,7 +2609,7 @@ class ChatActions {
       );
       state.terminalPersisted = true;
 
-      onAssistantMessageFinished?.call(finalizedMessage);
+      await onAssistantMessageFinished?.call(finalizedMessage);
 
       if (shouldGenerateTitle) {
         onMaybeGenerateTitle?.call(conversationId);
@@ -2487,6 +2621,14 @@ class ChatActions {
       // Trigger follow-up suggestions after the final assistant reply is stored.
       onMaybeGenerateSuggestions?.call(conversationId);
     } finally {
+      // A failed completion write goes through _handleStreamError next. Keep
+      // its resources until that failure result has also been persisted.
+      if (state.terminalPersisted) {
+        await _background.finish(
+          _backgroundTaskId(state.ctx),
+          BackgroundTaskOutcome.completed,
+        );
+      }
       // UI lifecycle cleanup is independent from terminal persistence success.
       if (chatController.publishTerminalMessage(finalizedMessage)) {
         onMessagesChanged?.call();
@@ -2516,7 +2658,10 @@ class ChatActions {
       return;
     }
     state.finishHandled = true;
-    final errorText = e.toString();
+    final oauthFailure =
+        e is ProviderOAuthException &&
+        e.kind == ProviderOAuthFailure.loginRequired;
+    final errorText = oauthFailure ? '' : e.toString();
 
     // Reset file processing state on error, scoped to this message so a
     // background conversation's indicator survives.
@@ -2537,6 +2682,13 @@ class ChatActions {
         errorText: errorText,
       ),
     );
+    if (oauthFailure) {
+      final providerId =
+          e.providerId ?? _streamingMessageSnapshot(state).providerId;
+      if (providerId != null) {
+        errorParts.add(ProviderAuthErrorPart(providerId: providerId));
+      }
+    }
     final errorMessage = _streamingMessageSnapshot(state).copyWith(
       parts: errorParts,
       totalTokens: state.totalTokens,
@@ -2546,10 +2698,15 @@ class ChatActions {
       await _finalizeStreamingCheckpoint(
         errorMessage,
         terminalState: GenerationRunState.failed,
-        errorCode: 'generation_failed',
+        errorCode: oauthFailure ? 'oauth_login_required' : 'generation_failed',
       );
       state.terminalPersisted = true;
     } finally {
+      await _background.finish(
+        _backgroundTaskId(state.ctx),
+        BackgroundTaskOutcome.failed,
+        resultPersisted: state.terminalPersisted,
+      );
       _clearGenerationRuntimeState(errorMessage);
       if (chatController.publishTerminalMessage(errorMessage)) {
         onMessagesChanged?.call();
@@ -2560,7 +2717,7 @@ class ChatActions {
       // handler returns. Re-entering its barrier cancel here would wait on this
       // handler itself and prevent the UI error callback below from firing.
       _conversationStreams.remove(conversationId);
-      onStreamError?.call(errorText);
+      if (!oauthFailure) onStreamError?.call(errorText);
       onStreamFinished?.call(conversationId);
     }
   }
@@ -2664,7 +2821,7 @@ class ChatActions {
 
   void _recordContent(stream_ctrl.StreamingState state, String chunkContent) {
     if (chunkContent.isNotEmpty) {
-      state.fullContentRaw += chunkContent;
+      state.appendContent(chunkContent);
     }
   }
 }

@@ -76,15 +76,42 @@ class DocumentTextExtractor {
         return _extractDocxSync(path);
       }
 
-      // Fallback: read as plain text
+      // Fallback: read as plain text. Shared or dropped files can be archives
+      // or executables, which must not be decoded into the prompt.
       final file = File(path);
       if (!file.existsSync()) return '[[File not found: $path]]';
+      final name = file.uri.pathSegments.last;
+      if (file.lengthSync() > _maxPlainTextBytes) {
+        return '[[File too large to read as text: $name]]';
+      }
       final bytes = file.readAsBytesSync();
+      if (!_looksLikeText(bytes)) {
+        return '[[Binary file cannot be read as text: $name]]';
+      }
       return UnicodeSanitizer.sanitize(
         utf8.decode(bytes, allowMalformed: true),
       );
     } catch (e) {
       return '[[Failed to read file: $e]]';
+    }
+  }
+
+  static const int _maxPlainTextBytes = 16 * 1024 * 1024;
+
+  /// Probes a prefix: text has no NUL bytes and decodes as UTF-8. A multi-byte
+  /// sequence cut by the probe boundary is not an error.
+  static bool _looksLikeText(Uint8List bytes) {
+    final probe = bytes.length > 8192 ? bytes.sublist(0, 8192) : bytes;
+    if (probe.contains(0)) return false;
+    final decoder = utf8.decoder.startChunkedConversion(
+      StringConversionSink.fromStringSink(StringBuffer()),
+    );
+    try {
+      decoder.add(probe);
+      if (probe.length == bytes.length) decoder.close();
+      return true;
+    } on FormatException {
+      return false;
     }
   }
 

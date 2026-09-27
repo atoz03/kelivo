@@ -160,9 +160,19 @@ class MessageGenerationService {
       }
     }
 
+    final promptConversation = currentConversation == null
+        ? null
+        : chatService.getConversation(currentConversation.id) ??
+              currentConversation;
+
     // Inject prompts first. Document/OCR work runs only after the single final
     // context trim below.
-    messageBuilderService.injectSystemPrompt(apiMessages, assistant, modelId);
+    messageBuilderService.injectSystemPrompt(
+      apiMessages,
+      assistant,
+      modelId,
+      conversation: promptConversation,
+    );
     await messageBuilderService.injectMemoryAndRecentChats(
       apiMessages,
       assistant,

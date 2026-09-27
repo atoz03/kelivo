@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:uuid/uuid.dart';
 
 class Conversation {
@@ -46,6 +48,9 @@ class Conversation {
 
   String? chatModelId;
 
+  // Per-conversation feature settings, e.g. the system prompt override.
+  final Map<String, dynamic> extras;
+
   Conversation({
     String? id,
     required this.title,
@@ -64,6 +69,7 @@ class Conversation {
     int? lastMemoryExtractedOrder,
     this.chatModelProvider,
     this.chatModelId,
+    this.extras = const <String, dynamic>{},
   }) : id = id ?? const Uuid().v4(),
        createdAt = createdAt ?? DateTime.now(),
        updatedAt = updatedAt ?? DateTime.now(),
@@ -93,6 +99,7 @@ class Conversation {
     int? lastMemoryExtractedOrder,
     String? chatModelProvider,
     String? chatModelId,
+    Map<String, dynamic>? extras,
     bool clearSummary = false,
     bool clearInjectedMemoryHash = false,
     bool clearChatModel = false,
@@ -121,6 +128,7 @@ class Conversation {
           ? null
           : (chatModelProvider ?? this.chatModelProvider),
       chatModelId: clearChatModel ? null : (chatModelId ?? this.chatModelId),
+      extras: extras ?? this.extras,
     );
   }
 
@@ -143,6 +151,7 @@ class Conversation {
       'lastMemoryExtractedOrder': lastMemoryExtractedOrder,
       'chatModelProvider': chatModelProvider,
       'chatModelId': chatModelId,
+      'extras': extras,
     };
   }
 
@@ -173,6 +182,25 @@ class Conversation {
       lastMemoryExtractedOrder: json['lastMemoryExtractedOrder'] as int? ?? -1,
       chatModelProvider: json['chatModelProvider'] as String?,
       chatModelId: json['chatModelId'] as String?,
+      extras: decodeExtras(json['extras']),
     );
+  }
+
+  /// Decodes conversation extras from a JSON map, JSON string, or junk.
+  /// Malformed input and `'{}'` become an empty map.
+  static Map<String, dynamic> decodeExtras(Object? raw) {
+    if (raw == null) return const <String, dynamic>{};
+    if (raw is String) {
+      if (raw.isEmpty || raw == '{}') return const <String, dynamic>{};
+      try {
+        return decodeExtras(jsonDecode(raw));
+      } catch (_) {
+        return const <String, dynamic>{};
+      }
+    }
+    if (raw is Map) {
+      return raw.map((key, value) => MapEntry(key.toString(), value));
+    }
+    return const <String, dynamic>{};
   }
 }

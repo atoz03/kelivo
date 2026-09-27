@@ -9,6 +9,29 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get settingsSearchHint => '搜索设置';
+
+  @override
+  String get settingsSearchCancel => '取消';
+
+  @override
+  String get settingsSearchClear => '清空搜索';
+
+  @override
+  String get settingsSearchSuggestions => '常用设置';
+
+  @override
+  String get settingsSearchNoResults => '未找到相关设置';
+
+  @override
+  String get settingsSearchNoResultsHint => '试试其他名称，或更简短的关键词。';
+
+  @override
+  String settingsSearchResultCount(int count) {
+    return '找到 $count 项设置';
+  }
+
+  @override
   String get settingsPageBackButton => '返回';
 
   @override
@@ -73,11 +96,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsPageCalculating => '统计中…';
-
-  @override
-  String settingsPageFilesCount(int count, String size) {
-    return '共 $count 个文件 · $size';
-  }
 
   @override
   String get storageSpacePageTitle => '存储空间';
@@ -162,11 +180,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get storageSpaceCategoryOther => '其他';
-
-  @override
-  String storageSpaceFilesCount(int count) {
-    return '$count 个文件';
-  }
 
   @override
   String get storageSpaceSafeToClearHint => '可安全清理，不影响聊天记录。';
@@ -260,7 +273,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String storageSpaceDeleteUploadsConfirmMessage(int count) {
-    return '删除 $count 个项目？删除后聊天记录中的附件可能无法打开。';
+    return '删除 $count 个项目及其对应的会话附件副本？删除后，聊天记录中的这些附件将无法使用。';
   }
 
   @override
@@ -495,8 +508,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homePageClearContext => '清空上下文';
 
   @override
-  String homePageClearContextWithCount(String actual, String configured) {
-    return '清空上下文 ($actual/$configured)';
+  String contextMessageCount(int count) {
+    return '$count 条消息';
+  }
+
+  @override
+  String contextMessageCountLimited(int actual, int configured) {
+    return '$actual/$configured 条消息';
   }
 
   @override
@@ -949,37 +967,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageChatMessageBackgroundSolid => '纯色';
 
   @override
-  String get displaySettingsPageAndroidBackgroundChatTitle => '后台聊天生成';
-
-  @override
   String get androidBackgroundStatusOn => '开启';
 
   @override
   String get androidBackgroundStatusOff => '关闭';
-
-  @override
-  String get androidBackgroundStatusOther => '开启并通知';
-
-  @override
-  String get androidBackgroundOptionOn => '开启';
-
-  @override
-  String get androidBackgroundOptionOnNotify => '开启并在生成完时发送消息';
-
-  @override
-  String get androidBackgroundOptionOff => '关闭';
-
-  @override
-  String get notificationChatCompletedTitle => '生成完成';
-
-  @override
-  String get notificationChatCompletedBody => '助手回复已生成';
-
-  @override
-  String get androidBackgroundNotificationTitle => 'Kelivo 正在运行';
-
-  @override
-  String get androidBackgroundNotificationText => '后台保持聊天生成';
 
   @override
   String get assistantEditEmojiDialogTitle => '选择表情';
@@ -1191,6 +1182,13 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get assistantEditPromptTimeVarWarning =>
       '在系统提示词中使用时间变量会让每一轮请求的开头都不同，Prompt 缓存无法命中，费用和首字延迟都会上升。需要让模型知道当前时间时，请改用下方的「追加当前时间」开关。';
+
+  @override
+  String get assistantEditPromptIso8601Title => '使用 ISO 8601 格式';
+
+  @override
+  String get assistantEditPromptIso8601Subtitle =>
+      '包含时区偏移，例如 2026-08-08T14:30:05+08:00';
 
   @override
   String get assistantEditPromptAppendTimeTitle => '追加当前时间';
@@ -2415,6 +2413,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageAutoCollapseCodeBlockLinesUnit => '行';
 
   @override
+  String get displaySettingsPageCollapseLongUserMessagesTitle => '折叠过长消息';
+
+  @override
+  String get displaySettingsPageCollapseLongUserMessagesSubtitle =>
+      '超过阈值的用户消息折叠显示，点击可展开';
+
+  @override
+  String get displaySettingsPageCollapseLongUserMessagesCharsTitle =>
+      '超过多少字符折叠';
+
+  @override
+  String get displaySettingsPageCollapseLongUserMessagesCharsUnit => '字符';
+
+  @override
+  String get chatMessageExpandLongText => '展开';
+
+  @override
+  String get chatMessageCollapseLongText => '收起';
+
+  @override
   String get messageExportSheetFormatTitle => '导出格式';
 
   @override
@@ -2702,7 +2720,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chatInputBarReasoningStrengthTooltip => '思维链强度';
 
   @override
-  String get chatInputBarMcpServersTooltip => 'MCP服务器';
+  String get chatInputBarToolsTooltip => '工具';
 
   @override
   String get chatInputBarMoreTooltip => '更多';
@@ -2915,6 +2933,34 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get defaultModelPagePerChatModelSubtitle =>
       '开启后，在对话中切换模型只影响当前对话；关闭后会直接修改当前助手的模型，使用该助手的所有对话都会跟随。';
+
+  @override
+  String get googleFontsTitle => 'Google Fonts';
+
+  @override
+  String get googleFontsRefresh => '刷新字体列表';
+
+  @override
+  String get googleFontsSearchHint => '搜索字体或语言';
+
+  @override
+  String get googleFontsHint =>
+      '下载常规字重字体后预览并应用，已安装字体可离线使用。目录来自 Expo Google Fonts，字体从 Google Fonts 下载。';
+
+  @override
+  String get googleFontsNoResults => '没有匹配的字体';
+
+  @override
+  String get googleFontsFailed => '无法加载、下载或应用字体，请检查网络后重试。';
+
+  @override
+  String get googleFontsDownloading => '正在下载字体…';
+
+  @override
+  String get googleFontsPreview => '字体预览：你好，世界！Hello world 0123456789';
+
+  @override
+  String get googleFontsLicense => '字体许可证';
 
   @override
   String get defaultModelPageTitleModelTitle => '标题总结模型';
@@ -5014,6 +5060,19 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get searchProviderAnySearchDescription =>
       '面向 AI 智能体的统一搜索服务，可在网页与专业数据源间自动路由。API Key 可选。';
+
+  @override
+  String get searchServiceNameKagi => 'Kagi';
+
+  @override
+  String get searchProviderKagiDescription => 'Kagi 搜索 API，提供 Kagi 的高级网页搜索结果。';
+
+  @override
+  String get searchServiceNameKimi => 'Kimi';
+
+  @override
+  String get searchProviderKimiDescription =>
+      'Kimi 搜索 API。Pro 返回相关网页正文片段，Basic 返回标题、链接和摘要。';
 
   @override
   String get searchServiceNameParallel => 'Parallel';
@@ -7419,6 +7478,43 @@ class AppLocalizationsZh extends AppLocalizations {
   String get toolSchemaSettingsCancel => '取消';
 
   @override
+  String get workspaceFileNotAvailable => '文件不可用';
+
+  @override
+  String get commonClose => '关闭';
+
+  @override
+  String get incomingShareTitle => '接收分享';
+
+  @override
+  String get incomingShareReplaceDraft => '输入框中有尚未发送的内容。是否替换为分享的内容，并开始新对话？';
+
+  @override
+  String get incomingShareFailed =>
+      '部分分享内容未能导入，请检查文件访问权限和可用存储空间。一次最多分享 32 个文件。';
+
+  @override
+  String get incomingShareImporting => '正在导入';
+
+  @override
+  String get incomingShareMoveTo => '移动到…';
+
+  @override
+  String get incomingShareNewChat => '新对话';
+
+  @override
+  String get incomingShareMoveHint => '将草稿和附件移到其他对话，内容不会自动发送。';
+
+  @override
+  String get incomingShareNoConversations => '没有匹配的对话';
+
+  @override
+  String get chatInputBarRemoveAttachment => '移除附件';
+
+  @override
+  String get incomingShareMoveFailed => '无法切换对话，草稿已保留。';
+
+  @override
   String get healthDataSettingsCategoryReproductive => '生殖健康';
 
   @override
@@ -7427,11 +7523,557 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get healthDataSettingsTypeMenstrualFlowSubtitle =>
       '最近 90 天记录的经量与周期开始日期';
+
+  @override
+  String get assistantEditGradientBackgroundTitle => '渐变背景';
+
+  @override
+  String get assistantEditGradientStaticTitle => '静态模式';
+
+  @override
+  String get assistantEditGradientStaticDescription => '更省电，适合长对话和持续输出。';
+
+  @override
+  String get assistantEditGradientHorizontal => '水平位置';
+
+  @override
+  String get assistantEditGradientVertical => '垂直位置';
+
+  @override
+  String get assistantEditGradientPreview => '预览';
+
+  @override
+  String get assistantEditGradientNextFrame => '换一帧';
+
+  @override
+  String get backgroundSettingsTitle => '后台任务';
+
+  @override
+  String get backgroundTaskTitle => 'Kelivo 任务';
+
+  @override
+  String get backgroundCompleted => '生成完成';
+
+  @override
+  String get backgroundFailed => '生成失败，请打开会话查看详情。';
+
+  @override
+  String get backgroundCancelled => '生成已取消';
+
+  @override
+  String get backgroundInterrupted => '后台生成已中断，请打开会话继续。';
+
+  @override
+  String get backgroundRequesting => '正在请求';
+
+  @override
+  String get backgroundGenerating => '正在生成回复';
+
+  @override
+  String get backgroundThinking => '正在思考';
+
+  @override
+  String get backgroundToolRunning => '正在执行工具';
+
+  @override
+  String get backgroundRetrying => '等待重试';
+
+  @override
+  String get backgroundWorking => '正在处理';
+
+  @override
+  String get backgroundTasks => '任务';
+
+  @override
+  String get backgroundStopTasks => '停止任务';
+
+  @override
+  String get backgroundOpenChat => '打开会话';
+
+  @override
+  String get backgroundAndroidEnabled => '后台生成';
+
+  @override
+  String get backgroundAndroidEnabledDetail =>
+      '在锁屏、切到后台或划掉最近任务后继续当前生成。任务运行期间会显示系统常驻通知。';
+
+  @override
+  String get backgroundNotifications => '任务通知';
+
+  @override
+  String get backgroundNotificationsDetail =>
+      '在当前查看的会话之外完成或失败时通知。此开关不控制 Android 必需的常驻通知。';
+
+  @override
+  String get backgroundPrivacy => '任务状态隐私';
+
+  @override
+  String get backgroundPrivacyDetail => '在通知和实时状态中隐藏会话标题及工具详情，仅显示通用状态、任务数量和耗时。';
+
+  @override
+  String get backgroundOverlay => '任务悬浮窗';
+
+  @override
+  String get backgroundOverlayDetail => '在其他应用上显示可拖动的任务悬浮窗。点击进入会话；关闭按钮仅隐藏悬浮窗。';
+
+  @override
+  String get backgroundLiveUpdates => '实时通知 / 灵动岛';
+
+  @override
+  String get backgroundLiveUpdatesDetail =>
+      '在支持的设备上使用 Android 16 实时通知。系统成功展示实时通知时优先于悬浮窗。';
+
+  @override
+  String get backgroundFinishVisibility => '完成状态保留时间';
+
+  @override
+  String get backgroundFinishImmediately => '立即收起';
+
+  @override
+  String get backgroundFinishOneMinute => '1 分钟';
+
+  @override
+  String get backgroundFinishFiveMinutes => '5 分钟';
+
+  @override
+  String get backgroundFinishUntilForeground => '回到应用时收起';
+
+  @override
+  String get backgroundFinishVisibilityDetail =>
+      '用于 Android 悬浮窗和 iOS 锁屏完成卡片。回到应用时清理完成状态，最长保留 15 分钟；取消任务立即收起。';
+
+  @override
+  String get backgroundOverlayIcon => '悬浮窗图标';
+
+  @override
+  String get backgroundIconDefault => 'Kelivo 图标';
+
+  @override
+  String get backgroundIconImage => '选择图片';
+
+  @override
+  String get backgroundIconEmoji => '选择 Emoji';
+
+  @override
+  String get backgroundPermissionsTitle => '权限与系统设置';
+
+  @override
+  String get backgroundNotificationsPermission => '通知权限';
+
+  @override
+  String get backgroundBatteryOptimization => '电池优化';
+
+  @override
+  String get backgroundBatteryOptimizationDetail => '允许不受限制地使用电池可改善后台运行。';
+
+  @override
+  String get backgroundAutostart => '自启动与后台运行';
+
+  @override
+  String get backgroundAutostartDetail =>
+      '请手动检查设备的自启动和后台限制。Android 无法可靠查询这些厂商设置的授权状态。';
+
+  @override
+  String get backgroundSystemSettings => '应用系统设置';
+
+  @override
+  String get backgroundPermissionGranted => '已允许';
+
+  @override
+  String get backgroundPermissionDenied => '未允许';
+
+  @override
+  String get backgroundPermissionUnknown => '需手动检查';
+
+  @override
+  String get backgroundRuntimeTitle => '当前状态';
+
+  @override
+  String get backgroundRuntimeActive => '正在运行';
+
+  @override
+  String get backgroundRuntimeIdle => '未运行';
+
+  @override
+  String get backgroundOverlayActive => '悬浮窗';
+
+  @override
+  String get backgroundLastError => '最近中断或错误';
+
+  @override
+  String get backgroundNoError => '暂无记录';
+
+  @override
+  String get backgroundUnsupported => '当前设备不支持或系统设置未允许';
+
+  @override
+  String get backgroundAndroidLimit =>
+      '如任务中断，请检查通知、电池及厂商后台设置。系统强行停止或终止进程仍可能中断生成。';
+
+  @override
+  String get backgroundStale => '状态暂未更新，请打开应用查看。';
+
+  @override
+  String get backgroundIconError => '无法导入此图片，请选择其他图片。';
+
+  @override
+  String get backgroundCompletionChannel => '任务完成通知渠道';
+
+  @override
+  String get backgroundOngoingChannel => '任务运行通知渠道';
+
+  @override
+  String get backgroundOverlayAppearance => '悬浮窗外观';
+
+  @override
+  String get backgroundOverlayAppearanceDetail => '调整尺寸、图标、进度环和显示内容';
+
+  @override
+  String get backgroundOverlayPreviewHint => '拖动可移动 · 点击进入会话 · 长按可收起';
+
+  @override
+  String get backgroundOverlayCard => '信息卡片';
+
+  @override
+  String get backgroundOverlayCircle => '圆形图标';
+
+  @override
+  String get backgroundOverlaySize => '尺寸与形状';
+
+  @override
+  String get backgroundOverlayWidth => '宽度';
+
+  @override
+  String get backgroundOverlayHeight => '高度';
+
+  @override
+  String get backgroundOverlayCornerRadius => '圆角';
+
+  @override
+  String get backgroundOverlayIconSize => '图标大小';
+
+  @override
+  String get backgroundOverlayProgressSize => '进度环直径';
+
+  @override
+  String get backgroundOverlayProgressStroke => '进度环粗细';
+
+  @override
+  String get backgroundOverlayContent => '显示内容';
+
+  @override
+  String get backgroundOverlayShowProgress => '显示进度环';
+
+  @override
+  String get backgroundOverlayShowTitle => '显示标题';
+
+  @override
+  String get backgroundOverlayShowSubtitle => '显示副标题';
+
+  @override
+  String get backgroundOverlayShowTime => '显示耗时';
+
+  @override
+  String get backgroundOverlayShowClose => '显示关闭按钮';
+
+  @override
+  String get backgroundOverlayShowBackground => '显示背景';
+
+  @override
+  String get backgroundOverlayShowBorder => '显示边框';
+
+  @override
+  String get backgroundOverlayReset => '恢复默认样式';
+
+  @override
+  String get mcpArgumentsHint => '用空格分隔参数，包含空格的内容用引号包裹；空参数写成 \'\'。';
+
+  @override
+  String get mcpArgumentsInvalid => '请检查参数中的引号是否闭合、末尾是否有未完成的转义。';
+
+  @override
+  String get mcpImportJson => '导入 JSON';
+
+  @override
+  String get mcpImportJsonHint =>
+      '粘贴 Claude Desktop 或 Cursor 的 MCP 配置，预览后添加服务器，不覆盖现有配置。';
+
+  @override
+  String get mcpImportPaste => '从剪贴板粘贴';
+
+  @override
+  String get mcpImportPreview => '预览';
+
+  @override
+  String get mcpImportConfirm => '导入';
+
+  @override
+  String get startupRecoverySnapshotTitle => '从数据库快照恢复';
+
+  @override
+  String get startupRecoverySnapshotBody =>
+      '即使数据库无法打开，也可以选择本机快照恢复聊天和设置。请勿卸载 Kelivo，卸载会一并删除这些快照。';
+
+  @override
+  String get startupRecoverySnapshotEmpty => '未在本机找到数据库快照。请先导出数据，再尝试其他恢复操作。';
+
+  @override
+  String get startupRecoverySnapshotButton => '选择快照恢复';
+
+  @override
+  String startupRecoverySnapshotConfirm(String when) {
+    return '将聊天和设置恢复到 $when 的快照？快照之后的更改不会包含在内。现有附件文件和快照会保留，Kelivo 将重启以完成恢复。';
+  }
+
+  @override
+  String startupRecoverySnapshotFailed(String reason) {
+    return '无法准备快照恢复：$reason';
+  }
+
+  @override
+  String get startupRecoverySnapshotReady => '快照已准备好，请重启 Kelivo 完成恢复。';
+
+  @override
+  String get assistantConversationSystemPromptTitle => '独立对话系统提示';
+
+  @override
+  String get assistantConversationSystemPromptHint => '允许每个对话设置自己的系统提示词。';
+
+  @override
+  String get conversationSystemPromptTitle => '对话系统提示词';
+
+  @override
+  String get conversationSystemPromptHint => '仅对当前对话生效，留空时使用助手的系统提示词。';
+
+  @override
+  String get conversationSystemPromptClear => '恢复助手提示词';
+
+  @override
+  String get conversationSystemPromptPlaceholder => '为这个对话编写系统提示词…';
+
+  @override
+  String get oauthAccountsTab => '账号登录';
+
+  @override
+  String get oauthLogin => '登录';
+
+  @override
+  String get oauthConnected => '已连接';
+
+  @override
+  String oauthWaiting(String provider) {
+    return '正在等待 $provider 授权';
+  }
+
+  @override
+  String get oauthCancel => '取消授权';
+
+  @override
+  String get oauthOpenBrowser => '打开授权页面';
+
+  @override
+  String get oauthCopyCode => '复制验证码';
+
+  @override
+  String get oauthCodeHint => '在授权页面输入此验证码';
+
+  @override
+  String get oauthDeviceHint => '请先在 ChatGPT 安全设置或工作区权限中启用设备码登录。';
+
+  @override
+  String get oauthDeviceLogin => '使用设备码登录';
+
+  @override
+  String get oauthDetails => '查看账号详情';
+
+  @override
+  String get oauthConnectAnother => '再连一个';
+
+  @override
+  String get oauthRelogin => '重新登录';
+
+  @override
+  String get oauthNeedsLogin => '需重新登录';
+
+  @override
+  String oauthExpired(String provider) {
+    return '$provider 登录已过期';
+  }
+
+  @override
+  String get oauthLoginRestored => '已重新登录，可使用消息的重试按钮再次发送。';
+
+  @override
+  String get oauthLogout => '退出登录';
+
+  @override
+  String get oauthLogoutDescription => '清除此账号在本机保存的授权凭证';
+
+  @override
+  String get oauthRefreshing => '正在续期授权…';
+
+  @override
+  String get oauthRefreshUsage => '刷新用量';
+
+  @override
+  String get oauthUsageDetails => '用量明细';
+
+  @override
+  String get oauthUsageUnavailable => '暂时无法获取用量';
+
+  @override
+  String oauthLastUpdated(String time) {
+    return '更新于 $time';
+  }
+
+  @override
+  String get oauthSyncModels => '同步';
+
+  @override
+  String get oauthSyncing => '正在同步模型…';
+
+  @override
+  String get oauthModelsHint => '可用模型由账号同步。';
+
+  @override
+  String get oauthNoModels => '同步模型后即可开始对话';
+
+  @override
+  String get oauthConnectionInfo => '接入信息';
+
+  @override
+  String get oauthEndpoint => '接入端点';
+
+  @override
+  String get oauthScope => '授权范围';
+
+  @override
+  String get oauthAccountId => '账号 ID';
+
+  @override
+  String get oauthTokenExpiry => '令牌有效期';
+
+  @override
+  String get oauthName => '供应商名称';
+
+  @override
+  String get oauthEnabledHint => '在模型选择器中显示这些模型';
+
+  @override
+  String get oauthWeekly => '本周窗口';
+
+  @override
+  String get oauthMonthly => '本月窗口';
+
+  @override
+  String get oauthTotal => '总额度';
+
+  @override
+  String oauthHours(String count) {
+    return '$count 小时窗口';
+  }
+
+  @override
+  String oauthMinutes(String count) {
+    return '$count 分钟窗口';
+  }
+
+  @override
+  String oauthDays(String count) {
+    return '$count 天窗口';
+  }
+
+  @override
+  String get oauthWindow => '用量窗口';
+
+  @override
+  String oauthResetsAt(String time) {
+    return '重置于 $time';
+  }
+
+  @override
+  String get oauthNetworkError => '连接失败，请检查网络后重试。';
+
+  @override
+  String get oauthInvalidResponse => '授权未完成，请重试。';
+
+  @override
+  String get oauthTimeout => '授权超时，请重试。';
+
+  @override
+  String get oauthDenied => '授权未获批准，请重试。';
+
+  @override
+  String get oauthQuotaExceeded => '该账号暂无可用额度。';
+
+  @override
+  String get oauthRateLimited => '请求过于频繁，请稍后重试。';
+
+  @override
+  String get oauthPermissionDenied => '该账号无权访问此资源。';
+
+  @override
+  String get oauthRequestFailed => '供应商未能完成请求。';
+
+  @override
+  String get oauthQuotaAvailable => '额度可用';
+
+  @override
+  String oauthSavedResets(String count) {
+    return '可用额度重置次数：$count';
+  }
+
+  @override
+  String get oauthPrimaryWindow => '主要窗口';
+
+  @override
+  String get oauthSecondaryWindow => '次要窗口';
+
+  @override
+  String get oauthAuthorizationCode => '授权码或回调链接';
+
+  @override
+  String get oauthAuthorizationCodeHint => '如果浏览器没有自动返回，请将最后的回调链接或授权码粘贴到这里。';
+
+  @override
+  String get oauthInvalidAuthorizationCode => '请输入本次登录的授权码或回调链接。';
+
+  @override
+  String get oauthSubmitAuthorizationCode => '完成登录';
+
+  @override
+  String get oauthExtraUsage => '额外用量';
+
+  @override
+  String get oauthPromptCachingHelp => '复用多轮对话中的上下文，可设置缓存保留时长。';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
 class AppLocalizationsZhHans extends AppLocalizationsZh {
   AppLocalizationsZhHans() : super('zh_Hans');
+
+  @override
+  String get settingsSearchHint => '搜索设置';
+
+  @override
+  String get settingsSearchCancel => '取消';
+
+  @override
+  String get settingsSearchClear => '清空搜索';
+
+  @override
+  String get settingsSearchSuggestions => '常用设置';
+
+  @override
+  String get settingsSearchNoResults => '未找到相关设置';
+
+  @override
+  String get settingsSearchNoResultsHint => '试试其他名称，或更简短的关键词。';
+
+  @override
+  String settingsSearchResultCount(int count) {
+    return '找到 $count 项设置';
+  }
 
   @override
   String get settingsPageBackButton => '返回';
@@ -7498,11 +8140,6 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get settingsPageCalculating => '统计中…';
-
-  @override
-  String settingsPageFilesCount(int count, String size) {
-    return '共 $count 个文件 · $size';
-  }
 
   @override
   String get storageSpacePageTitle => '存储空间';
@@ -7587,11 +8224,6 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get storageSpaceCategoryOther => '其他';
-
-  @override
-  String storageSpaceFilesCount(int count) {
-    return '$count 个文件';
-  }
 
   @override
   String get storageSpaceSafeToClearHint => '可安全清理，不影响聊天记录。';
@@ -7685,7 +8317,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String storageSpaceDeleteUploadsConfirmMessage(int count) {
-    return '删除 $count 个项目？删除后聊天记录中的附件可能无法打开。';
+    return '删除 $count 个项目及其对应的会话附件副本？删除后，聊天记录中的这些附件将无法使用。';
   }
 
   @override
@@ -7920,8 +8552,13 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get homePageClearContext => '清空上下文';
 
   @override
-  String homePageClearContextWithCount(String actual, String configured) {
-    return '清空上下文 ($actual/$configured)';
+  String contextMessageCount(int count) {
+    return '$count 条消息';
+  }
+
+  @override
+  String contextMessageCountLimited(int actual, int configured) {
+    return '$actual/$configured 条消息';
   }
 
   @override
@@ -8374,37 +9011,10 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageChatMessageBackgroundSolid => '纯色';
 
   @override
-  String get displaySettingsPageAndroidBackgroundChatTitle => '后台聊天生成';
-
-  @override
   String get androidBackgroundStatusOn => '开启';
 
   @override
   String get androidBackgroundStatusOff => '关闭';
-
-  @override
-  String get androidBackgroundStatusOther => '开启并通知';
-
-  @override
-  String get androidBackgroundOptionOn => '开启';
-
-  @override
-  String get androidBackgroundOptionOnNotify => '开启并在生成完时通知';
-
-  @override
-  String get androidBackgroundOptionOff => '关闭';
-
-  @override
-  String get notificationChatCompletedTitle => '生成完成';
-
-  @override
-  String get notificationChatCompletedBody => '助手回复已生成';
-
-  @override
-  String get androidBackgroundNotificationTitle => 'Kelivo 正在运行';
-
-  @override
-  String get androidBackgroundNotificationText => '后台保持聊天生成';
 
   @override
   String get assistantEditEmojiDialogTitle => '选择表情';
@@ -8616,6 +9226,13 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   @override
   String get assistantEditPromptTimeVarWarning =>
       '在系统提示词中使用时间变量会让每一轮请求的开头都不同，Prompt 缓存无法命中，费用和首字延迟都会上升。需要让模型知道当前时间时，请改用下方的「追加当前时间」开关。';
+
+  @override
+  String get assistantEditPromptIso8601Title => '使用 ISO 8601 格式';
+
+  @override
+  String get assistantEditPromptIso8601Subtitle =>
+      '包含时区偏移，例如 2026-08-08T14:30:05+08:00';
 
   @override
   String get assistantEditPromptAppendTimeTitle => '追加当前时间';
@@ -9840,6 +10457,26 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageAutoCollapseCodeBlockLinesUnit => '行';
 
   @override
+  String get displaySettingsPageCollapseLongUserMessagesTitle => '折叠过长消息';
+
+  @override
+  String get displaySettingsPageCollapseLongUserMessagesSubtitle =>
+      '超过阈值的用户消息折叠显示，点击可展开';
+
+  @override
+  String get displaySettingsPageCollapseLongUserMessagesCharsTitle =>
+      '超过多少字符折叠';
+
+  @override
+  String get displaySettingsPageCollapseLongUserMessagesCharsUnit => '字符';
+
+  @override
+  String get chatMessageExpandLongText => '展开';
+
+  @override
+  String get chatMessageCollapseLongText => '收起';
+
+  @override
   String get messageExportSheetFormatTitle => '导出格式';
 
   @override
@@ -10127,7 +10764,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get chatInputBarReasoningStrengthTooltip => '思维链强度';
 
   @override
-  String get chatInputBarMcpServersTooltip => 'MCP服务器';
+  String get chatInputBarToolsTooltip => '工具';
 
   @override
   String get chatInputBarMoreTooltip => '更多';
@@ -10340,6 +10977,34 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   @override
   String get defaultModelPagePerChatModelSubtitle =>
       '开启后，在对话中切换模型只影响当前对话；关闭后会直接修改当前助手的模型，使用该助手的所有对话都会跟随。';
+
+  @override
+  String get googleFontsTitle => 'Google Fonts';
+
+  @override
+  String get googleFontsRefresh => '刷新字体列表';
+
+  @override
+  String get googleFontsSearchHint => '搜索字体或语言';
+
+  @override
+  String get googleFontsHint =>
+      '下载常规字重字体后预览并应用，已安装字体可离线使用。目录来自 Expo Google Fonts，字体从 Google Fonts 下载。';
+
+  @override
+  String get googleFontsNoResults => '没有匹配的字体';
+
+  @override
+  String get googleFontsFailed => '无法加载、下载或应用字体，请检查网络后重试。';
+
+  @override
+  String get googleFontsDownloading => '正在下载字体…';
+
+  @override
+  String get googleFontsPreview => '字体预览：你好，世界！Hello world 0123456789';
+
+  @override
+  String get googleFontsLicense => '字体许可证';
 
   @override
   String get defaultModelPageTitleModelTitle => '标题总结模型';
@@ -12368,6 +13033,19 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   @override
   String get searchProviderAnySearchDescription =>
       '面向 AI 智能体的统一搜索服务，可在网页与专业数据源间自动路由。API Key 可选。';
+
+  @override
+  String get searchServiceNameKagi => 'Kagi';
+
+  @override
+  String get searchProviderKagiDescription => 'Kagi 搜索 API，提供 Kagi 的高级网页搜索结果。';
+
+  @override
+  String get searchServiceNameKimi => 'Kimi';
+
+  @override
+  String get searchProviderKimiDescription =>
+      'Kimi 搜索 API。Pro 返回相关网页正文片段，Basic 返回标题、链接和摘要。';
 
   @override
   String get searchServiceNameParallel => 'Parallel';
@@ -14773,6 +15451,43 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get toolSchemaSettingsCancel => '取消';
 
   @override
+  String get workspaceFileNotAvailable => '文件不可用';
+
+  @override
+  String get commonClose => '关闭';
+
+  @override
+  String get incomingShareTitle => '接收分享';
+
+  @override
+  String get incomingShareReplaceDraft => '输入框中有尚未发送的内容。是否替换为分享的内容，并开始新对话？';
+
+  @override
+  String get incomingShareFailed =>
+      '部分分享内容未能导入，请检查文件访问权限和可用存储空间。一次最多分享 32 个文件。';
+
+  @override
+  String get incomingShareImporting => '正在导入';
+
+  @override
+  String get incomingShareMoveTo => '移动到…';
+
+  @override
+  String get incomingShareNewChat => '新对话';
+
+  @override
+  String get incomingShareMoveHint => '将草稿和附件移到其他对话，内容不会自动发送。';
+
+  @override
+  String get incomingShareNoConversations => '没有匹配的对话';
+
+  @override
+  String get chatInputBarRemoveAttachment => '移除附件';
+
+  @override
+  String get incomingShareMoveFailed => '无法切换对话，草稿已保留。';
+
+  @override
   String get healthDataSettingsCategoryReproductive => '生殖健康';
 
   @override
@@ -14781,11 +15496,557 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   @override
   String get healthDataSettingsTypeMenstrualFlowSubtitle =>
       '最近 90 天记录的经量与周期开始日期';
+
+  @override
+  String get assistantEditGradientBackgroundTitle => '渐变背景';
+
+  @override
+  String get assistantEditGradientStaticTitle => '静态模式';
+
+  @override
+  String get assistantEditGradientStaticDescription => '更省电，适合长对话和持续输出。';
+
+  @override
+  String get assistantEditGradientHorizontal => '水平位置';
+
+  @override
+  String get assistantEditGradientVertical => '垂直位置';
+
+  @override
+  String get assistantEditGradientPreview => '预览';
+
+  @override
+  String get assistantEditGradientNextFrame => '换一帧';
+
+  @override
+  String get backgroundSettingsTitle => '后台任务';
+
+  @override
+  String get backgroundTaskTitle => 'Kelivo 任务';
+
+  @override
+  String get backgroundCompleted => '生成完成';
+
+  @override
+  String get backgroundFailed => '生成失败，请打开会话查看详情。';
+
+  @override
+  String get backgroundCancelled => '生成已取消';
+
+  @override
+  String get backgroundInterrupted => '后台生成已中断，请打开会话继续。';
+
+  @override
+  String get backgroundRequesting => '正在请求';
+
+  @override
+  String get backgroundGenerating => '正在生成回复';
+
+  @override
+  String get backgroundThinking => '正在思考';
+
+  @override
+  String get backgroundToolRunning => '正在执行工具';
+
+  @override
+  String get backgroundRetrying => '等待重试';
+
+  @override
+  String get backgroundWorking => '正在处理';
+
+  @override
+  String get backgroundTasks => '任务';
+
+  @override
+  String get backgroundStopTasks => '停止任务';
+
+  @override
+  String get backgroundOpenChat => '打开会话';
+
+  @override
+  String get backgroundAndroidEnabled => '后台生成';
+
+  @override
+  String get backgroundAndroidEnabledDetail =>
+      '在锁屏、切到后台或划掉最近任务后继续当前生成。任务运行期间会显示系统常驻通知。';
+
+  @override
+  String get backgroundNotifications => '任务通知';
+
+  @override
+  String get backgroundNotificationsDetail =>
+      '在当前查看的会话之外完成或失败时通知。此开关不控制 Android 必需的常驻通知。';
+
+  @override
+  String get backgroundPrivacy => '任务状态隐私';
+
+  @override
+  String get backgroundPrivacyDetail => '在通知和实时状态中隐藏会话标题及工具详情，仅显示通用状态、任务数量和耗时。';
+
+  @override
+  String get backgroundOverlay => '任务悬浮窗';
+
+  @override
+  String get backgroundOverlayDetail => '在其他应用上显示可拖动的任务悬浮窗。点击进入会话；关闭按钮仅隐藏悬浮窗。';
+
+  @override
+  String get backgroundLiveUpdates => '实时通知 / 灵动岛';
+
+  @override
+  String get backgroundLiveUpdatesDetail =>
+      '在支持的设备上使用 Android 16 实时通知。系统成功展示实时通知时优先于悬浮窗。';
+
+  @override
+  String get backgroundFinishVisibility => '完成状态保留时间';
+
+  @override
+  String get backgroundFinishImmediately => '立即收起';
+
+  @override
+  String get backgroundFinishOneMinute => '1 分钟';
+
+  @override
+  String get backgroundFinishFiveMinutes => '5 分钟';
+
+  @override
+  String get backgroundFinishUntilForeground => '回到应用时收起';
+
+  @override
+  String get backgroundFinishVisibilityDetail =>
+      '用于 Android 悬浮窗和 iOS 锁屏完成卡片。回到应用时清理完成状态，最长保留 15 分钟；取消任务立即收起。';
+
+  @override
+  String get backgroundOverlayIcon => '悬浮窗图标';
+
+  @override
+  String get backgroundIconDefault => 'Kelivo 图标';
+
+  @override
+  String get backgroundIconImage => '选择图片';
+
+  @override
+  String get backgroundIconEmoji => '选择 Emoji';
+
+  @override
+  String get backgroundPermissionsTitle => '权限与系统设置';
+
+  @override
+  String get backgroundNotificationsPermission => '通知权限';
+
+  @override
+  String get backgroundBatteryOptimization => '电池优化';
+
+  @override
+  String get backgroundBatteryOptimizationDetail => '允许不受限制地使用电池可改善后台运行。';
+
+  @override
+  String get backgroundAutostart => '自启动与后台运行';
+
+  @override
+  String get backgroundAutostartDetail =>
+      '请手动检查设备的自启动和后台限制。Android 无法可靠查询这些厂商设置的授权状态。';
+
+  @override
+  String get backgroundSystemSettings => '应用系统设置';
+
+  @override
+  String get backgroundPermissionGranted => '已允许';
+
+  @override
+  String get backgroundPermissionDenied => '未允许';
+
+  @override
+  String get backgroundPermissionUnknown => '需手动检查';
+
+  @override
+  String get backgroundRuntimeTitle => '当前状态';
+
+  @override
+  String get backgroundRuntimeActive => '正在运行';
+
+  @override
+  String get backgroundRuntimeIdle => '未运行';
+
+  @override
+  String get backgroundOverlayActive => '悬浮窗';
+
+  @override
+  String get backgroundLastError => '最近中断或错误';
+
+  @override
+  String get backgroundNoError => '暂无记录';
+
+  @override
+  String get backgroundUnsupported => '当前设备不支持或系统设置未允许';
+
+  @override
+  String get backgroundAndroidLimit =>
+      '如任务中断，请检查通知、电池及厂商后台设置。系统强行停止或终止进程仍可能中断生成。';
+
+  @override
+  String get backgroundStale => '状态暂未更新，请打开应用查看。';
+
+  @override
+  String get backgroundIconError => '无法导入此图片，请选择其他图片。';
+
+  @override
+  String get backgroundCompletionChannel => '任务完成通知渠道';
+
+  @override
+  String get backgroundOngoingChannel => '任务运行通知渠道';
+
+  @override
+  String get backgroundOverlayAppearance => '悬浮窗外观';
+
+  @override
+  String get backgroundOverlayAppearanceDetail => '调整尺寸、图标、进度环和显示内容';
+
+  @override
+  String get backgroundOverlayPreviewHint => '拖动可移动 · 点击进入会话 · 长按可收起';
+
+  @override
+  String get backgroundOverlayCard => '信息卡片';
+
+  @override
+  String get backgroundOverlayCircle => '圆形图标';
+
+  @override
+  String get backgroundOverlaySize => '尺寸与形状';
+
+  @override
+  String get backgroundOverlayWidth => '宽度';
+
+  @override
+  String get backgroundOverlayHeight => '高度';
+
+  @override
+  String get backgroundOverlayCornerRadius => '圆角';
+
+  @override
+  String get backgroundOverlayIconSize => '图标大小';
+
+  @override
+  String get backgroundOverlayProgressSize => '进度环直径';
+
+  @override
+  String get backgroundOverlayProgressStroke => '进度环粗细';
+
+  @override
+  String get backgroundOverlayContent => '显示内容';
+
+  @override
+  String get backgroundOverlayShowProgress => '显示进度环';
+
+  @override
+  String get backgroundOverlayShowTitle => '显示标题';
+
+  @override
+  String get backgroundOverlayShowSubtitle => '显示副标题';
+
+  @override
+  String get backgroundOverlayShowTime => '显示耗时';
+
+  @override
+  String get backgroundOverlayShowClose => '显示关闭按钮';
+
+  @override
+  String get backgroundOverlayShowBackground => '显示背景';
+
+  @override
+  String get backgroundOverlayShowBorder => '显示边框';
+
+  @override
+  String get backgroundOverlayReset => '恢复默认样式';
+
+  @override
+  String get mcpArgumentsHint => '用空格分隔参数，包含空格的内容用引号包裹；空参数写成 \'\'。';
+
+  @override
+  String get mcpArgumentsInvalid => '请检查参数中的引号是否闭合、末尾是否有未完成的转义。';
+
+  @override
+  String get mcpImportJson => '导入 JSON';
+
+  @override
+  String get mcpImportJsonHint =>
+      '粘贴 Claude Desktop 或 Cursor 的 MCP 配置，预览后添加服务器，不覆盖现有配置。';
+
+  @override
+  String get mcpImportPaste => '从剪贴板粘贴';
+
+  @override
+  String get mcpImportPreview => '预览';
+
+  @override
+  String get mcpImportConfirm => '导入';
+
+  @override
+  String get startupRecoverySnapshotTitle => '从数据库快照恢复';
+
+  @override
+  String get startupRecoverySnapshotBody =>
+      '即使数据库无法打开，也可以选择本机快照恢复聊天和设置。请勿卸载 Kelivo，卸载会一并删除这些快照。';
+
+  @override
+  String get startupRecoverySnapshotEmpty => '未在本机找到数据库快照。请先导出数据，再尝试其他恢复操作。';
+
+  @override
+  String get startupRecoverySnapshotButton => '选择快照恢复';
+
+  @override
+  String startupRecoverySnapshotConfirm(String when) {
+    return '将聊天和设置恢复到 $when 的快照？快照之后的更改不会包含在内。现有附件文件和快照会保留，Kelivo 将重启以完成恢复。';
+  }
+
+  @override
+  String startupRecoverySnapshotFailed(String reason) {
+    return '无法准备快照恢复：$reason';
+  }
+
+  @override
+  String get startupRecoverySnapshotReady => '快照已准备好，请重启 Kelivo 完成恢复。';
+
+  @override
+  String get assistantConversationSystemPromptTitle => '独立对话系统提示';
+
+  @override
+  String get assistantConversationSystemPromptHint => '允许每个对话设置自己的系统提示词。';
+
+  @override
+  String get conversationSystemPromptTitle => '对话系统提示词';
+
+  @override
+  String get conversationSystemPromptHint => '仅对当前对话生效，留空时使用助手的系统提示词。';
+
+  @override
+  String get conversationSystemPromptClear => '恢复助手提示词';
+
+  @override
+  String get conversationSystemPromptPlaceholder => '为这个对话编写系统提示词…';
+
+  @override
+  String get oauthAccountsTab => '账号登录';
+
+  @override
+  String get oauthLogin => '登录';
+
+  @override
+  String get oauthConnected => '已连接';
+
+  @override
+  String oauthWaiting(String provider) {
+    return '正在等待 $provider 授权';
+  }
+
+  @override
+  String get oauthCancel => '取消授权';
+
+  @override
+  String get oauthOpenBrowser => '打开授权页面';
+
+  @override
+  String get oauthCopyCode => '复制验证码';
+
+  @override
+  String get oauthCodeHint => '在授权页面输入此验证码';
+
+  @override
+  String get oauthDeviceHint => '请先在 ChatGPT 安全设置或工作区权限中启用设备码登录。';
+
+  @override
+  String get oauthDeviceLogin => '使用设备码登录';
+
+  @override
+  String get oauthDetails => '查看账号详情';
+
+  @override
+  String get oauthConnectAnother => '再连一个';
+
+  @override
+  String get oauthRelogin => '重新登录';
+
+  @override
+  String get oauthNeedsLogin => '需重新登录';
+
+  @override
+  String oauthExpired(String provider) {
+    return '$provider 登录已过期';
+  }
+
+  @override
+  String get oauthLoginRestored => '已重新登录，可使用消息的重试按钮再次发送。';
+
+  @override
+  String get oauthLogout => '退出登录';
+
+  @override
+  String get oauthLogoutDescription => '清除此账号在本机保存的授权凭证';
+
+  @override
+  String get oauthRefreshing => '正在续期授权…';
+
+  @override
+  String get oauthRefreshUsage => '刷新用量';
+
+  @override
+  String get oauthUsageDetails => '用量明细';
+
+  @override
+  String get oauthUsageUnavailable => '暂时无法获取用量';
+
+  @override
+  String oauthLastUpdated(String time) {
+    return '更新于 $time';
+  }
+
+  @override
+  String get oauthSyncModels => '同步';
+
+  @override
+  String get oauthSyncing => '正在同步模型…';
+
+  @override
+  String get oauthModelsHint => '可用模型由账号同步。';
+
+  @override
+  String get oauthNoModels => '同步模型后即可开始对话';
+
+  @override
+  String get oauthConnectionInfo => '接入信息';
+
+  @override
+  String get oauthEndpoint => '接入端点';
+
+  @override
+  String get oauthScope => '授权范围';
+
+  @override
+  String get oauthAccountId => '账号 ID';
+
+  @override
+  String get oauthTokenExpiry => '令牌有效期';
+
+  @override
+  String get oauthName => '供应商名称';
+
+  @override
+  String get oauthEnabledHint => '在模型选择器中显示这些模型';
+
+  @override
+  String get oauthWeekly => '本周窗口';
+
+  @override
+  String get oauthMonthly => '本月窗口';
+
+  @override
+  String get oauthTotal => '总额度';
+
+  @override
+  String oauthHours(String count) {
+    return '$count 小时窗口';
+  }
+
+  @override
+  String oauthMinutes(String count) {
+    return '$count 分钟窗口';
+  }
+
+  @override
+  String oauthDays(String count) {
+    return '$count 天窗口';
+  }
+
+  @override
+  String get oauthWindow => '用量窗口';
+
+  @override
+  String oauthResetsAt(String time) {
+    return '重置于 $time';
+  }
+
+  @override
+  String get oauthNetworkError => '连接失败，请检查网络后重试。';
+
+  @override
+  String get oauthInvalidResponse => '授权未完成，请重试。';
+
+  @override
+  String get oauthTimeout => '授权超时，请重试。';
+
+  @override
+  String get oauthDenied => '授权未获批准，请重试。';
+
+  @override
+  String get oauthQuotaExceeded => '该账号暂无可用额度。';
+
+  @override
+  String get oauthRateLimited => '请求过于频繁，请稍后重试。';
+
+  @override
+  String get oauthPermissionDenied => '该账号无权访问此资源。';
+
+  @override
+  String get oauthRequestFailed => '供应商未能完成请求。';
+
+  @override
+  String get oauthQuotaAvailable => '额度可用';
+
+  @override
+  String oauthSavedResets(String count) {
+    return '可用额度重置次数：$count';
+  }
+
+  @override
+  String get oauthPrimaryWindow => '主要窗口';
+
+  @override
+  String get oauthSecondaryWindow => '次要窗口';
+
+  @override
+  String get oauthAuthorizationCode => '授权码或回调链接';
+
+  @override
+  String get oauthAuthorizationCodeHint => '如果浏览器没有自动返回，请将最后的回调链接或授权码粘贴到这里。';
+
+  @override
+  String get oauthInvalidAuthorizationCode => '请输入本次登录的授权码或回调链接。';
+
+  @override
+  String get oauthSubmitAuthorizationCode => '完成登录';
+
+  @override
+  String get oauthExtraUsage => '额外用量';
+
+  @override
+  String get oauthPromptCachingHelp => '复用多轮对话中的上下文，可设置缓存保留时长。';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
 class AppLocalizationsZhHant extends AppLocalizationsZh {
   AppLocalizationsZhHant() : super('zh_Hant');
+
+  @override
+  String get settingsSearchHint => '搜尋設定';
+
+  @override
+  String get settingsSearchCancel => '取消';
+
+  @override
+  String get settingsSearchClear => '清除搜尋';
+
+  @override
+  String get settingsSearchSuggestions => '常用設定';
+
+  @override
+  String get settingsSearchNoResults => '找不到相關設定';
+
+  @override
+  String get settingsSearchNoResultsHint => '試試其他名稱，或更簡短的關鍵字。';
+
+  @override
+  String settingsSearchResultCount(int count) {
+    return '找到 $count 項設定';
+  }
 
   @override
   String get settingsPageBackButton => '返回';
@@ -14852,11 +16113,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get settingsPageCalculating => '統計中…';
-
-  @override
-  String settingsPageFilesCount(int count, String size) {
-    return '共 $count 個檔案 · $size';
-  }
 
   @override
   String get storageSpacePageTitle => '儲存空間';
@@ -14941,11 +16197,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get storageSpaceCategoryOther => '其他';
-
-  @override
-  String storageSpaceFilesCount(int count) {
-    return '$count 個檔案';
-  }
 
   @override
   String get storageSpaceSafeToClearHint => '可安全清理，不影響聊天記錄。';
@@ -15039,7 +16290,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String storageSpaceDeleteUploadsConfirmMessage(int count) {
-    return '刪除 $count 個項目？刪除後聊天記錄中的附件可能無法開啟。';
+    return '刪除 $count 個項目及其對應的對話附件副本？刪除後，聊天記錄中的這些附件將無法使用。';
   }
 
   @override
@@ -15274,8 +16525,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get homePageClearContext => '清空上下文';
 
   @override
-  String homePageClearContextWithCount(String actual, String configured) {
-    return '清空上下文 ($actual/$configured)';
+  String contextMessageCount(int count) {
+    return '$count 則訊息';
+  }
+
+  @override
+  String contextMessageCountLimited(int actual, int configured) {
+    return '$actual/$configured 則訊息';
   }
 
   @override
@@ -15728,37 +16984,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get displaySettingsPageChatMessageBackgroundSolid => '純色';
 
   @override
-  String get displaySettingsPageAndroidBackgroundChatTitle => '後台聊天生成';
-
-  @override
   String get androidBackgroundStatusOn => '開啟';
 
   @override
   String get androidBackgroundStatusOff => '關閉';
-
-  @override
-  String get androidBackgroundStatusOther => '關閉並發送消息';
-
-  @override
-  String get androidBackgroundOptionOn => '開啟';
-
-  @override
-  String get androidBackgroundOptionOnNotify => '開啟並在生成完時發送消息';
-
-  @override
-  String get androidBackgroundOptionOff => '關閉';
-
-  @override
-  String get notificationChatCompletedTitle => '生成完成';
-
-  @override
-  String get notificationChatCompletedBody => '助手回覆已生成';
-
-  @override
-  String get androidBackgroundNotificationTitle => 'Kelivo 正在運行';
-
-  @override
-  String get androidBackgroundNotificationText => '後台保持聊天生成';
 
   @override
   String get assistantEditEmojiDialogTitle => '選擇表情';
@@ -15970,6 +17199,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String get assistantEditPromptTimeVarWarning =>
       '在系統提示詞中使用時間變數會讓每一輪請求的開頭都不同，Prompt 快取無法命中，費用和首字延遲都會上升。需要讓模型知道當前時間時，請改用下方的「追加當前時間」開關。';
+
+  @override
+  String get assistantEditPromptIso8601Title => '使用 ISO 8601 格式';
+
+  @override
+  String get assistantEditPromptIso8601Subtitle =>
+      '包含時區偏移，例如 2026-08-08T14:30:05+08:00';
 
   @override
   String get assistantEditPromptAppendTimeTitle => '追加當前時間';
@@ -17194,6 +18430,26 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get displaySettingsPageAutoCollapseCodeBlockLinesUnit => '行';
 
   @override
+  String get displaySettingsPageCollapseLongUserMessagesTitle => '摺疊過長訊息';
+
+  @override
+  String get displaySettingsPageCollapseLongUserMessagesSubtitle =>
+      '超過閾值的使用者訊息摺疊顯示，點擊可展開';
+
+  @override
+  String get displaySettingsPageCollapseLongUserMessagesCharsTitle =>
+      '超過多少字元摺疊';
+
+  @override
+  String get displaySettingsPageCollapseLongUserMessagesCharsUnit => '字元';
+
+  @override
+  String get chatMessageExpandLongText => '展開';
+
+  @override
+  String get chatMessageCollapseLongText => '收起';
+
+  @override
   String get messageExportSheetFormatTitle => '匯出格式';
 
   @override
@@ -17481,7 +18737,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get chatInputBarReasoningStrengthTooltip => '思維鏈強度';
 
   @override
-  String get chatInputBarMcpServersTooltip => 'MCP伺服器';
+  String get chatInputBarToolsTooltip => '工具';
 
   @override
   String get chatInputBarMoreTooltip => '更多';
@@ -17694,6 +18950,34 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String get defaultModelPagePerChatModelSubtitle =>
       '開啟後，在對話中切換模型只影響目前對話；關閉後會直接修改目前助手的模型，使用該助手的所有對話都會跟隨。';
+
+  @override
+  String get googleFontsTitle => 'Google Fonts';
+
+  @override
+  String get googleFontsRefresh => '重新整理字型列表';
+
+  @override
+  String get googleFontsSearchHint => '搜尋字型或語言';
+
+  @override
+  String get googleFontsHint =>
+      '下載一般字重字型後預覽並套用，已安裝字型可離線使用。目錄來自 Expo Google Fonts，字型從 Google Fonts 下載。';
+
+  @override
+  String get googleFontsNoResults => '沒有符合的字型';
+
+  @override
+  String get googleFontsFailed => '無法載入、下載或套用字型，請檢查網路後重試。';
+
+  @override
+  String get googleFontsDownloading => '正在下載字型…';
+
+  @override
+  String get googleFontsPreview => '字型預覽：你好，世界！Hello world 0123456789';
+
+  @override
+  String get googleFontsLicense => '字型授權條款';
 
   @override
   String get defaultModelPageTitleModelTitle => '標題總結模型';
@@ -19793,6 +21077,19 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String get searchProviderAnySearchDescription =>
       '面向 AI 智慧代理的統一搜尋服務，可在網頁與專業資料來源間自動路由。API Key 可選。';
+
+  @override
+  String get searchServiceNameKagi => 'Kagi';
+
+  @override
+  String get searchProviderKagiDescription => 'Kagi 搜尋 API，提供 Kagi 的高級網頁搜尋結果。';
+
+  @override
+  String get searchServiceNameKimi => 'Kimi';
+
+  @override
+  String get searchProviderKimiDescription =>
+      'Kimi 搜尋 API。Pro 傳回相關網頁正文片段，Basic 傳回標題、連結和摘要。';
 
   @override
   String get searchServiceNameParallel => 'Parallel';
@@ -22199,6 +23496,43 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get toolSchemaSettingsCancel => '取消';
 
   @override
+  String get workspaceFileNotAvailable => '檔案不可用';
+
+  @override
+  String get commonClose => '關閉';
+
+  @override
+  String get incomingShareTitle => '接收分享';
+
+  @override
+  String get incomingShareReplaceDraft => '輸入框中有尚未傳送的內容。是否替換為分享的內容，並開始新對話？';
+
+  @override
+  String get incomingShareFailed =>
+      '部分分享內容未能匯入，請檢查檔案存取權限和可用儲存空間。一次最多分享 32 個檔案。';
+
+  @override
+  String get incomingShareImporting => '正在匯入';
+
+  @override
+  String get incomingShareMoveTo => '移動到…';
+
+  @override
+  String get incomingShareNewChat => '新對話';
+
+  @override
+  String get incomingShareMoveHint => '將草稿和附件移到其他對話，內容不會自動傳送。';
+
+  @override
+  String get incomingShareNoConversations => '沒有符合的對話';
+
+  @override
+  String get chatInputBarRemoveAttachment => '移除附件';
+
+  @override
+  String get incomingShareMoveFailed => '無法切換對話，草稿已保留。';
+
+  @override
   String get healthDataSettingsCategoryReproductive => '生殖健康';
 
   @override
@@ -22207,4 +23541,528 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String get healthDataSettingsTypeMenstrualFlowSubtitle =>
       '最近 90 天記錄的經量與週期開始日期';
+
+  @override
+  String get assistantEditGradientBackgroundTitle => '漸層背景';
+
+  @override
+  String get assistantEditGradientStaticTitle => '靜態模式';
+
+  @override
+  String get assistantEditGradientStaticDescription => '更省電，適合長對話和持續輸出。';
+
+  @override
+  String get assistantEditGradientHorizontal => '水平位置';
+
+  @override
+  String get assistantEditGradientVertical => '垂直位置';
+
+  @override
+  String get assistantEditGradientPreview => '預覽';
+
+  @override
+  String get assistantEditGradientNextFrame => '換一幀';
+
+  @override
+  String get backgroundSettingsTitle => '背景任務';
+
+  @override
+  String get backgroundTaskTitle => 'Kelivo 任務';
+
+  @override
+  String get backgroundCompleted => '生成完成';
+
+  @override
+  String get backgroundFailed => '生成失敗，請開啟對話查看詳情。';
+
+  @override
+  String get backgroundCancelled => '生成已取消';
+
+  @override
+  String get backgroundInterrupted => '背景生成已中斷，請開啟對話繼續。';
+
+  @override
+  String get backgroundRequesting => '正在請求';
+
+  @override
+  String get backgroundGenerating => '正在生成回覆';
+
+  @override
+  String get backgroundThinking => '正在思考';
+
+  @override
+  String get backgroundToolRunning => '正在執行工具';
+
+  @override
+  String get backgroundRetrying => '等待重試';
+
+  @override
+  String get backgroundWorking => '正在處理';
+
+  @override
+  String get backgroundTasks => '任務';
+
+  @override
+  String get backgroundStopTasks => '停止任務';
+
+  @override
+  String get backgroundOpenChat => '開啟對話';
+
+  @override
+  String get backgroundAndroidEnabled => '背景生成';
+
+  @override
+  String get backgroundAndroidEnabledDetail =>
+      '在鎖定螢幕、切到背景或劃掉最近任務後繼續目前的生成。任務執行期間會顯示系統常駐通知。';
+
+  @override
+  String get backgroundNotifications => '任務通知';
+
+  @override
+  String get backgroundNotificationsDetail =>
+      '在目前查看的對話之外完成或失敗時通知。此開關不控制 Android 必需的常駐通知。';
+
+  @override
+  String get backgroundPrivacy => '任務狀態隱私';
+
+  @override
+  String get backgroundPrivacyDetail => '在通知和即時狀態中隱藏對話標題及工具詳情，僅顯示通用狀態、任務數量和耗時。';
+
+  @override
+  String get backgroundOverlay => '任務懸浮視窗';
+
+  @override
+  String get backgroundOverlayDetail =>
+      '在其他應用程式上顯示可拖動的任務懸浮視窗。點擊進入對話；關閉按鈕僅隱藏懸浮視窗。';
+
+  @override
+  String get backgroundLiveUpdates => '即時通知 / 動態島';
+
+  @override
+  String get backgroundLiveUpdatesDetail =>
+      '在支援的裝置上使用 Android 16 即時通知。系統成功展示即時通知時優先於懸浮視窗。';
+
+  @override
+  String get backgroundFinishVisibility => '完成狀態保留時間';
+
+  @override
+  String get backgroundFinishImmediately => '立即收起';
+
+  @override
+  String get backgroundFinishOneMinute => '1 分鐘';
+
+  @override
+  String get backgroundFinishFiveMinutes => '5 分鐘';
+
+  @override
+  String get backgroundFinishUntilForeground => '回到應用程式時收起';
+
+  @override
+  String get backgroundFinishVisibilityDetail =>
+      '用於 Android 懸浮視窗和 iOS 鎖定畫面完成卡片。回到應用程式時清理完成狀態，最長保留 15 分鐘；取消任務立即收起。';
+
+  @override
+  String get backgroundOverlayIcon => '懸浮視窗圖示';
+
+  @override
+  String get backgroundIconDefault => 'Kelivo 圖示';
+
+  @override
+  String get backgroundIconImage => '選擇圖片';
+
+  @override
+  String get backgroundIconEmoji => '選擇 Emoji';
+
+  @override
+  String get backgroundPermissionsTitle => '權限與系統設定';
+
+  @override
+  String get backgroundNotificationsPermission => '通知權限';
+
+  @override
+  String get backgroundBatteryOptimization => '電池最佳化';
+
+  @override
+  String get backgroundBatteryOptimizationDetail => '允許不受限制地使用電池可改善背景執行。';
+
+  @override
+  String get backgroundAutostart => '自動啟動與背景執行';
+
+  @override
+  String get backgroundAutostartDetail =>
+      '請手動檢查裝置的自動啟動和背景限制。Android 無法可靠查詢這些廠商設定的授權狀態。';
+
+  @override
+  String get backgroundSystemSettings => '應用程式系統設定';
+
+  @override
+  String get backgroundPermissionGranted => '已允許';
+
+  @override
+  String get backgroundPermissionDenied => '未允許';
+
+  @override
+  String get backgroundPermissionUnknown => '需手動檢查';
+
+  @override
+  String get backgroundRuntimeTitle => '目前狀態';
+
+  @override
+  String get backgroundRuntimeActive => '正在執行';
+
+  @override
+  String get backgroundRuntimeIdle => '未執行';
+
+  @override
+  String get backgroundOverlayActive => '懸浮視窗';
+
+  @override
+  String get backgroundLastError => '最近中斷或錯誤';
+
+  @override
+  String get backgroundNoError => '暫無紀錄';
+
+  @override
+  String get backgroundUnsupported => '目前裝置不支援或系統設定未允許';
+
+  @override
+  String get backgroundAndroidLimit =>
+      '如任務中斷，請檢查通知、電池及廠商背景設定。系統強制停止或終止程序仍可能中斷生成。';
+
+  @override
+  String get backgroundStale => '狀態暫未更新，請開啟應用程式查看。';
+
+  @override
+  String get backgroundIconError => '無法匯入此圖片，請選擇其他圖片。';
+
+  @override
+  String get backgroundCompletionChannel => '任務完成通知頻道';
+
+  @override
+  String get backgroundOngoingChannel => '任務執行通知頻道';
+
+  @override
+  String get backgroundOverlayAppearance => '懸浮窗外觀';
+
+  @override
+  String get backgroundOverlayAppearanceDetail => '調整尺寸、圖示、進度環和顯示內容';
+
+  @override
+  String get backgroundOverlayPreviewHint => '拖曳可移動 · 點擊進入對話 · 長按可收起';
+
+  @override
+  String get backgroundOverlayCard => '資訊卡片';
+
+  @override
+  String get backgroundOverlayCircle => '圓形圖示';
+
+  @override
+  String get backgroundOverlaySize => '尺寸與形狀';
+
+  @override
+  String get backgroundOverlayWidth => '寬度';
+
+  @override
+  String get backgroundOverlayHeight => '高度';
+
+  @override
+  String get backgroundOverlayCornerRadius => '圓角';
+
+  @override
+  String get backgroundOverlayIconSize => '圖示大小';
+
+  @override
+  String get backgroundOverlayProgressSize => '進度環直徑';
+
+  @override
+  String get backgroundOverlayProgressStroke => '進度環粗細';
+
+  @override
+  String get backgroundOverlayContent => '顯示內容';
+
+  @override
+  String get backgroundOverlayShowProgress => '顯示進度環';
+
+  @override
+  String get backgroundOverlayShowTitle => '顯示標題';
+
+  @override
+  String get backgroundOverlayShowSubtitle => '顯示副標題';
+
+  @override
+  String get backgroundOverlayShowTime => '顯示耗時';
+
+  @override
+  String get backgroundOverlayShowClose => '顯示關閉按鈕';
+
+  @override
+  String get backgroundOverlayShowBackground => '顯示背景';
+
+  @override
+  String get backgroundOverlayShowBorder => '顯示邊框';
+
+  @override
+  String get backgroundOverlayReset => '恢復預設樣式';
+
+  @override
+  String get mcpArgumentsHint => '用空格分隔參數，包含空格的內容用引號包裹；空參數寫成 \'\'。';
+
+  @override
+  String get mcpArgumentsInvalid => '請檢查參數中的引號是否閉合、結尾是否有未完成的跳脫。';
+
+  @override
+  String get mcpImportJson => '匯入 JSON';
+
+  @override
+  String get mcpImportJsonHint =>
+      '貼上 Claude Desktop 或 Cursor 的 MCP 設定，預覽後新增伺服器，不覆蓋現有設定。';
+
+  @override
+  String get mcpImportPaste => '從剪貼簿貼上';
+
+  @override
+  String get mcpImportPreview => '預覽';
+
+  @override
+  String get mcpImportConfirm => '匯入';
+
+  @override
+  String get startupRecoverySnapshotTitle => '從資料庫快照還原';
+
+  @override
+  String get startupRecoverySnapshotBody =>
+      '即使資料庫無法開啟，也可以選擇本機快照還原聊天和設定。請勿解除安裝 Kelivo，解除安裝會一併刪除這些快照。';
+
+  @override
+  String get startupRecoverySnapshotEmpty => '未在本機找到資料庫快照。請先匯出資料，再嘗試其他還原操作。';
+
+  @override
+  String get startupRecoverySnapshotButton => '選擇快照還原';
+
+  @override
+  String startupRecoverySnapshotConfirm(String when) {
+    return '將聊天和設定還原到 $when 的快照？快照之後的變更不會包含在內。現有附件檔案和快照會保留，Kelivo 將重新啟動以完成還原。';
+  }
+
+  @override
+  String startupRecoverySnapshotFailed(String reason) {
+    return '無法準備快照還原：$reason';
+  }
+
+  @override
+  String get startupRecoverySnapshotReady => '快照已準備好，請重新啟動 Kelivo 完成還原。';
+
+  @override
+  String get assistantConversationSystemPromptTitle => '獨立對話系統提示';
+
+  @override
+  String get assistantConversationSystemPromptHint => '允許每個對話設定自己的系統提示詞。';
+
+  @override
+  String get conversationSystemPromptTitle => '對話系統提示詞';
+
+  @override
+  String get conversationSystemPromptHint => '僅對目前對話生效，留空時使用助理的系統提示詞。';
+
+  @override
+  String get conversationSystemPromptClear => '恢復助理提示詞';
+
+  @override
+  String get conversationSystemPromptPlaceholder => '為這個對話編寫系統提示詞…';
+
+  @override
+  String get oauthAccountsTab => '帳號登入';
+
+  @override
+  String get oauthLogin => '登入';
+
+  @override
+  String get oauthConnected => '已連線';
+
+  @override
+  String oauthWaiting(String provider) {
+    return '正在等待 $provider 授權';
+  }
+
+  @override
+  String get oauthCancel => '取消授權';
+
+  @override
+  String get oauthOpenBrowser => '開啟授權頁面';
+
+  @override
+  String get oauthCopyCode => '複製驗證碼';
+
+  @override
+  String get oauthCodeHint => '在授權頁面輸入此驗證碼';
+
+  @override
+  String get oauthDeviceHint => '請先在 ChatGPT 安全設定或工作區權限中啟用裝置碼登入。';
+
+  @override
+  String get oauthDeviceLogin => '使用裝置碼登入';
+
+  @override
+  String get oauthDetails => '查看帳號詳情';
+
+  @override
+  String get oauthConnectAnother => '再連一個';
+
+  @override
+  String get oauthRelogin => '重新登入';
+
+  @override
+  String get oauthNeedsLogin => '需重新登入';
+
+  @override
+  String oauthExpired(String provider) {
+    return '$provider 登入已過期';
+  }
+
+  @override
+  String get oauthLoginRestored => '已重新登入，可使用訊息的重試按鈕再次傳送。';
+
+  @override
+  String get oauthLogout => '登出';
+
+  @override
+  String get oauthLogoutDescription => '清除此帳號在本機儲存的授權憑證';
+
+  @override
+  String get oauthRefreshing => '正在續期授權…';
+
+  @override
+  String get oauthRefreshUsage => '重新整理用量';
+
+  @override
+  String get oauthUsageDetails => '用量明細';
+
+  @override
+  String get oauthUsageUnavailable => '暫時無法取得用量';
+
+  @override
+  String oauthLastUpdated(String time) {
+    return '更新於 $time';
+  }
+
+  @override
+  String get oauthSyncModels => '同步';
+
+  @override
+  String get oauthSyncing => '正在同步模型…';
+
+  @override
+  String get oauthModelsHint => '可用模型由帳號同步。';
+
+  @override
+  String get oauthNoModels => '同步模型後即可開始對話';
+
+  @override
+  String get oauthConnectionInfo => '連線資訊';
+
+  @override
+  String get oauthEndpoint => '連線端點';
+
+  @override
+  String get oauthScope => '授權範圍';
+
+  @override
+  String get oauthAccountId => '帳號 ID';
+
+  @override
+  String get oauthTokenExpiry => '權杖有效期限';
+
+  @override
+  String get oauthName => '供應商名稱';
+
+  @override
+  String get oauthEnabledHint => '在模型選擇器中顯示這些模型';
+
+  @override
+  String get oauthWeekly => '本週視窗';
+
+  @override
+  String get oauthMonthly => '本月視窗';
+
+  @override
+  String get oauthTotal => '總額度';
+
+  @override
+  String oauthHours(String count) {
+    return '$count 小時視窗';
+  }
+
+  @override
+  String oauthMinutes(String count) {
+    return '$count 分鐘視窗';
+  }
+
+  @override
+  String oauthDays(String count) {
+    return '$count 天視窗';
+  }
+
+  @override
+  String get oauthWindow => '用量視窗';
+
+  @override
+  String oauthResetsAt(String time) {
+    return '重設於 $time';
+  }
+
+  @override
+  String get oauthNetworkError => '連線失敗，請檢查網路後重試。';
+
+  @override
+  String get oauthInvalidResponse => '授權未完成，請重試。';
+
+  @override
+  String get oauthTimeout => '授權逾時，請重試。';
+
+  @override
+  String get oauthDenied => '授權未獲批准，請重試。';
+
+  @override
+  String get oauthQuotaExceeded => '此帳號暫無可用額度。';
+
+  @override
+  String get oauthRateLimited => '請求過於頻繁，請稍後重試。';
+
+  @override
+  String get oauthPermissionDenied => '此帳號無權存取此資源。';
+
+  @override
+  String get oauthRequestFailed => '供應商未能完成請求。';
+
+  @override
+  String get oauthQuotaAvailable => '額度可用';
+
+  @override
+  String oauthSavedResets(String count) {
+    return '可用額度重設次數：$count';
+  }
+
+  @override
+  String get oauthPrimaryWindow => '主要視窗';
+
+  @override
+  String get oauthSecondaryWindow => '次要視窗';
+
+  @override
+  String get oauthAuthorizationCode => '授權碼或回呼連結';
+
+  @override
+  String get oauthAuthorizationCodeHint => '如果瀏覽器沒有自動返回，請將最後的回呼連結或授權碼貼到這裡。';
+
+  @override
+  String get oauthInvalidAuthorizationCode => '請輸入本次登入的授權碼或回呼連結。';
+
+  @override
+  String get oauthSubmitAuthorizationCode => '完成登入';
+
+  @override
+  String get oauthExtraUsage => '額外用量';
+
+  @override
+  String get oauthPromptCachingHelp => '重用多輪對話中的上下文，可設定快取保留時間。';
 }

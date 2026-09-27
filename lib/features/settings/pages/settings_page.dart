@@ -6,6 +6,8 @@ import '../../../core/providers/settings_provider.dart';
 import '../../model/pages/default_model_page.dart';
 import '../../provider/pages/providers_page.dart';
 import 'display_settings_page.dart';
+import 'settings_search_page.dart';
+import '../widgets/settings_search_entry.dart';
 import '../../mcp/pages/mcp_page.dart';
 import '../../assistant/pages/assistant_settings_page.dart';
 import 'about_page.dart';
@@ -37,6 +39,7 @@ class SettingsPage extends StatelessWidget {
     final settings = context.watch<SettingsProvider>();
 
     String modeLabel(ThemeMode m) {
+      final l10n = AppLocalizations.of(context)!;
       switch (m) {
         case ThemeMode.dark:
           return l10n.settingsPageDarkMode;
@@ -119,8 +122,12 @@ class SettingsPage extends StatelessWidget {
         ),
         title: Text(l10n.settingsPageTitle),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      body: SettingsSearchList(
+        onSearch: (origin) => showMobileSettingsSearch(
+          context,
+          origin: origin,
+          onColorMode: pickThemeMode,
+        ),
         children: [
           if (!settings.hasAnyActiveModel)
             Material(
@@ -510,9 +517,7 @@ class _ChatStorageSummaryState extends State<_ChatStorageSummary> {
         if (snapshot.connectionState != ConnectionState.done) {
           return Text(l10n.settingsPageCalculating, style: style);
         }
-        final count = data?.totalFiles ?? 0;
-        final size = _fmtBytes(data?.totalBytes ?? 0);
-        return Text(l10n.settingsPageFilesCount(count, size), style: style);
+        return Text(_fmtBytes(data?.totalBytes ?? 0), style: style);
       },
     );
   }

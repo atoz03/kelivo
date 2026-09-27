@@ -1,3 +1,5 @@
+import 'kimi_model_compat.dart';
+
 class OpenAIReasoningSupport {
   const OpenAIReasoningSupport({
     required this.supportedEfforts,
@@ -90,10 +92,19 @@ const OpenAIReasoningSupport _kimiK3Support = OpenAIReasoningSupport(
   supportedEfforts: <String>['low', 'high', 'max'],
   offFallback: 'low',
 );
+const OpenAIReasoningSupport _kimiCodeSupport = OpenAIReasoningSupport(
+  supportedEfforts: <String>['none', 'low', 'high', 'max'],
+);
+const OpenAIReasoningSupport _kimiCodeHighSpeedSupport = OpenAIReasoningSupport(
+  supportedEfforts: <String>[],
+  effortParameterSupported: false,
+);
 const OpenAIReasoningSupport _grok45Support = OpenAIReasoningSupport(
   supportedEfforts: <String>['low', 'medium', 'high'],
   offFallback: 'low',
 );
+// Grok 4.6 and 4.7: low / medium / high / xhigh. Reasoning cannot be disabled.
+// https://docs.x.ai/developers/model-capabilities/text/reasoning
 const OpenAIReasoningSupport _grok46Support = OpenAIReasoningSupport(
   supportedEfforts: <String>['low', 'medium', 'high', 'xhigh'],
   offFallback: 'low',
@@ -190,6 +201,9 @@ String openAINormalizeReasoningEffort(String effort, String modelId) {
 
   final support = openAIReasoningSupport(modelId);
   if (support?.effortParameterSupported == false) return 'auto';
+  if (support == _kimiCodeSupport && normalizedEffort == 'xhigh') {
+    return 'max';
+  }
   if (normalizedEffort == 'off') {
     if (support?.supportsNone == true) return 'none';
     return support?.offFallback ?? 'off';
@@ -272,6 +286,12 @@ bool openAIAllowsSamplingParams(String modelId, {required String effort}) {
 
 OpenAIReasoningSupport? openAIReasoningSupport(String modelId) {
   final normalized = modelId.trim().toLowerCase();
+  if (isKimiCodeHighSpeedModel(normalized)) return _kimiCodeHighSpeedSupport;
+  if (isKimiCodeK3Alias(normalized) ||
+      isKimiForCodingModel(normalized) ||
+      isKimiK28Model(normalized)) {
+    return _kimiCodeSupport;
+  }
   if (normalized.contains('deepseek')) return _deepSeekSupport;
   if (_matchesModel(normalized, r'(^|[/_:@])mimo-v2(?:$|[-.])')) {
     return _mimoSupport;
@@ -279,7 +299,7 @@ OpenAIReasoningSupport? openAIReasoningSupport(String modelId) {
   if (_matchesModel(normalized, r'(^|[/_:@])kimi-k3(?:$|[-.])')) {
     return _kimiK3Support;
   }
-  if (_matchesModel(normalized, r'(^|[/_:@])grok-4\.6(?:$|[-.])')) {
+  if (_matchesModel(normalized, r'(^|[/_:@])grok-4\.(?:6|7)(?:$|[-.])')) {
     return _grok46Support;
   }
   if (_matchesModel(normalized, r'(^|[/_:@])grok-4\.5(?:$|[-.])')) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/ios_form_text_field.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/settings_provider.dart';
 import 'dart:math' as math;
@@ -122,49 +123,12 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet>
     required TextEditingController controller,
     String? hint,
   }) {
-    final cs = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            color: cs.onSurface.withValues(alpha: 0.8),
-          ),
-        ),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            hintText: hint,
-            filled: true,
-            // Match provider sheet input background
-            fillColor: context.appColors.surfaceCard,
-            // Match provider sheet border styles
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: cs.outlineVariant.withValues(alpha: 0.4),
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: cs.outlineVariant.withValues(alpha: 0.4),
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: cs.primary.withValues(alpha: 0.5)),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 12,
-            ),
-          ),
-        ),
-      ],
+    return IosFormTextField(
+      label: label,
+      controller: controller,
+      hintText: hint,
+      inlineLabel: false,
+      outerPadding: EdgeInsets.zero,
     );
   }
 
@@ -399,7 +363,7 @@ class _McpServerEditSheetState extends State<_McpServerEditSheet>
         ),
         child: DraggableScrollableSheet(
           expand: false,
-          initialChildSize: isEdit ? 0.85 : 0.6,
+          initialChildSize: 0.85,
           maxChildSize: 0.9,
           minChildSize: 0.5,
           builder: (c, controller) => Column(

@@ -1,3 +1,4 @@
+import '../../provider/widgets/oauth_message_recovery.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'
@@ -6,6 +7,7 @@ import 'dart:ui' as ui;
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import '../../../core/services/haptics.dart';
+import '../../../shared/widgets/optional_shader_mask.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 import 'package:open_filex/open_filex.dart';
@@ -26,6 +28,7 @@ import '../../../utils/sandbox_path_resolver.dart';
 import '../../../utils/safe_resize_image.dart';
 import '../../../utils/avatar_cache.dart';
 import '../../../utils/assistant_regex.dart';
+import '../../../utils/utf16_safe_cut.dart';
 import '../../../core/models/assistant.dart';
 import '../../../core/providers/tts_provider.dart';
 import '../../../shared/widgets/markdown_with_highlight.dart';
@@ -54,6 +57,7 @@ import '../utils/thinking_tag_parser.dart';
 import 'timeline_projection.dart';
 import 'timeline_visibility.dart';
 import 'citation_sources_sheet.dart';
+import 'collapsible_user_text.dart';
 import 'chat_suggestion_bubbles.dart';
 import 'token_display_widget.dart';
 import 'screen_time_tool_ui.dart';
@@ -1047,6 +1051,9 @@ class ChatMessageWidget extends StatefulWidget {
   final bool? showToolCards;
   final void Function(String imageKey, double aspectRatio)? onInlineImageAspect;
 
+  /// Off for exports, which must render the whole user message.
+  final bool collapseLongUserText;
+
   const ChatMessageWidget({
     super.key,
     required this.message,
@@ -1093,6 +1100,7 @@ class ChatMessageWidget extends StatefulWidget {
     this.showThinkingCards,
     this.showToolCards,
     this.onInlineImageAspect,
+    this.collapseLongUserText = true,
   });
 
   @override
@@ -1717,6 +1725,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
             bool showName,
             bool showTimestamp,
             bool enableMarkdown,
+            int collapseChars,
           })
         >(
           (s) => (
@@ -1724,6 +1733,9 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
             showName: s.showUserName,
             showTimestamp: s.showUserTimestamp,
             enableMarkdown: s.enableUserMarkdown,
+            collapseChars: s.collapseLongUserMessages
+                ? s.collapseLongUserMessageChars
+                : 0,
           ),
         );
     // Attachments come from structured parts only. Literal marker-like text
@@ -1752,6 +1764,9 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                 context,
                 visualText,
                 userMessageSettings.enableMarkdown,
+                widget.collapseLongUserText
+                    ? userMessageSettings.collapseChars
+                    : 0,
               ),
             ),
           )
@@ -2013,10 +2028,14 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     } catch (_) {}
   }
 
+  /// Number of text lines kept visible when a long user message is collapsed.
+  static const int _collapsedUserTextLines = 9;
+
   Widget _buildUserTextContent(
     BuildContext context,
     String visualText,
     bool enableUserMarkdown,
+    int collapseChars,
   ) {
     final bool isDesktop = defaultTargetPlatform == TargetPlatform.macOS;
     final double baseUser = isDesktop ? 14.0 : 15.5;
@@ -2041,12 +2060,24 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
       );
     }
 
-    return isDesktop
-        ? CopyableSelectionArea(
-            key: ValueKey('user_${widget.message.id}'),
-            child: content,
-          )
-        : content;
+    if (isDesktop) {
+      content = CopyableSelectionArea(
+        key: ValueKey('user_${widget.message.id}'),
+        child: content,
+      );
+    }
+
+    if (collapseChars > 0 && visualText.length > collapseChars) {
+      final lineHeight =
+          MediaQuery.textScalerOf(context).scale(baseUser) * 1.45;
+      content = CollapsibleUserText(
+        key: ValueKey('user-collapse:${widget.message.id}'),
+        collapsedHeight: lineHeight * _collapsedUserTextLines,
+        child: content,
+      );
+    }
+
+    return content;
   }
 
   /// Attachment previews in [parts] ordinal order (not images-then-files).
@@ -2597,6 +2628,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
         scope: AssistantRegexScope.assistant,
       ),
       partsArrivalOrdered: widget.message.isStreaming,
+      parseInlineThinking: _legacyInlineThinkingFor(widget).hasThinking,
     );
   }
 
@@ -3156,8 +3188,14 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                 onTap: () => _showCitationsSheet(searchItems),
               ),
             ],
+            for (final error
+                in widget.message.parts.whereType<ProviderAuthErrorPart>())
+              OAuthMessageRecovery(error: error),
             // Action buttons (hidden while generating)
             AnimatedSwitcher(
+              // Completion previously remounted the row at its final height.
+              // Keep that geometry while retaining the expensive Markdown tree.
+              key: ValueKey(('assistant-actions', widget.message.isStreaming)),
               duration: const Duration(milliseconds: 220),
               switchInCurve: Curves.easeOutCubic,
               switchOutCurve: Curves.easeInCubic,
@@ -4519,9 +4557,9 @@ class _ChainOfThoughtCardState extends State<_ChainOfThoughtCard> {
     required double textScale,
     required bool hasToggle,
   }) {
-    return Object.hash(
+    return (
       'reasoning',
-      identityHashCode(step.text),
+      step.text,
       step.expanded,
       step.loading,
       step.startAt,
@@ -4985,14 +5023,22 @@ class _ChainOfThoughtReasoningStepState
   Timer? _elapsedTimer;
   final ScrollController _scroll = ScrollController();
   bool _hasOverflow = false;
+  bool? _localExpanded;
 
   _ReasoningStepState get _stepState {
+    // Persisted parts can outnumber the timing/interaction metadata (for
+    // example after a background tool round). The content still needs a toggle.
+    final expanded =
+        (_ChainOfThoughtActions.toggleOf(context, widget.sourceIndex) == null
+            ? _localExpanded
+            : null) ??
+        widget.step.expanded;
     if (widget.step.loading) {
-      return widget.step.expanded
+      return expanded
           ? _ReasoningStepState.expanded
           : _ReasoningStepState.preview;
     }
-    return widget.step.expanded
+    return expanded
         ? _ReasoningStepState.expanded
         : _ReasoningStepState.collapsed;
   }
@@ -5129,75 +5175,65 @@ class _ChainOfThoughtReasoningStepState
     if (state == _ReasoningStepState.preview) {
       content = ConstrainedBox(
         constraints: const BoxConstraints(maxHeight: 100),
-        child: _hasOverflow
-            ? ShaderMask(
-                shaderCallback: (rect) {
-                  final h = rect.height;
-                  const double topFade = 12;
-                  const double bottomFade = 28;
-                  final double sTop = (topFade / h).clamp(0.0, 1.0);
-                  final double sBot = (1.0 - bottomFade / h).clamp(0.0, 1.0);
-                  return LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: const [
-                      Color(
-                        0x00FFFFFF,
-                      ), // color-gate: ignore (dstIn alpha mask)
-                      Color(
-                        0xFFFFFFFF,
-                      ), // color-gate: ignore (dstIn alpha mask)
-                      Color(
-                        0xFFFFFFFF,
-                      ), // color-gate: ignore (dstIn alpha mask)
-                      Color(
-                        0x00FFFFFF,
-                      ), // color-gate: ignore (dstIn alpha mask)
-                    ],
-                    stops: [0.0, sTop, sBot, 1.0],
-                  ).createShader(rect);
-                },
-                blendMode: BlendMode.dstIn,
-                child: SingleChildScrollView(
-                  controller: _scroll,
-                  physics: const BouncingScrollPhysics(),
-                  child: CopyableSelectionArea(
-                    child: reasoningContent(display),
-                  ),
-                ),
-              )
-            : SingleChildScrollView(
-                controller: _scroll,
-                physics: const NeverScrollableScrollPhysics(),
-                child: CopyableSelectionArea(child: reasoningContent(display)),
-              ),
+        child: OptionalShaderMask(
+          enabled: _hasOverflow,
+          shaderCallback: (rect) {
+            final h = rect.height;
+            const double topFade = 12;
+            const double bottomFade = 28;
+            final double sTop = (topFade / h).clamp(0.0, 1.0);
+            final double sBot = (1.0 - bottomFade / h).clamp(0.0, 1.0);
+            return LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: const [
+                Color(0x00FFFFFF), // color-gate: ignore (dstIn alpha mask)
+                Color(0xFFFFFFFF), // color-gate: ignore (dstIn alpha mask)
+                Color(0xFFFFFFFF), // color-gate: ignore (dstIn alpha mask)
+                Color(0x00FFFFFF), // color-gate: ignore (dstIn alpha mask)
+              ],
+              stops: [0.0, sTop, sBot, 1.0],
+            ).createShader(rect);
+          },
+          blendMode: BlendMode.dstIn,
+          child: SingleChildScrollView(
+            controller: _scroll,
+            // Bouncing physics already declines drags when content fits.
+            // Keeping it stable also retains ScrollPosition on overflow.
+            physics: const BouncingScrollPhysics(),
+            child: CopyableSelectionArea(child: reasoningContent(display)),
+          ),
+        ),
       );
     } else if (state == _ReasoningStepState.expanded) {
       content = CopyableSelectionArea(child: reasoningContent(display));
     }
 
-    final hasToggle =
-        _ChainOfThoughtActions.toggleOf(context, widget.sourceIndex) != null;
     return _TimelineStepShell(
       icon: icon,
       label: label,
       isFirst: widget.isFirst,
       isLast: widget.isLast,
-      onTap: hasToggle
-          ? () => _ChainOfThoughtActions.toggleOf(
-              context,
-              widget.sourceIndex,
-            )?.call()
-          : null,
-      indicator: hasToggle
-          ? Icon(
-              state == _ReasoningStepState.expanded
-                  ? Lucide.ChevronUp
-                  : Lucide.ChevronDown,
-              size: 16,
-              color: fg.muted,
-            )
-          : null,
+      onTap: () {
+        final toggle = _ChainOfThoughtActions.toggleOf(
+          context,
+          widget.sourceIndex,
+        );
+        if (toggle != null) {
+          toggle();
+        } else {
+          setState(() {
+            _localExpanded = !(_localExpanded ?? widget.step.expanded);
+          });
+        }
+      },
+      indicator: Icon(
+        state == _ReasoningStepState.expanded
+            ? Lucide.ChevronUp
+            : Lucide.ChevronDown,
+        size: 16,
+        color: fg.muted,
+      ),
       content: content,
       contentVisible: state != _ReasoningStepState.collapsed,
       expectContent: true,
@@ -5288,7 +5324,7 @@ class _ChainOfThoughtToolStepState extends State<_ChainOfThoughtToolStep> {
     final entries = args.entries.take(2).map((entry) {
       final value = entry.value?.toString() ?? '';
       final truncated = value.length > 40
-          ? '${value.substring(0, 40)}...'
+          ? '${truncateHeadUtf16Safe(value, 40)}...'
           : value;
       return '${entry.key}: $truncated';
     });
@@ -5628,7 +5664,9 @@ class _ToolCallItemState extends State<_ToolCallItem> {
     // Show first 1-2 key=value pairs, truncated
     final entries = args.entries.take(2).map((e) {
       final v = e.value?.toString() ?? '';
-      final truncated = v.length > 40 ? '${v.substring(0, 40)}...' : v;
+      final truncated = v.length > 40
+          ? '${truncateHeadUtf16Safe(v, 40)}...'
+          : v;
       return '${e.key}: $truncated';
     });
     final suffix = args.length > 2 ? ' ...' : '';
@@ -6516,8 +6554,6 @@ class _AskUserOptionRow extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 13,
                   height: 1.25,
@@ -7149,54 +7185,41 @@ class _ReasoningSectionState extends State<_ReasoningSection> {
         padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 80),
-          child: _hasOverflow
-              ? ShaderMask(
-                  shaderCallback: (rect) {
-                    final h = rect.height;
-                    const double topFade = 12.0;
-                    const double bottomFade = 28.0;
-                    final double sTop = (topFade / h).clamp(0.0, 1.0);
-                    final double sBot = (1.0 - bottomFade / h).clamp(0.0, 1.0);
-                    return LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: const [
-                        Color(
-                          0x00FFFFFF,
-                        ), // color-gate: ignore (dstIn alpha mask)
-                        Color(
-                          0xFFFFFFFF,
-                        ), // color-gate: ignore (dstIn alpha mask)
-                        Color(
-                          0xFFFFFFFF,
-                        ), // color-gate: ignore (dstIn alpha mask)
-                        Color(
-                          0x00FFFFFF,
-                        ), // color-gate: ignore (dstIn alpha mask)
-                      ],
-                      stops: [0.0, sTop, sBot, 1.0],
-                    ).createShader(rect);
-                  },
-                  blendMode: BlendMode.dstIn,
-                  child: NotificationListener<ScrollUpdateNotification>(
-                    onNotification: (_) {
-                      WidgetsBinding.instance.addPostFrameCallback(
-                        (_) => _checkOverflow(),
-                      );
-                      return false;
-                    },
-                    child: SingleChildScrollView(
-                      controller: _scroll,
-                      physics: const BouncingScrollPhysics(),
-                      child: reasoningContent(display),
-                    ),
-                  ),
-                )
-              : SingleChildScrollView(
-                  controller: _scroll,
-                  physics: const NeverScrollableScrollPhysics(),
-                  child: reasoningContent(display),
-                ),
+          child: OptionalShaderMask(
+            enabled: _hasOverflow,
+            shaderCallback: (rect) {
+              final h = rect.height;
+              const double topFade = 12.0;
+              const double bottomFade = 28.0;
+              final double sTop = (topFade / h).clamp(0.0, 1.0);
+              final double sBot = (1.0 - bottomFade / h).clamp(0.0, 1.0);
+              return LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: const [
+                  Color(0x00FFFFFF), // color-gate: ignore (dstIn alpha mask)
+                  Color(0xFFFFFFFF), // color-gate: ignore (dstIn alpha mask)
+                  Color(0xFFFFFFFF), // color-gate: ignore (dstIn alpha mask)
+                  Color(0x00FFFFFF), // color-gate: ignore (dstIn alpha mask)
+                ],
+                stops: [0.0, sTop, sBot, 1.0],
+              ).createShader(rect);
+            },
+            blendMode: BlendMode.dstIn,
+            child: NotificationListener<ScrollUpdateNotification>(
+              onNotification: (_) {
+                WidgetsBinding.instance.addPostFrameCallback(
+                  (_) => _checkOverflow(),
+                );
+                return false;
+              },
+              child: SingleChildScrollView(
+                controller: _scroll,
+                physics: const BouncingScrollPhysics(),
+                child: reasoningContent(display),
+              ),
+            ),
+          ),
         ),
       );
     }

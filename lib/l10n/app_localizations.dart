@@ -100,6 +100,48 @@ abstract class AppLocalizations {
     Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
   ];
 
+  /// No description provided for @settingsSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search settings'**
+  String get settingsSearchHint;
+
+  /// No description provided for @settingsSearchCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get settingsSearchCancel;
+
+  /// No description provided for @settingsSearchClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get settingsSearchClear;
+
+  /// No description provided for @settingsSearchSuggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick access'**
+  String get settingsSearchSuggestions;
+
+  /// No description provided for @settingsSearchNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No settings found'**
+  String get settingsSearchNoResults;
+
+  /// No description provided for @settingsSearchNoResultsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a different name or a shorter keyword.'**
+  String get settingsSearchNoResultsHint;
+
+  /// No description provided for @settingsSearchResultCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 result} other{{count} results}}'**
+  String settingsSearchResultCount(int count);
+
   /// No description provided for @settingsPageBackButton.
   ///
   /// In en, this message translates to:
@@ -231,12 +273,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Calculating…'**
   String get settingsPageCalculating;
-
-  /// No description provided for @settingsPageFilesCount.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} files · {size}'**
-  String settingsPageFilesCount(int count, String size);
 
   /// No description provided for @storageSpacePageTitle.
   ///
@@ -393,12 +429,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Other'**
   String get storageSpaceCategoryOther;
-
-  /// No description provided for @storageSpaceFilesCount.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} files'**
-  String storageSpaceFilesCount(int count);
 
   /// No description provided for @storageSpaceSafeToClearHint.
   ///
@@ -571,7 +601,7 @@ abstract class AppLocalizations {
   /// No description provided for @storageSpaceDeleteUploadsConfirmMessage.
   ///
   /// In en, this message translates to:
-  /// **'Delete {count} items? Attachments in chat history may become unavailable.'**
+  /// **'Delete {count} items and their associated conversation attachment copies? These attachments will no longer be available in chat history.'**
   String storageSpaceDeleteUploadsConfirmMessage(int count);
 
   /// No description provided for @storageSpaceDeletedUploadsDone.
@@ -1024,11 +1054,17 @@ abstract class AppLocalizations {
   /// **'Clear Context'**
   String get homePageClearContext;
 
-  /// No description provided for @homePageClearContextWithCount.
+  /// No description provided for @contextMessageCount.
   ///
   /// In en, this message translates to:
-  /// **'Clear Context ({actual}/{configured})'**
-  String homePageClearContextWithCount(String actual, String configured);
+  /// **'{count} messages'**
+  String contextMessageCount(int count);
+
+  /// No description provided for @contextMessageCountLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'{actual}/{configured} messages'**
+  String contextMessageCountLimited(int actual, int configured);
 
   /// No description provided for @homePageDefaultAssistant.
   ///
@@ -1912,12 +1948,6 @@ abstract class AppLocalizations {
   /// **'Solid Color'**
   String get displaySettingsPageChatMessageBackgroundSolid;
 
-  /// No description provided for @displaySettingsPageAndroidBackgroundChatTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Background Generation (Android)'**
-  String get displaySettingsPageAndroidBackgroundChatTitle;
-
   /// No description provided for @androidBackgroundStatusOn.
   ///
   /// In en, this message translates to:
@@ -1929,54 +1959,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Off'**
   String get androidBackgroundStatusOff;
-
-  /// No description provided for @androidBackgroundStatusOther.
-  ///
-  /// In en, this message translates to:
-  /// **'On and notify'**
-  String get androidBackgroundStatusOther;
-
-  /// No description provided for @androidBackgroundOptionOn.
-  ///
-  /// In en, this message translates to:
-  /// **'On'**
-  String get androidBackgroundOptionOn;
-
-  /// No description provided for @androidBackgroundOptionOnNotify.
-  ///
-  /// In en, this message translates to:
-  /// **'On and notify when done'**
-  String get androidBackgroundOptionOnNotify;
-
-  /// No description provided for @androidBackgroundOptionOff.
-  ///
-  /// In en, this message translates to:
-  /// **'Off'**
-  String get androidBackgroundOptionOff;
-
-  /// No description provided for @notificationChatCompletedTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Generation complete'**
-  String get notificationChatCompletedTitle;
-
-  /// No description provided for @notificationChatCompletedBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Assistant reply has been generated'**
-  String get notificationChatCompletedBody;
-
-  /// No description provided for @androidBackgroundNotificationTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Kelivo is running'**
-  String get androidBackgroundNotificationTitle;
-
-  /// No description provided for @androidBackgroundNotificationText.
-  ///
-  /// In en, this message translates to:
-  /// **'Keeping chat generation alive in background'**
-  String get androidBackgroundNotificationText;
 
   /// No description provided for @assistantEditEmojiDialogTitle.
   ///
@@ -2391,6 +2373,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Using time variables in the system prompt makes the beginning of every request different, so prompt caching cannot hit and both cost and time-to-first-token go up. If the model needs to know the current time, use the \"Append current time\" switch below.'**
   String get assistantEditPromptTimeVarWarning;
+
+  /// No description provided for @assistantEditPromptIso8601Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Use ISO 8601 format'**
+  String get assistantEditPromptIso8601Title;
+
+  /// No description provided for @assistantEditPromptIso8601Subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Include the time zone offset, e.g. 2026-08-08T14:30:05+08:00'**
+  String get assistantEditPromptIso8601Subtitle;
 
   /// No description provided for @assistantEditPromptAppendTimeTitle.
   ///
@@ -4660,6 +4654,42 @@ abstract class AppLocalizations {
   /// **'lines'**
   String get displaySettingsPageAutoCollapseCodeBlockLinesUnit;
 
+  /// No description provided for @displaySettingsPageCollapseLongUserMessagesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse Long Messages'**
+  String get displaySettingsPageCollapseLongUserMessagesTitle;
+
+  /// No description provided for @displaySettingsPageCollapseLongUserMessagesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fold user messages past the threshold behind an expand button'**
+  String get displaySettingsPageCollapseLongUserMessagesSubtitle;
+
+  /// No description provided for @displaySettingsPageCollapseLongUserMessagesCharsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse threshold'**
+  String get displaySettingsPageCollapseLongUserMessagesCharsTitle;
+
+  /// No description provided for @displaySettingsPageCollapseLongUserMessagesCharsUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'chars'**
+  String get displaySettingsPageCollapseLongUserMessagesCharsUnit;
+
+  /// No description provided for @chatMessageExpandLongText.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand'**
+  String get chatMessageExpandLongText;
+
+  /// No description provided for @chatMessageCollapseLongText.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse'**
+  String get chatMessageCollapseLongText;
+
   /// No description provided for @messageExportSheetFormatTitle.
   ///
   /// In en, this message translates to:
@@ -5194,11 +5224,11 @@ abstract class AppLocalizations {
   /// **'Reasoning Strength'**
   String get chatInputBarReasoningStrengthTooltip;
 
-  /// No description provided for @chatInputBarMcpServersTooltip.
+  /// No description provided for @chatInputBarToolsTooltip.
   ///
   /// In en, this message translates to:
-  /// **'MCP Servers'**
-  String get chatInputBarMcpServersTooltip;
+  /// **'Tools'**
+  String get chatInputBarToolsTooltip;
 
   /// No description provided for @chatInputBarMoreTooltip.
   ///
@@ -5613,6 +5643,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'On: picking a model in a chat applies to that chat only. Off: it becomes the current assistant\'s model, so every chat using that assistant follows it.'**
   String get defaultModelPagePerChatModelSubtitle;
+
+  /// No description provided for @googleFontsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Google Fonts'**
+  String get googleFontsTitle;
+
+  /// No description provided for @googleFontsRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh font list'**
+  String get googleFontsRefresh;
+
+  /// No description provided for @googleFontsSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search fonts or languages'**
+  String get googleFontsSearchHint;
+
+  /// No description provided for @googleFontsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Download a regular font to preview and apply it. Installed fonts work offline. Catalog: Expo Google Fonts; downloads: Google Fonts.'**
+  String get googleFontsHint;
+
+  /// No description provided for @googleFontsNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching fonts'**
+  String get googleFontsNoResults;
+
+  /// No description provided for @googleFontsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load, download, or apply the font. Check your connection and try again.'**
+  String get googleFontsFailed;
+
+  /// No description provided for @googleFontsDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading font…'**
+  String get googleFontsDownloading;
+
+  /// No description provided for @googleFontsPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'The quick brown fox 0123456789 · 字体预览'**
+  String get googleFontsPreview;
+
+  /// No description provided for @googleFontsLicense.
+  ///
+  /// In en, this message translates to:
+  /// **'Font license'**
+  String get googleFontsLicense;
 
   /// No description provided for @defaultModelPageTitleModelTitle.
   ///
@@ -9570,6 +9654,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unified search for AI agents with automatic routing across web and specialist data sources. API key is optional.'**
   String get searchProviderAnySearchDescription;
+
+  /// No description provided for @searchServiceNameKagi.
+  ///
+  /// In en, this message translates to:
+  /// **'Kagi'**
+  String get searchServiceNameKagi;
+
+  /// No description provided for @searchProviderKagiDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Kagi Search API. Returns premium web search results from Kagi.'**
+  String get searchProviderKagiDescription;
+
+  /// No description provided for @searchServiceNameKimi.
+  ///
+  /// In en, this message translates to:
+  /// **'Kimi'**
+  String get searchServiceNameKimi;
+
+  /// No description provided for @searchProviderKimiDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Kimi Search API. Pro returns relevant web content excerpts; Basic returns titles, links, and snippets.'**
+  String get searchProviderKimiDescription;
 
   /// No description provided for @searchServiceNameParallel.
   ///
@@ -13963,6 +14071,78 @@ abstract class AppLocalizations {
   /// **'Cancel'**
   String get toolSchemaSettingsCancel;
 
+  /// No description provided for @workspaceFileNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'File not available'**
+  String get workspaceFileNotAvailable;
+
+  /// No description provided for @commonClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get commonClose;
+
+  /// No description provided for @incomingShareTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared content'**
+  String get incomingShareTitle;
+
+  /// No description provided for @incomingShareReplaceDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'There is unsent content in the input box. Replace it with the shared content in a new chat?'**
+  String get incomingShareReplaceDraft;
+
+  /// No description provided for @incomingShareFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Some shared content could not be imported. Check file access and available storage. Up to 32 files can be shared at once.'**
+  String get incomingShareFailed;
+
+  /// No description provided for @incomingShareImporting.
+  ///
+  /// In en, this message translates to:
+  /// **'Importing'**
+  String get incomingShareImporting;
+
+  /// No description provided for @incomingShareMoveTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to…'**
+  String get incomingShareMoveTo;
+
+  /// No description provided for @incomingShareNewChat.
+  ///
+  /// In en, this message translates to:
+  /// **'New conversation'**
+  String get incomingShareNewChat;
+
+  /// No description provided for @incomingShareMoveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Move this draft and its attachments to another conversation. Nothing will be sent automatically.'**
+  String get incomingShareMoveHint;
+
+  /// No description provided for @incomingShareNoConversations.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching conversations'**
+  String get incomingShareNoConversations;
+
+  /// No description provided for @chatInputBarRemoveAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove attachment'**
+  String get chatInputBarRemoveAttachment;
+
+  /// No description provided for @incomingShareMoveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not switch conversations. Your draft has been kept.'**
+  String get incomingShareMoveFailed;
+
   /// No description provided for @healthDataSettingsCategoryReproductive.
   ///
   /// In en, this message translates to:
@@ -13980,6 +14160,996 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Recorded menstrual flow and cycle starts in the past 90 days'**
   String get healthDataSettingsTypeMenstrualFlowSubtitle;
+
+  /// No description provided for @assistantEditGradientBackgroundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Gradient background'**
+  String get assistantEditGradientBackgroundTitle;
+
+  /// No description provided for @assistantEditGradientStaticTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Static mode'**
+  String get assistantEditGradientStaticTitle;
+
+  /// No description provided for @assistantEditGradientStaticDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Saves power during long chats and streaming.'**
+  String get assistantEditGradientStaticDescription;
+
+  /// No description provided for @assistantEditGradientHorizontal.
+  ///
+  /// In en, this message translates to:
+  /// **'Horizontal position'**
+  String get assistantEditGradientHorizontal;
+
+  /// No description provided for @assistantEditGradientVertical.
+  ///
+  /// In en, this message translates to:
+  /// **'Vertical position'**
+  String get assistantEditGradientVertical;
+
+  /// No description provided for @assistantEditGradientPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get assistantEditGradientPreview;
+
+  /// No description provided for @assistantEditGradientNextFrame.
+  ///
+  /// In en, this message translates to:
+  /// **'Another frame'**
+  String get assistantEditGradientNextFrame;
+
+  /// No description provided for @backgroundSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Background tasks'**
+  String get backgroundSettingsTitle;
+
+  /// No description provided for @backgroundTaskTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Kelivo task'**
+  String get backgroundTaskTitle;
+
+  /// No description provided for @backgroundCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation complete'**
+  String get backgroundCompleted;
+
+  /// No description provided for @backgroundFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation failed. Open the chat for details.'**
+  String get backgroundFailed;
+
+  /// No description provided for @backgroundCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation cancelled'**
+  String get backgroundCancelled;
+
+  /// No description provided for @backgroundInterrupted.
+  ///
+  /// In en, this message translates to:
+  /// **'Background generation was interrupted. Open the chat to continue.'**
+  String get backgroundInterrupted;
+
+  /// No description provided for @backgroundRequesting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting'**
+  String get backgroundRequesting;
+
+  /// No description provided for @backgroundGenerating.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating reply'**
+  String get backgroundGenerating;
+
+  /// No description provided for @backgroundThinking.
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking'**
+  String get backgroundThinking;
+
+  /// No description provided for @backgroundToolRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running tool'**
+  String get backgroundToolRunning;
+
+  /// No description provided for @backgroundRetrying.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to retry'**
+  String get backgroundRetrying;
+
+  /// No description provided for @backgroundWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'Working'**
+  String get backgroundWorking;
+
+  /// No description provided for @backgroundTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks'**
+  String get backgroundTasks;
+
+  /// No description provided for @backgroundStopTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop tasks'**
+  String get backgroundStopTasks;
+
+  /// No description provided for @backgroundOpenChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Open chat'**
+  String get backgroundOpenChat;
+
+  /// No description provided for @backgroundAndroidEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Background generation'**
+  String get backgroundAndroidEnabled;
+
+  /// No description provided for @backgroundAndroidEnabledDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep current tasks running when locked, in the background, or removed from recent apps. A system notification is required while tasks run.'**
+  String get backgroundAndroidEnabledDetail;
+
+  /// No description provided for @backgroundNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Task notifications'**
+  String get backgroundNotifications;
+
+  /// No description provided for @backgroundNotificationsDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify when a task completes or fails outside the chat you are viewing. Does not control Android’s required ongoing notification.'**
+  String get backgroundNotificationsDetail;
+
+  /// No description provided for @backgroundPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Task status privacy'**
+  String get backgroundPrivacy;
+
+  /// No description provided for @backgroundPrivacyDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide conversation titles and tool details in notifications and live status. Only generic status, task count and elapsed time are shown.'**
+  String get backgroundPrivacyDetail;
+
+  /// No description provided for @backgroundOverlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Floating task status'**
+  String get backgroundOverlay;
+
+  /// No description provided for @backgroundOverlayDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Show a draggable task capsule over other apps. Tap it to open the chat; closing it only hides the capsule.'**
+  String get backgroundOverlayDetail;
+
+  /// No description provided for @backgroundLiveUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Live Updates'**
+  String get backgroundLiveUpdates;
+
+  /// No description provided for @backgroundLiveUpdatesDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Android 16 Live Updates on supported devices. A promoted notification takes priority over the floating capsule.'**
+  String get backgroundLiveUpdatesDetail;
+
+  /// No description provided for @backgroundFinishVisibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed status duration'**
+  String get backgroundFinishVisibility;
+
+  /// No description provided for @backgroundFinishImmediately.
+  ///
+  /// In en, this message translates to:
+  /// **'Immediately dismiss'**
+  String get backgroundFinishImmediately;
+
+  /// No description provided for @backgroundFinishOneMinute.
+  ///
+  /// In en, this message translates to:
+  /// **'1 minute'**
+  String get backgroundFinishOneMinute;
+
+  /// No description provided for @backgroundFinishFiveMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'5 minutes'**
+  String get backgroundFinishFiveMinutes;
+
+  /// No description provided for @backgroundFinishUntilForeground.
+  ///
+  /// In en, this message translates to:
+  /// **'Until returning to the app'**
+  String get backgroundFinishUntilForeground;
+
+  /// No description provided for @backgroundFinishVisibilityDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies to the Android capsule and iOS Lock Screen completion card. Returning to the app clears completed status; the maximum is 15 minutes. Cancellation dismisses immediately.'**
+  String get backgroundFinishVisibilityDetail;
+
+  /// No description provided for @backgroundOverlayIcon.
+  ///
+  /// In en, this message translates to:
+  /// **'Floating icon'**
+  String get backgroundOverlayIcon;
+
+  /// No description provided for @backgroundIconDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Kelivo icon'**
+  String get backgroundIconDefault;
+
+  /// No description provided for @backgroundIconImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose image'**
+  String get backgroundIconImage;
+
+  /// No description provided for @backgroundIconEmoji.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Emoji'**
+  String get backgroundIconEmoji;
+
+  /// No description provided for @backgroundPermissionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Permissions and system settings'**
+  String get backgroundPermissionsTitle;
+
+  /// No description provided for @backgroundNotificationsPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification permission'**
+  String get backgroundNotificationsPermission;
+
+  /// No description provided for @backgroundBatteryOptimization.
+  ///
+  /// In en, this message translates to:
+  /// **'Battery optimization'**
+  String get backgroundBatteryOptimization;
+
+  /// No description provided for @backgroundBatteryOptimizationDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow unrestricted battery usage for more reliable background work.'**
+  String get backgroundBatteryOptimizationDetail;
+
+  /// No description provided for @backgroundAutostart.
+  ///
+  /// In en, this message translates to:
+  /// **'Autostart and background usage'**
+  String get backgroundAutostart;
+
+  /// No description provided for @backgroundAutostartDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your device’s autostart and background restrictions manually. Android does not provide a reliable permission query for these vendor settings.'**
+  String get backgroundAutostartDetail;
+
+  /// No description provided for @backgroundSystemSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'App system settings'**
+  String get backgroundSystemSettings;
+
+  /// No description provided for @backgroundPermissionGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Allowed'**
+  String get backgroundPermissionGranted;
+
+  /// No description provided for @backgroundPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Not allowed'**
+  String get backgroundPermissionDenied;
+
+  /// No description provided for @backgroundPermissionUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Check manually'**
+  String get backgroundPermissionUnknown;
+
+  /// No description provided for @backgroundRuntimeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Current status'**
+  String get backgroundRuntimeTitle;
+
+  /// No description provided for @backgroundRuntimeActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get backgroundRuntimeActive;
+
+  /// No description provided for @backgroundRuntimeIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive'**
+  String get backgroundRuntimeIdle;
+
+  /// No description provided for @backgroundOverlayActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Floating window'**
+  String get backgroundOverlayActive;
+
+  /// No description provided for @backgroundLastError.
+  ///
+  /// In en, this message translates to:
+  /// **'Last interruption or error'**
+  String get backgroundLastError;
+
+  /// No description provided for @backgroundNoError.
+  ///
+  /// In en, this message translates to:
+  /// **'None recorded'**
+  String get backgroundNoError;
+
+  /// No description provided for @backgroundUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable on this device or disabled in system settings'**
+  String get backgroundUnsupported;
+
+  /// No description provided for @backgroundAndroidLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Check notification, battery and vendor background settings if tasks stop. Force stop and system process termination can still interrupt generation.'**
+  String get backgroundAndroidLimit;
+
+  /// No description provided for @backgroundStale.
+  ///
+  /// In en, this message translates to:
+  /// **'Status has not updated. Open the app to check.'**
+  String get backgroundStale;
+
+  /// No description provided for @backgroundIconError.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to import this image. Please choose another image.'**
+  String get backgroundIconError;
+
+  /// No description provided for @backgroundCompletionChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Completion notification channel'**
+  String get backgroundCompletionChannel;
+
+  /// No description provided for @backgroundOngoingChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Running task notification channel'**
+  String get backgroundOngoingChannel;
+
+  /// No description provided for @backgroundOverlayAppearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Floating window appearance'**
+  String get backgroundOverlayAppearance;
+
+  /// No description provided for @backgroundOverlayAppearanceDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Size, artwork, progress ring and visible content'**
+  String get backgroundOverlayAppearanceDetail;
+
+  /// No description provided for @backgroundOverlayPreviewHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to move · Tap to open chat · Hold to dismiss'**
+  String get backgroundOverlayPreviewHint;
+
+  /// No description provided for @backgroundOverlayCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Card'**
+  String get backgroundOverlayCard;
+
+  /// No description provided for @backgroundOverlayCircle.
+  ///
+  /// In en, this message translates to:
+  /// **'Circular icon'**
+  String get backgroundOverlayCircle;
+
+  /// No description provided for @backgroundOverlaySize.
+  ///
+  /// In en, this message translates to:
+  /// **'Size and shape'**
+  String get backgroundOverlaySize;
+
+  /// No description provided for @backgroundOverlayWidth.
+  ///
+  /// In en, this message translates to:
+  /// **'Width'**
+  String get backgroundOverlayWidth;
+
+  /// No description provided for @backgroundOverlayHeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Height'**
+  String get backgroundOverlayHeight;
+
+  /// No description provided for @backgroundOverlayCornerRadius.
+  ///
+  /// In en, this message translates to:
+  /// **'Corner radius'**
+  String get backgroundOverlayCornerRadius;
+
+  /// No description provided for @backgroundOverlayIconSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Icon size'**
+  String get backgroundOverlayIconSize;
+
+  /// No description provided for @backgroundOverlayProgressSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress ring diameter'**
+  String get backgroundOverlayProgressSize;
+
+  /// No description provided for @backgroundOverlayProgressStroke.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress ring thickness'**
+  String get backgroundOverlayProgressStroke;
+
+  /// No description provided for @backgroundOverlayContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Visible content'**
+  String get backgroundOverlayContent;
+
+  /// No description provided for @backgroundOverlayShowProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Show progress ring'**
+  String get backgroundOverlayShowProgress;
+
+  /// No description provided for @backgroundOverlayShowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show title'**
+  String get backgroundOverlayShowTitle;
+
+  /// No description provided for @backgroundOverlayShowSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show subtitle'**
+  String get backgroundOverlayShowSubtitle;
+
+  /// No description provided for @backgroundOverlayShowTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Show elapsed time'**
+  String get backgroundOverlayShowTime;
+
+  /// No description provided for @backgroundOverlayShowClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Show close button'**
+  String get backgroundOverlayShowClose;
+
+  /// No description provided for @backgroundOverlayShowBackground.
+  ///
+  /// In en, this message translates to:
+  /// **'Show background'**
+  String get backgroundOverlayShowBackground;
+
+  /// No description provided for @backgroundOverlayShowBorder.
+  ///
+  /// In en, this message translates to:
+  /// **'Show border'**
+  String get backgroundOverlayShowBorder;
+
+  /// No description provided for @backgroundOverlayReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore default appearance'**
+  String get backgroundOverlayReset;
+
+  /// No description provided for @mcpArgumentsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Separate arguments with spaces; quote values containing spaces. Use \'\' for an empty argument.'**
+  String get mcpArgumentsHint;
+
+  /// No description provided for @mcpArgumentsInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for an unclosed quote or trailing escape in arguments.'**
+  String get mcpArgumentsInvalid;
+
+  /// No description provided for @mcpImportJson.
+  ///
+  /// In en, this message translates to:
+  /// **'Import JSON'**
+  String get mcpImportJson;
+
+  /// No description provided for @mcpImportJsonHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste a Claude Desktop or Cursor MCP configuration. Preview and add servers without replacing existing ones.'**
+  String get mcpImportJsonHint;
+
+  /// No description provided for @mcpImportPaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste from Clipboard'**
+  String get mcpImportPaste;
+
+  /// No description provided for @mcpImportPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get mcpImportPreview;
+
+  /// No description provided for @mcpImportConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get mcpImportConfirm;
+
+  /// No description provided for @startupRecoverySnapshotTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore from a database snapshot'**
+  String get startupRecoverySnapshotTitle;
+
+  /// No description provided for @startupRecoverySnapshotBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a snapshot on this device to recover your chats and settings, even when the database cannot open. Do not uninstall Kelivo: uninstalling also removes these snapshots.'**
+  String get startupRecoverySnapshotBody;
+
+  /// No description provided for @startupRecoverySnapshotEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No database snapshots were found on this device. Export your data before trying other recovery actions.'**
+  String get startupRecoverySnapshotEmpty;
+
+  /// No description provided for @startupRecoverySnapshotButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a snapshot'**
+  String get startupRecoverySnapshotButton;
+
+  /// No description provided for @startupRecoverySnapshotConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore chats and settings from {when}? Changes made after this snapshot will not be included. Existing attachment files and the snapshot will be kept. Kelivo will restart to complete the restore.'**
+  String startupRecoverySnapshotConfirm(String when);
+
+  /// No description provided for @startupRecoverySnapshotFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not prepare the snapshot restore: {reason}'**
+  String startupRecoverySnapshotFailed(String reason);
+
+  /// No description provided for @startupRecoverySnapshotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'The snapshot is ready. Restart Kelivo to complete the restore.'**
+  String get startupRecoverySnapshotReady;
+
+  /// No description provided for @assistantConversationSystemPromptTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Per-conversation system prompt'**
+  String get assistantConversationSystemPromptTitle;
+
+  /// No description provided for @assistantConversationSystemPromptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow each conversation to use its own system prompt.'**
+  String get assistantConversationSystemPromptHint;
+
+  /// No description provided for @conversationSystemPromptTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation system prompt'**
+  String get conversationSystemPromptTitle;
+
+  /// No description provided for @conversationSystemPromptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies only to this conversation. Leave blank to use the assistant’s system prompt.'**
+  String get conversationSystemPromptHint;
+
+  /// No description provided for @conversationSystemPromptClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Use assistant prompt'**
+  String get conversationSystemPromptClear;
+
+  /// No description provided for @conversationSystemPromptPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a system prompt for this conversation…'**
+  String get conversationSystemPromptPlaceholder;
+
+  /// No description provided for @oauthAccountsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts'**
+  String get oauthAccountsTab;
+
+  /// No description provided for @oauthLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in'**
+  String get oauthLogin;
+
+  /// No description provided for @oauthConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get oauthConnected;
+
+  /// No description provided for @oauthWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for {provider} authorization'**
+  String oauthWaiting(String provider);
+
+  /// No description provided for @oauthCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel authorization'**
+  String get oauthCancel;
+
+  /// No description provided for @oauthOpenBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Open authorization page'**
+  String get oauthOpenBrowser;
+
+  /// No description provided for @oauthCopyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy code'**
+  String get oauthCopyCode;
+
+  /// No description provided for @oauthCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter this code on the authorization page'**
+  String get oauthCodeHint;
+
+  /// No description provided for @oauthDeviceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable device code login in your ChatGPT security settings or workspace permissions first.'**
+  String get oauthDeviceHint;
+
+  /// No description provided for @oauthDeviceLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Use device code'**
+  String get oauthDeviceLogin;
+
+  /// No description provided for @oauthDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'View account details'**
+  String get oauthDetails;
+
+  /// No description provided for @oauthConnectAnother.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect another account'**
+  String get oauthConnectAnother;
+
+  /// No description provided for @oauthRelogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in again'**
+  String get oauthRelogin;
+
+  /// No description provided for @oauthNeedsLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Login required'**
+  String get oauthNeedsLogin;
+
+  /// No description provided for @oauthExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'{provider} login has expired'**
+  String oauthExpired(String provider);
+
+  /// No description provided for @oauthLoginRestored.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged in. Use the message retry button to send again.'**
+  String get oauthLoginRestored;
+
+  /// No description provided for @oauthLogout.
+  ///
+  /// In en, this message translates to:
+  /// **'Log out'**
+  String get oauthLogout;
+
+  /// No description provided for @oauthLogoutDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this account’s saved credentials from this device'**
+  String get oauthLogoutDescription;
+
+  /// No description provided for @oauthRefreshing.
+  ///
+  /// In en, this message translates to:
+  /// **'Refreshing authorization…'**
+  String get oauthRefreshing;
+
+  /// No description provided for @oauthRefreshUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh usage'**
+  String get oauthRefreshUsage;
+
+  /// No description provided for @oauthUsageDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage details'**
+  String get oauthUsageDetails;
+
+  /// No description provided for @oauthUsageUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage is currently unavailable'**
+  String get oauthUsageUnavailable;
+
+  /// No description provided for @oauthLastUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {time}'**
+  String oauthLastUpdated(String time);
+
+  /// No description provided for @oauthSyncModels.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get oauthSyncModels;
+
+  /// No description provided for @oauthSyncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing models…'**
+  String get oauthSyncing;
+
+  /// No description provided for @oauthModelsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Available models are synced from your account.'**
+  String get oauthModelsHint;
+
+  /// No description provided for @oauthNoModels.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync models to start chatting'**
+  String get oauthNoModels;
+
+  /// No description provided for @oauthConnectionInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection details'**
+  String get oauthConnectionInfo;
+
+  /// No description provided for @oauthEndpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Endpoint'**
+  String get oauthEndpoint;
+
+  /// No description provided for @oauthScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorization scope'**
+  String get oauthScope;
+
+  /// No description provided for @oauthAccountId.
+  ///
+  /// In en, this message translates to:
+  /// **'Account ID'**
+  String get oauthAccountId;
+
+  /// No description provided for @oauthTokenExpiry.
+  ///
+  /// In en, this message translates to:
+  /// **'Token expires'**
+  String get oauthTokenExpiry;
+
+  /// No description provided for @oauthName.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider name'**
+  String get oauthName;
+
+  /// No description provided for @oauthEnabledHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Show these models in the model picker'**
+  String get oauthEnabledHint;
+
+  /// No description provided for @oauthWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly window'**
+  String get oauthWeekly;
+
+  /// No description provided for @oauthMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly window'**
+  String get oauthMonthly;
+
+  /// No description provided for @oauthTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total quota'**
+  String get oauthTotal;
+
+  /// No description provided for @oauthHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} hour window'**
+  String oauthHours(String count);
+
+  /// No description provided for @oauthMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} minute window'**
+  String oauthMinutes(String count);
+
+  /// No description provided for @oauthDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} day window'**
+  String oauthDays(String count);
+
+  /// No description provided for @oauthWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage window'**
+  String get oauthWindow;
+
+  /// No description provided for @oauthResetsAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Resets {time}'**
+  String oauthResetsAt(String time);
+
+  /// No description provided for @oauthNetworkError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect. Check your network and try again.'**
+  String get oauthNetworkError;
+
+  /// No description provided for @oauthInvalidResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorization did not complete. Please try again.'**
+  String get oauthInvalidResponse;
+
+  /// No description provided for @oauthTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorization timed out. Please try again.'**
+  String get oauthTimeout;
+
+  /// No description provided for @oauthDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorization was not granted. Please try again.'**
+  String get oauthDenied;
+
+  /// No description provided for @oauthQuotaExceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'This account has no available quota.'**
+  String get oauthQuotaExceeded;
+
+  /// No description provided for @oauthRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many requests. Please try again later.'**
+  String get oauthRateLimited;
+
+  /// No description provided for @oauthPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'This account cannot access this resource.'**
+  String get oauthPermissionDenied;
+
+  /// No description provided for @oauthRequestFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The provider could not complete the request.'**
+  String get oauthRequestFailed;
+
+  /// No description provided for @oauthQuotaAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Quota is available'**
+  String get oauthQuotaAvailable;
+
+  /// No description provided for @oauthSavedResets.
+  ///
+  /// In en, this message translates to:
+  /// **'Available usage resets: {count}'**
+  String oauthSavedResets(String count);
+
+  /// No description provided for @oauthPrimaryWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary window'**
+  String get oauthPrimaryWindow;
+
+  /// No description provided for @oauthSecondaryWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Secondary window'**
+  String get oauthSecondaryWindow;
+
+  /// No description provided for @oauthAuthorizationCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorization code or callback URL'**
+  String get oauthAuthorizationCode;
+
+  /// No description provided for @oauthAuthorizationCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'If the browser does not return automatically, paste the final callback URL or authorization code here.'**
+  String get oauthAuthorizationCodeHint;
+
+  /// No description provided for @oauthInvalidAuthorizationCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the code or callback URL from this login attempt.'**
+  String get oauthInvalidAuthorizationCode;
+
+  /// No description provided for @oauthSubmitAuthorizationCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete login'**
+  String get oauthSubmitAuthorizationCode;
+
+  /// No description provided for @oauthExtraUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra usage'**
+  String get oauthExtraUsage;
+
+  /// No description provided for @oauthPromptCachingHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Reuse context across messages and choose how long the cache is retained.'**
+  String get oauthPromptCachingHelp;
 }
 
 class _AppLocalizationsDelegate

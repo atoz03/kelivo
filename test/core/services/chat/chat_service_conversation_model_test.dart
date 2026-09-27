@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 
 import 'package:Kelivo/core/models/conversation.dart';
+import 'package:Kelivo/core/models/conversation_prompt_settings.dart';
 import 'package:Kelivo/core/services/chat/chat_service.dart';
 import 'package:Kelivo/utils/sandbox_path_resolver.dart';
 
@@ -59,6 +60,54 @@ void main() {
     services.add(service);
     return service;
   }
+
+  test(
+    'conversation prompt settings survive restart and both fork modes',
+    () async {
+      final first = createService();
+      final conversation = await first.createConversation(
+        title: 'Prompts',
+        assistantId: 'a',
+      );
+      final message = await first.addMessage(
+        conversationId: conversation.id,
+        role: 'user',
+        content: 'hello',
+      );
+      await first.updateConversationExtras(
+        conversation.id,
+        (extras) => const ConversationPromptSettings(
+          systemPrompt: 'PRIVATE',
+        ).applyTo(extras),
+      );
+      await first.close();
+      services.remove(first);
+      final reopened = createService();
+      await reopened.init();
+      final expected = reopened.getConversation(conversation.id)!.extras;
+      expect(expected[ConversationPromptSettings.systemPromptKey], 'PRIVATE');
+      for (final preserve in [false, true]) {
+        final fork = await reopened.forkConversationAtRevision(
+          sourceConversationId: conversation.id,
+          sourceRevisionId: message.id,
+          title: 'Fork',
+          preserveVersions: preserve,
+        );
+        expect(
+          ConversationPromptSettings.fromExtras(fork.extras).systemPrompt,
+          'PRIVATE',
+        );
+      }
+      final unrelated = await reopened.createConversation(
+        title: 'New',
+        assistantId: 'a',
+      );
+      expect(
+        ConversationPromptSettings.fromExtras(unrelated.extras).systemPrompt,
+        isEmpty,
+      );
+    },
+  );
 
   test('a new conversation inherits, carrying no override', () async {
     final service = createService();
@@ -205,6 +254,7 @@ void main() {
         lastMemoryExtractedOrder: 7,
         chatModelProvider: 'OpenAI',
         chatModelId: 'gpt-5',
+        extras: const {'prompt.system': 'PRIVATE'},
       );
 
       await service.restoreConversation(source, const []);
@@ -215,6 +265,7 @@ void main() {
       expect(restored.summary, 'a summary');
       expect(restored.injectedMemoryHash, 'hash-1');
       expect(restored.lastMemoryExtractedOrder, 7);
+      expect(restored.extras['prompt.system'], 'PRIVATE');
     });
 
     test('the override survives a JSON round trip', () {

@@ -1,3 +1,5 @@
+import '../features/provider/widgets/oauth_connection_info.dart';
+import '../features/provider/pages/oauth_provider_detail_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +10,7 @@ import 'dart:ui' as ui;
 
 import '../icons/lucide_adapter.dart' as lucide;
 import '../l10n/app_localizations.dart';
+import '../features/settings/pages/google_fonts_picker_page.dart';
 import '../theme/app_font_weights.dart';
 import '../theme/palettes.dart';
 import '../core/providers/settings_provider.dart';
@@ -45,6 +48,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 import 'desktop_context_menu.dart';
 import 'desktop_settings_navigation_bus.dart';
+import '../features/settings/pages/settings_search_page.dart';
+import '../features/settings/search/settings_search_index.dart';
+import '../features/settings/widgets/settings_search_entry.dart';
+import '../features/settings/widgets/settings_search_target.dart';
 import '../shared/widgets/snackbar.dart';
 import 'setting/default_model_pane.dart';
 import 'setting/search_services_pane.dart';
@@ -114,6 +121,52 @@ enum _SettingsMenuItem {
 class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
   _SettingsMenuItem _selected = _SettingsMenuItem.display;
   StreamSubscription<DesktopSettingsNavigationTarget>? _settingsNavSub;
+  SettingsSearchItem? _searchTarget;
+  int _searchNavigation = 0;
+
+  Future<void> _openSearch() async {
+    final item = await showDesktopSettingsSearch(context);
+    if (!mounted || item == null) return;
+    final menu = switch (item.destination) {
+      SettingsSearchDestination.display ||
+      SettingsSearchDestination.colorMode ||
+      SettingsSearchDestination.theme ||
+      SettingsSearchDestination.themeAdvanced ||
+      SettingsSearchDestination.chatDisplay ||
+      SettingsSearchDestination.rendering ||
+      SettingsSearchDestination.behavior ||
+      SettingsSearchDestination.image ||
+      SettingsSearchDestination.messageStyle ||
+      SettingsSearchDestination.autoRetry => _SettingsMenuItem.display,
+      SettingsSearchDestination.assistant => _SettingsMenuItem.assistant,
+      SettingsSearchDestination.providers => _SettingsMenuItem.providers,
+      SettingsSearchDestination.defaultModel => _SettingsMenuItem.defaultModel,
+      SettingsSearchDestination.search => _SettingsMenuItem.search,
+      SettingsSearchDestination.tts => _SettingsMenuItem.tts,
+      SettingsSearchDestination.mcp => _SettingsMenuItem.mcp,
+      SettingsSearchDestination.quickPhrases => _SettingsMenuItem.quickPhrases,
+      SettingsSearchDestination.memory => _SettingsMenuItem.memory,
+      SettingsSearchDestination.networkProxy => _SettingsMenuItem.networkProxy,
+      SettingsSearchDestination.backup => _SettingsMenuItem.backup,
+      SettingsSearchDestination.hotkeys => _SettingsMenuItem.hotkeys,
+      SettingsSearchDestination.stats => _SettingsMenuItem.stats,
+      SettingsSearchDestination.toolSchemas => _SettingsMenuItem.toolSchemas,
+      SettingsSearchDestination.about => _SettingsMenuItem.about,
+      _ => throw StateError(
+        'Mobile-only settings destination: ${item.destination}',
+      ),
+    };
+    setState(() {
+      _selected = menu;
+      _searchTarget = item;
+      _searchNavigation++;
+    });
+    if (item.destination == SettingsSearchDestination.messageStyle) {
+      await showMessageStyleSettingsDialog(context);
+    } else if (item.destination == SettingsSearchDestination.autoRetry) {
+      await showDesktopAutoRetryDialog(context);
+    }
+  }
 
   @override
   void initState() {
@@ -178,7 +231,11 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
                 _SettingsMenu(
                   width: menuWidth,
                   selected: _selected,
-                  onSelect: (it) => setState(() => _selected = it),
+                  onSearch: _openSearch,
+                  onSelect: (it) => setState(() {
+                    _selected = it;
+                    _searchTarget = null;
+                  }),
                 ),
                 VerticalDivider(
                   width: 1,
@@ -192,8 +249,18 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
                     child: () {
                       switch (_selected) {
                         case _SettingsMenuItem.display:
-                          return const _DisplaySettingsBody(
-                            key: ValueKey('display'),
+                          return SettingsSearchTarget(
+                            key: ValueKey(('display', _searchNavigation)),
+                            label:
+                                _searchTarget?.targetLabel ??
+                                switch (_searchTarget?.destination) {
+                                  SettingsSearchDestination.messageStyle =>
+                                    l10n.messageStyleSettingsPageTitle,
+                                  SettingsSearchDestination.autoRetry =>
+                                    l10n.settingsPageAutoRetry,
+                                  _ => null,
+                                },
+                            child: const _DisplaySettingsBody(),
                           );
                         case _SettingsMenuItem.assistant:
                           return const _DesktopAssistantsBody(
@@ -264,7 +331,9 @@ class _SettingsMenu extends StatelessWidget {
     required this.width,
     required this.selected,
     required this.onSelect,
+    required this.onSearch,
   });
+  final VoidCallback onSearch;
   final double width;
   final _SettingsMenuItem selected;
   final ValueChanged<_SettingsMenuItem> onSelect;
@@ -340,6 +409,8 @@ class _SettingsMenu extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
         children: [
+          SettingsSearchEntry(onTap: onSearch),
+          const SizedBox(height: 16),
           for (int i = 0; i < items.length; i++) ...[
             _MenuItem(
               icon: items[i].$2,

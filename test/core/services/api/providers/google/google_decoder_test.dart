@@ -26,6 +26,44 @@ Map<String, dynamic> _candidate({
 }
 
 void main() {
+  test('leading empty STOP cannot finish later text without a new STOP', () {
+    final decoder = GoogleStreamDecoder();
+    for (var i = 0; i < 2; i++) {
+      final result = decoder.accept(_event(_candidate(finishReason: 'STOP')));
+      expect(decoder.finishReason, 'STOP');
+      expect(result.completed, isFalse);
+      expect(decoder.canFinishNow, isFalse);
+    }
+
+    for (final text in ['Hello', ' world', '!']) {
+      final result = decoder.accept(
+        _event(
+          _candidate(
+            parts: [
+              {'text': text},
+            ],
+          ),
+        ),
+      );
+      expect(result.chunks.whereType<TextDelta>().single.text, text);
+      expect(result.completed, isFalse);
+      expect(decoder.canFinishNow, isFalse);
+    }
+
+    final done = decoder.accept(_event(_candidate(finishReason: 'STOP')));
+    expect(done.completed, isTrue);
+    expect(decoder.canFinishNow, isTrue);
+  });
+
+  test('empty non-STOP finish keeps its existing completion behavior', () {
+    final decoder = GoogleStreamDecoder();
+    final result = decoder.accept(
+      _event(_candidate(finishReason: 'MAX_TOKENS')),
+    );
+    expect(decoder.finishReason, 'MAX_TOKENS');
+    expect(result.completed, isTrue);
+  });
+
   test('streams text and reasoning without emitting Finish', () {
     final decoder = GoogleStreamDecoder();
     final first = decoder.accept(
@@ -343,6 +381,55 @@ void main() {
     expect(decoder.textThoughtSigKey, 'thoughtSignature');
     expect(decoder.textThoughtSigVal, 'text-sig');
   });
+
+  test(
+    'a built-in tool round keeps the text signature, not the toolCall one',
+    () {
+      // A google_search round answers with toolCall, toolResponse and only then
+      // the text part that carries the turn's own signature. Replaying the
+      // toolCall's signature on a text part is rejected as invalid.
+      final decoder = GoogleStreamDecoder(
+        isGemini3: true,
+        persistThoughtSigs: true,
+      );
+      decoder.accept(
+        _event(
+          _candidate(
+            parts: [
+              <String, dynamic>{
+                'toolCall': <String, dynamic>{'name': 'google_search'},
+                'thoughtSignature': 'sig-tool-call',
+              },
+            ],
+          ),
+        ),
+      );
+      decoder.accept(
+        _event(
+          _candidate(
+            parts: [
+              <String, dynamic>{
+                'toolResponse': <String, dynamic>{'name': 'google_search'},
+                'thoughtSignature': 'sig-tool-response',
+              },
+            ],
+          ),
+        ),
+      );
+      decoder.accept(
+        _event(
+          _candidate(
+            parts: [
+              <String, dynamic>{'text': 'Grounded answer.'},
+              <String, dynamic>{'text': '', 'thoughtSignature': 'sig-text'},
+            ],
+          ),
+        ),
+      );
+
+      expect(decoder.textThoughtSigVal, 'sig-text');
+    },
+  );
 
   test('malformed frame keeps parsed chunks and later text still decodes', () {
     final decoder = GoogleStreamDecoder();

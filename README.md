@@ -8,13 +8,15 @@ A Flutter LLM chat client for Android and macOS.
 ## Features
 
 - **Multi-provider** — OpenAI, Google Gemini, Anthropic, and other major providers.
-- **Custom assistants** — create and manage personalized assistants with their own prompts and settings.
-- **Multimodal input** — images, text documents, PDFs, Word documents.
+- **Subscription sign-in** — use ChatGPT, Claude, Grok, and Kimi Code subscriptions through OAuth.
+- **Custom assistants** — create and manage personalized assistants with their own prompts and settings, optionally overridden per conversation.
+- **Multimodal input** — images, text documents, PDFs, Word documents, including files shared from other Android apps.
 - **Markdown rendering** — code highlighting, LaTeX, tables.
 - **Memory** — long-term memories and a user profile the model reads, writes, and organizes through tools.
 - **MCP** — Model Context Protocol tool integration, including a built-in Fetch tool.
-- **Web search** — Bing, DuckDuckGo, Exa, Tavily, Zhipu, LinkUp, Brave, Metaso, SearXNG, Ollama, Jina, Perplexity, Bocha, Serper, Grok.
+- **Web search** — Bing, DuckDuckGo, Exa, Tavily, Zhipu, LinkUp, Brave, Metaso, SearXNG, Ollama, Jina, Perplexity, Bocha, Serper, Grok, Kagi, Kimi.
 - **Voice / TTS** — system TTS plus OpenAI, Google Gemini, and ElevenLabs voices.
+- **Background generation** — replies keep streaming while Kelivo is in the background on Android.
 - **Data backup** — chat history backup and restore.
 - **Material You** — dynamic color theming (Android 12+) and a dark theme.
 - **Localization** — English and Chinese.

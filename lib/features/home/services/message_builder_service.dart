@@ -9,6 +9,7 @@ import '../../../core/models/chat_input_data.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../core/models/message_part.dart';
 import '../../../core/models/conversation.dart';
+import '../../../core/models/conversation_prompt_settings.dart';
 import '../../../core/models/memory_entry.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/user_provider.dart';
@@ -854,7 +855,7 @@ class MessageBuilderService {
       try {
         final text = await DocumentTextExtractor.extractResolved(
           path: resolvedPath,
-          mime: d.mime,
+          mime: _effectiveAttachmentMime(d),
         );
         // Cache only when stat is available; otherwise avoid staleness.
         if (stat != null) {
@@ -1105,7 +1106,11 @@ class MessageBuilderService {
           now: now,
         );
         if (assistant?.appendCurrentTimeToUserMessage == true) {
-          content = '$content\n\n${MemoryPrompts.formatCurrentTimeTag(now)}';
+          final timeTag = MemoryPrompts.formatCurrentTimeTag(
+            now,
+            useIso8601: assistant!.useIso8601TimeFormat,
+          );
+          content = '$content\n\n$timeTag';
         }
         apiMessages[i]['content'] = content;
       }
@@ -1316,9 +1321,14 @@ class MessageBuilderService {
       message: processedUserBody,
       now: message.timestamp,
     );
-    final timeSuffix = (assistant?.appendCurrentTimeToUserMessage ?? false)
-        ? '\n\n${MemoryPrompts.formatCurrentTimeTag(message.timestamp)}'
-        : '';
+    var timeSuffix = '';
+    if (assistant?.appendCurrentTimeToUserMessage == true) {
+      final timeTag = MemoryPrompts.formatCurrentTimeTag(
+        message.timestamp,
+        useIso8601: assistant!.useIso8601TimeFormat,
+      );
+      timeSuffix = '\n\n$timeTag';
+    }
     final finalContent = '${memory.prefix}$templated$timeSuffix';
 
     if (ContextLogger.enabled) {
@@ -1536,20 +1546,21 @@ class MessageBuilderService {
   void injectSystemPrompt(
     List<Map<String, dynamic>> apiMessages,
     Assistant? assistant,
-    String modelId,
-  ) {
-    if ((assistant?.systemPrompt.trim().isNotEmpty ?? false)) {
+    String modelId, {
+    Conversation? conversation,
+  }) {
+    final prompt = ConversationPromptSettings.fromExtras(
+      conversation?.extras ?? const {},
+    ).effectiveSystemPrompt(assistant);
+    if (assistant != null && prompt.trim().isNotEmpty) {
       final vars = PromptTransformer.buildPlaceholders(
         context: contextProvider,
-        assistant: assistant!,
+        assistant: assistant,
         modelId: modelId,
         modelName: modelId,
         userNickname: contextProvider.read<UserProvider>().name,
       );
-      final sys = PromptTransformer.replacePlaceholders(
-        assistant.systemPrompt,
-        vars,
-      );
+      final sys = PromptTransformer.replacePlaceholders(prompt, vars);
       final sysMessage = <String, dynamic>{'role': 'system', 'content': sys};
       if (ContextLogger.enabled) {
         ContextSegmentTags.replaceWithSingle(

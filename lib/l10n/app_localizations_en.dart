@@ -9,6 +9,36 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get settingsSearchHint => 'Search settings';
+
+  @override
+  String get settingsSearchCancel => 'Cancel';
+
+  @override
+  String get settingsSearchClear => 'Clear search';
+
+  @override
+  String get settingsSearchSuggestions => 'Quick access';
+
+  @override
+  String get settingsSearchNoResults => 'No settings found';
+
+  @override
+  String get settingsSearchNoResultsHint =>
+      'Try a different name or a shorter keyword.';
+
+  @override
+  String settingsSearchResultCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count results',
+      one: '1 result',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get settingsPageBackButton => 'Back';
 
   @override
@@ -74,11 +104,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsPageCalculating => 'Calculating…';
-
-  @override
-  String settingsPageFilesCount(int count, String size) {
-    return '$count files · $size';
-  }
 
   @override
   String get storageSpacePageTitle => 'Storage Space';
@@ -168,11 +193,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get storageSpaceCategoryOther => 'Other';
-
-  @override
-  String storageSpaceFilesCount(int count) {
-    return '$count files';
-  }
 
   @override
   String get storageSpaceSafeToClearHint =>
@@ -268,7 +288,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String storageSpaceDeleteUploadsConfirmMessage(int count) {
-    return 'Delete $count items? Attachments in chat history may become unavailable.';
+    return 'Delete $count items and their associated conversation attachment copies? These attachments will no longer be available in chat history.';
   }
 
   @override
@@ -503,8 +523,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homePageClearContext => 'Clear Context';
 
   @override
-  String homePageClearContextWithCount(String actual, String configured) {
-    return 'Clear Context ($actual/$configured)';
+  String contextMessageCount(int count) {
+    return '$count messages';
+  }
+
+  @override
+  String contextMessageCountLimited(int actual, int configured) {
+    return '$actual/$configured messages';
   }
 
   @override
@@ -976,40 +1001,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get displaySettingsPageChatMessageBackgroundSolid => 'Solid Color';
 
   @override
-  String get displaySettingsPageAndroidBackgroundChatTitle =>
-      'Background Generation (Android)';
-
-  @override
   String get androidBackgroundStatusOn => 'On';
 
   @override
   String get androidBackgroundStatusOff => 'Off';
-
-  @override
-  String get androidBackgroundStatusOther => 'On and notify';
-
-  @override
-  String get androidBackgroundOptionOn => 'On';
-
-  @override
-  String get androidBackgroundOptionOnNotify => 'On and notify when done';
-
-  @override
-  String get androidBackgroundOptionOff => 'Off';
-
-  @override
-  String get notificationChatCompletedTitle => 'Generation complete';
-
-  @override
-  String get notificationChatCompletedBody =>
-      'Assistant reply has been generated';
-
-  @override
-  String get androidBackgroundNotificationTitle => 'Kelivo is running';
-
-  @override
-  String get androidBackgroundNotificationText =>
-      'Keeping chat generation alive in background';
 
   @override
   String get assistantEditEmojiDialogTitle => 'Choose Emoji';
@@ -1226,6 +1221,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get assistantEditPromptTimeVarWarning =>
       'Using time variables in the system prompt makes the beginning of every request different, so prompt caching cannot hit and both cost and time-to-first-token go up. If the model needs to know the current time, use the \"Append current time\" switch below.';
+
+  @override
+  String get assistantEditPromptIso8601Title => 'Use ISO 8601 format';
+
+  @override
+  String get assistantEditPromptIso8601Subtitle =>
+      'Include the time zone offset, e.g. 2026-08-08T14:30:05+08:00';
 
   @override
   String get assistantEditPromptAppendTimeTitle => 'Append current time';
@@ -2490,6 +2492,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get displaySettingsPageAutoCollapseCodeBlockLinesUnit => 'lines';
 
   @override
+  String get displaySettingsPageCollapseLongUserMessagesTitle =>
+      'Collapse Long Messages';
+
+  @override
+  String get displaySettingsPageCollapseLongUserMessagesSubtitle =>
+      'Fold user messages past the threshold behind an expand button';
+
+  @override
+  String get displaySettingsPageCollapseLongUserMessagesCharsTitle =>
+      'Collapse threshold';
+
+  @override
+  String get displaySettingsPageCollapseLongUserMessagesCharsUnit => 'chars';
+
+  @override
+  String get chatMessageExpandLongText => 'Expand';
+
+  @override
+  String get chatMessageCollapseLongText => 'Collapse';
+
+  @override
   String get messageExportSheetFormatTitle => 'Export Format';
 
   @override
@@ -2792,7 +2815,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatInputBarReasoningStrengthTooltip => 'Reasoning Strength';
 
   @override
-  String get chatInputBarMcpServersTooltip => 'MCP Servers';
+  String get chatInputBarToolsTooltip => 'Tools';
 
   @override
   String get chatInputBarMoreTooltip => 'Add';
@@ -3007,6 +3030,35 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get defaultModelPagePerChatModelSubtitle =>
       'On: picking a model in a chat applies to that chat only. Off: it becomes the current assistant\'s model, so every chat using that assistant follows it.';
+
+  @override
+  String get googleFontsTitle => 'Google Fonts';
+
+  @override
+  String get googleFontsRefresh => 'Refresh font list';
+
+  @override
+  String get googleFontsSearchHint => 'Search fonts or languages';
+
+  @override
+  String get googleFontsHint =>
+      'Download a regular font to preview and apply it. Installed fonts work offline. Catalog: Expo Google Fonts; downloads: Google Fonts.';
+
+  @override
+  String get googleFontsNoResults => 'No matching fonts';
+
+  @override
+  String get googleFontsFailed =>
+      'Could not load, download, or apply the font. Check your connection and try again.';
+
+  @override
+  String get googleFontsDownloading => 'Downloading font…';
+
+  @override
+  String get googleFontsPreview => 'The quick brown fox 0123456789 · 字体预览';
+
+  @override
+  String get googleFontsLicense => 'Font license';
 
   @override
   String get defaultModelPageTitleModelTitle => 'Title Summary Model';
@@ -5203,6 +5255,20 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get searchProviderAnySearchDescription =>
       'Unified search for AI agents with automatic routing across web and specialist data sources. API key is optional.';
+
+  @override
+  String get searchServiceNameKagi => 'Kagi';
+
+  @override
+  String get searchProviderKagiDescription =>
+      'Kagi Search API. Returns premium web search results from Kagi.';
+
+  @override
+  String get searchServiceNameKimi => 'Kimi';
+
+  @override
+  String get searchProviderKimiDescription =>
+      'Kimi Search API. Pro returns relevant web content excerpts; Basic returns titles, links, and snippets.';
 
   @override
   String get searchServiceNameParallel => 'Parallel';
@@ -7753,6 +7819,46 @@ class AppLocalizationsEn extends AppLocalizations {
   String get toolSchemaSettingsCancel => 'Cancel';
 
   @override
+  String get workspaceFileNotAvailable => 'File not available';
+
+  @override
+  String get commonClose => 'Close';
+
+  @override
+  String get incomingShareTitle => 'Shared content';
+
+  @override
+  String get incomingShareReplaceDraft =>
+      'There is unsent content in the input box. Replace it with the shared content in a new chat?';
+
+  @override
+  String get incomingShareFailed =>
+      'Some shared content could not be imported. Check file access and available storage. Up to 32 files can be shared at once.';
+
+  @override
+  String get incomingShareImporting => 'Importing';
+
+  @override
+  String get incomingShareMoveTo => 'Move to…';
+
+  @override
+  String get incomingShareNewChat => 'New conversation';
+
+  @override
+  String get incomingShareMoveHint =>
+      'Move this draft and its attachments to another conversation. Nothing will be sent automatically.';
+
+  @override
+  String get incomingShareNoConversations => 'No matching conversations';
+
+  @override
+  String get chatInputBarRemoveAttachment => 'Remove attachment';
+
+  @override
+  String get incomingShareMoveFailed =>
+      'Could not switch conversations. Your draft has been kept.';
+
+  @override
   String get healthDataSettingsCategoryReproductive => 'Reproductive health';
 
   @override
@@ -7761,4 +7867,557 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get healthDataSettingsTypeMenstrualFlowSubtitle =>
       'Recorded menstrual flow and cycle starts in the past 90 days';
+
+  @override
+  String get assistantEditGradientBackgroundTitle => 'Gradient background';
+
+  @override
+  String get assistantEditGradientStaticTitle => 'Static mode';
+
+  @override
+  String get assistantEditGradientStaticDescription =>
+      'Saves power during long chats and streaming.';
+
+  @override
+  String get assistantEditGradientHorizontal => 'Horizontal position';
+
+  @override
+  String get assistantEditGradientVertical => 'Vertical position';
+
+  @override
+  String get assistantEditGradientPreview => 'Preview';
+
+  @override
+  String get assistantEditGradientNextFrame => 'Another frame';
+
+  @override
+  String get backgroundSettingsTitle => 'Background tasks';
+
+  @override
+  String get backgroundTaskTitle => 'Kelivo task';
+
+  @override
+  String get backgroundCompleted => 'Generation complete';
+
+  @override
+  String get backgroundFailed =>
+      'Generation failed. Open the chat for details.';
+
+  @override
+  String get backgroundCancelled => 'Generation cancelled';
+
+  @override
+  String get backgroundInterrupted =>
+      'Background generation was interrupted. Open the chat to continue.';
+
+  @override
+  String get backgroundRequesting => 'Connecting';
+
+  @override
+  String get backgroundGenerating => 'Generating reply';
+
+  @override
+  String get backgroundThinking => 'Thinking';
+
+  @override
+  String get backgroundToolRunning => 'Running tool';
+
+  @override
+  String get backgroundRetrying => 'Waiting to retry';
+
+  @override
+  String get backgroundWorking => 'Working';
+
+  @override
+  String get backgroundTasks => 'Tasks';
+
+  @override
+  String get backgroundStopTasks => 'Stop tasks';
+
+  @override
+  String get backgroundOpenChat => 'Open chat';
+
+  @override
+  String get backgroundAndroidEnabled => 'Background generation';
+
+  @override
+  String get backgroundAndroidEnabledDetail =>
+      'Keep current tasks running when locked, in the background, or removed from recent apps. A system notification is required while tasks run.';
+
+  @override
+  String get backgroundNotifications => 'Task notifications';
+
+  @override
+  String get backgroundNotificationsDetail =>
+      'Notify when a task completes or fails outside the chat you are viewing. Does not control Android’s required ongoing notification.';
+
+  @override
+  String get backgroundPrivacy => 'Task status privacy';
+
+  @override
+  String get backgroundPrivacyDetail =>
+      'Hide conversation titles and tool details in notifications and live status. Only generic status, task count and elapsed time are shown.';
+
+  @override
+  String get backgroundOverlay => 'Floating task status';
+
+  @override
+  String get backgroundOverlayDetail =>
+      'Show a draggable task capsule over other apps. Tap it to open the chat; closing it only hides the capsule.';
+
+  @override
+  String get backgroundLiveUpdates => 'Live Updates';
+
+  @override
+  String get backgroundLiveUpdatesDetail =>
+      'Use Android 16 Live Updates on supported devices. A promoted notification takes priority over the floating capsule.';
+
+  @override
+  String get backgroundFinishVisibility => 'Completed status duration';
+
+  @override
+  String get backgroundFinishImmediately => 'Immediately dismiss';
+
+  @override
+  String get backgroundFinishOneMinute => '1 minute';
+
+  @override
+  String get backgroundFinishFiveMinutes => '5 minutes';
+
+  @override
+  String get backgroundFinishUntilForeground => 'Until returning to the app';
+
+  @override
+  String get backgroundFinishVisibilityDetail =>
+      'Applies to the Android capsule and iOS Lock Screen completion card. Returning to the app clears completed status; the maximum is 15 minutes. Cancellation dismisses immediately.';
+
+  @override
+  String get backgroundOverlayIcon => 'Floating icon';
+
+  @override
+  String get backgroundIconDefault => 'Kelivo icon';
+
+  @override
+  String get backgroundIconImage => 'Choose image';
+
+  @override
+  String get backgroundIconEmoji => 'Choose Emoji';
+
+  @override
+  String get backgroundPermissionsTitle => 'Permissions and system settings';
+
+  @override
+  String get backgroundNotificationsPermission => 'Notification permission';
+
+  @override
+  String get backgroundBatteryOptimization => 'Battery optimization';
+
+  @override
+  String get backgroundBatteryOptimizationDetail =>
+      'Allow unrestricted battery usage for more reliable background work.';
+
+  @override
+  String get backgroundAutostart => 'Autostart and background usage';
+
+  @override
+  String get backgroundAutostartDetail =>
+      'Check your device’s autostart and background restrictions manually. Android does not provide a reliable permission query for these vendor settings.';
+
+  @override
+  String get backgroundSystemSettings => 'App system settings';
+
+  @override
+  String get backgroundPermissionGranted => 'Allowed';
+
+  @override
+  String get backgroundPermissionDenied => 'Not allowed';
+
+  @override
+  String get backgroundPermissionUnknown => 'Check manually';
+
+  @override
+  String get backgroundRuntimeTitle => 'Current status';
+
+  @override
+  String get backgroundRuntimeActive => 'Running';
+
+  @override
+  String get backgroundRuntimeIdle => 'Inactive';
+
+  @override
+  String get backgroundOverlayActive => 'Floating window';
+
+  @override
+  String get backgroundLastError => 'Last interruption or error';
+
+  @override
+  String get backgroundNoError => 'None recorded';
+
+  @override
+  String get backgroundUnsupported =>
+      'Unavailable on this device or disabled in system settings';
+
+  @override
+  String get backgroundAndroidLimit =>
+      'Check notification, battery and vendor background settings if tasks stop. Force stop and system process termination can still interrupt generation.';
+
+  @override
+  String get backgroundStale =>
+      'Status has not updated. Open the app to check.';
+
+  @override
+  String get backgroundIconError =>
+      'Unable to import this image. Please choose another image.';
+
+  @override
+  String get backgroundCompletionChannel => 'Completion notification channel';
+
+  @override
+  String get backgroundOngoingChannel => 'Running task notification channel';
+
+  @override
+  String get backgroundOverlayAppearance => 'Floating window appearance';
+
+  @override
+  String get backgroundOverlayAppearanceDetail =>
+      'Size, artwork, progress ring and visible content';
+
+  @override
+  String get backgroundOverlayPreviewHint =>
+      'Drag to move · Tap to open chat · Hold to dismiss';
+
+  @override
+  String get backgroundOverlayCard => 'Card';
+
+  @override
+  String get backgroundOverlayCircle => 'Circular icon';
+
+  @override
+  String get backgroundOverlaySize => 'Size and shape';
+
+  @override
+  String get backgroundOverlayWidth => 'Width';
+
+  @override
+  String get backgroundOverlayHeight => 'Height';
+
+  @override
+  String get backgroundOverlayCornerRadius => 'Corner radius';
+
+  @override
+  String get backgroundOverlayIconSize => 'Icon size';
+
+  @override
+  String get backgroundOverlayProgressSize => 'Progress ring diameter';
+
+  @override
+  String get backgroundOverlayProgressStroke => 'Progress ring thickness';
+
+  @override
+  String get backgroundOverlayContent => 'Visible content';
+
+  @override
+  String get backgroundOverlayShowProgress => 'Show progress ring';
+
+  @override
+  String get backgroundOverlayShowTitle => 'Show title';
+
+  @override
+  String get backgroundOverlayShowSubtitle => 'Show subtitle';
+
+  @override
+  String get backgroundOverlayShowTime => 'Show elapsed time';
+
+  @override
+  String get backgroundOverlayShowClose => 'Show close button';
+
+  @override
+  String get backgroundOverlayShowBackground => 'Show background';
+
+  @override
+  String get backgroundOverlayShowBorder => 'Show border';
+
+  @override
+  String get backgroundOverlayReset => 'Restore default appearance';
+
+  @override
+  String get mcpArgumentsHint =>
+      'Separate arguments with spaces; quote values containing spaces. Use \'\' for an empty argument.';
+
+  @override
+  String get mcpArgumentsInvalid =>
+      'Check for an unclosed quote or trailing escape in arguments.';
+
+  @override
+  String get mcpImportJson => 'Import JSON';
+
+  @override
+  String get mcpImportJsonHint =>
+      'Paste a Claude Desktop or Cursor MCP configuration. Preview and add servers without replacing existing ones.';
+
+  @override
+  String get mcpImportPaste => 'Paste from Clipboard';
+
+  @override
+  String get mcpImportPreview => 'Preview';
+
+  @override
+  String get mcpImportConfirm => 'Import';
+
+  @override
+  String get startupRecoverySnapshotTitle => 'Restore from a database snapshot';
+
+  @override
+  String get startupRecoverySnapshotBody =>
+      'Choose a snapshot on this device to recover your chats and settings, even when the database cannot open. Do not uninstall Kelivo: uninstalling also removes these snapshots.';
+
+  @override
+  String get startupRecoverySnapshotEmpty =>
+      'No database snapshots were found on this device. Export your data before trying other recovery actions.';
+
+  @override
+  String get startupRecoverySnapshotButton => 'Choose a snapshot';
+
+  @override
+  String startupRecoverySnapshotConfirm(String when) {
+    return 'Restore chats and settings from $when? Changes made after this snapshot will not be included. Existing attachment files and the snapshot will be kept. Kelivo will restart to complete the restore.';
+  }
+
+  @override
+  String startupRecoverySnapshotFailed(String reason) {
+    return 'Could not prepare the snapshot restore: $reason';
+  }
+
+  @override
+  String get startupRecoverySnapshotReady =>
+      'The snapshot is ready. Restart Kelivo to complete the restore.';
+
+  @override
+  String get assistantConversationSystemPromptTitle =>
+      'Per-conversation system prompt';
+
+  @override
+  String get assistantConversationSystemPromptHint =>
+      'Allow each conversation to use its own system prompt.';
+
+  @override
+  String get conversationSystemPromptTitle => 'Conversation system prompt';
+
+  @override
+  String get conversationSystemPromptHint =>
+      'Applies only to this conversation. Leave blank to use the assistant’s system prompt.';
+
+  @override
+  String get conversationSystemPromptClear => 'Use assistant prompt';
+
+  @override
+  String get conversationSystemPromptPlaceholder =>
+      'Write a system prompt for this conversation…';
+
+  @override
+  String get oauthAccountsTab => 'Accounts';
+
+  @override
+  String get oauthLogin => 'Log in';
+
+  @override
+  String get oauthConnected => 'Connected';
+
+  @override
+  String oauthWaiting(String provider) {
+    return 'Waiting for $provider authorization';
+  }
+
+  @override
+  String get oauthCancel => 'Cancel authorization';
+
+  @override
+  String get oauthOpenBrowser => 'Open authorization page';
+
+  @override
+  String get oauthCopyCode => 'Copy code';
+
+  @override
+  String get oauthCodeHint => 'Enter this code on the authorization page';
+
+  @override
+  String get oauthDeviceHint =>
+      'Enable device code login in your ChatGPT security settings or workspace permissions first.';
+
+  @override
+  String get oauthDeviceLogin => 'Use device code';
+
+  @override
+  String get oauthDetails => 'View account details';
+
+  @override
+  String get oauthConnectAnother => 'Connect another account';
+
+  @override
+  String get oauthRelogin => 'Log in again';
+
+  @override
+  String get oauthNeedsLogin => 'Login required';
+
+  @override
+  String oauthExpired(String provider) {
+    return '$provider login has expired';
+  }
+
+  @override
+  String get oauthLoginRestored =>
+      'Logged in. Use the message retry button to send again.';
+
+  @override
+  String get oauthLogout => 'Log out';
+
+  @override
+  String get oauthLogoutDescription =>
+      'Remove this account’s saved credentials from this device';
+
+  @override
+  String get oauthRefreshing => 'Refreshing authorization…';
+
+  @override
+  String get oauthRefreshUsage => 'Refresh usage';
+
+  @override
+  String get oauthUsageDetails => 'Usage details';
+
+  @override
+  String get oauthUsageUnavailable => 'Usage is currently unavailable';
+
+  @override
+  String oauthLastUpdated(String time) {
+    return 'Updated $time';
+  }
+
+  @override
+  String get oauthSyncModels => 'Sync';
+
+  @override
+  String get oauthSyncing => 'Syncing models…';
+
+  @override
+  String get oauthModelsHint =>
+      'Available models are synced from your account.';
+
+  @override
+  String get oauthNoModels => 'Sync models to start chatting';
+
+  @override
+  String get oauthConnectionInfo => 'Connection details';
+
+  @override
+  String get oauthEndpoint => 'Endpoint';
+
+  @override
+  String get oauthScope => 'Authorization scope';
+
+  @override
+  String get oauthAccountId => 'Account ID';
+
+  @override
+  String get oauthTokenExpiry => 'Token expires';
+
+  @override
+  String get oauthName => 'Provider name';
+
+  @override
+  String get oauthEnabledHint => 'Show these models in the model picker';
+
+  @override
+  String get oauthWeekly => 'Weekly window';
+
+  @override
+  String get oauthMonthly => 'Monthly window';
+
+  @override
+  String get oauthTotal => 'Total quota';
+
+  @override
+  String oauthHours(String count) {
+    return '$count hour window';
+  }
+
+  @override
+  String oauthMinutes(String count) {
+    return '$count minute window';
+  }
+
+  @override
+  String oauthDays(String count) {
+    return '$count day window';
+  }
+
+  @override
+  String get oauthWindow => 'Usage window';
+
+  @override
+  String oauthResetsAt(String time) {
+    return 'Resets $time';
+  }
+
+  @override
+  String get oauthNetworkError =>
+      'Could not connect. Check your network and try again.';
+
+  @override
+  String get oauthInvalidResponse =>
+      'Authorization did not complete. Please try again.';
+
+  @override
+  String get oauthTimeout => 'Authorization timed out. Please try again.';
+
+  @override
+  String get oauthDenied => 'Authorization was not granted. Please try again.';
+
+  @override
+  String get oauthQuotaExceeded => 'This account has no available quota.';
+
+  @override
+  String get oauthRateLimited => 'Too many requests. Please try again later.';
+
+  @override
+  String get oauthPermissionDenied =>
+      'This account cannot access this resource.';
+
+  @override
+  String get oauthRequestFailed =>
+      'The provider could not complete the request.';
+
+  @override
+  String get oauthQuotaAvailable => 'Quota is available';
+
+  @override
+  String oauthSavedResets(String count) {
+    return 'Available usage resets: $count';
+  }
+
+  @override
+  String get oauthPrimaryWindow => 'Primary window';
+
+  @override
+  String get oauthSecondaryWindow => 'Secondary window';
+
+  @override
+  String get oauthAuthorizationCode => 'Authorization code or callback URL';
+
+  @override
+  String get oauthAuthorizationCodeHint =>
+      'If the browser does not return automatically, paste the final callback URL or authorization code here.';
+
+  @override
+  String get oauthInvalidAuthorizationCode =>
+      'Enter the code or callback URL from this login attempt.';
+
+  @override
+  String get oauthSubmitAuthorizationCode => 'Complete login';
+
+  @override
+  String get oauthExtraUsage => 'Extra usage';
+
+  @override
+  String get oauthPromptCachingHelp =>
+      'Reuse context across messages and choose how long the cache is retained.';
 }

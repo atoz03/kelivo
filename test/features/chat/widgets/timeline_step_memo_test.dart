@@ -99,7 +99,7 @@ void main() {
               toolParts: const [
                 ToolUIPart(
                   id: 't0',
-                  toolName: 'read_file',
+                  toolName: 'search',
                   arguments: {'path': 'lib/a.dart'},
                   content: 'ok',
                 ),
@@ -198,7 +198,7 @@ void main() {
               toolParts: const [
                 ToolUIPart(
                   id: 't0',
-                  toolName: 'read_file',
+                  toolName: 'search',
                   arguments: {'path': 'lib/a.dart'},
                   loading: true,
                 ),
@@ -230,7 +230,7 @@ void main() {
 
     const part = ToolUIPart(
       id: 't0',
-      toolName: 'read_file',
+      toolName: 'search',
       arguments: {'path': 'lib/a.dart'},
       content: 'ok',
     );
@@ -317,7 +317,7 @@ void main() {
       for (var i = 0; i < 4; i++)
         ToolUIPart(
           id: '',
-          toolName: 'read_file',
+          toolName: 'search',
           arguments: {'path': 'lib/foo_$i.dart'},
           content: 'ok $i',
         ),
@@ -370,8 +370,8 @@ void main() {
     expect(
       collapsed,
       containsAll(<String>[
-        timelineToolStepKey(id: '', sourceOrdinal: 2, toolName: 'read_file'),
-        timelineToolStepKey(id: '', sourceOrdinal: 3, toolName: 'read_file'),
+        timelineToolStepKey(id: '', sourceOrdinal: 2, toolName: 'search'),
+        timelineToolStepKey(id: '', sourceOrdinal: 3, toolName: 'search'),
       ]),
     );
 
@@ -404,7 +404,7 @@ void main() {
       for (var i = 0; i < 4; i++)
         ToolUIPart(
           id: ' ',
-          toolName: 'read_file',
+          toolName: 'search',
           arguments: {'path': 'lib/foo_$i.dart'},
           content: 'ok $i',
         ),
@@ -457,8 +457,8 @@ void main() {
     expect(
       keys,
       containsAll(<String>[
-        timelineToolStepKey(id: ' ', sourceOrdinal: 2, toolName: 'read_file'),
-        timelineToolStepKey(id: ' ', sourceOrdinal: 3, toolName: 'read_file'),
+        timelineToolStepKey(id: ' ', sourceOrdinal: 2, toolName: 'search'),
+        timelineToolStepKey(id: ' ', sourceOrdinal: 3, toolName: 'search'),
       ]),
     );
   });
@@ -472,7 +472,7 @@ void main() {
 
     const part = ToolUIPart(
       id: '',
-      toolName: 'read_file',
+      toolName: 'search',
       arguments: {'path': 'lib/a.dart'},
       content: 'ok',
     );
@@ -543,74 +543,85 @@ void main() {
     expect(_toolKeys(tester), [firstKey]);
     expect(
       firstKey,
-      timelineToolStepKey(id: '', sourceOrdinal: 0, toolName: 'read_file'),
+      timelineToolStepKey(id: '', sourceOrdinal: 0, toolName: 'search'),
     );
   });
 
-  testWidgets('reasoning without toggle is not pressable', (tester) async {
-    tester.view.physicalSize = const Size(1170, 2000);
-    tester.view.devicePixelRatio = 3;
-    addTearDown(tester.view.reset);
+  testWidgets(
+    'reasoning without timing metadata starts collapsed and toggles',
+    (tester) async {
+      tester.view.physicalSize = const Size(1170, 2000);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider(
-            create: (_) => SettingsProvider(createBusinessTestPreferences()),
-          ),
-          ChangeNotifierProvider(
-            create: (_) =>
-                AssistantProvider(preferences: createBusinessTestPreferences()),
-          ),
-          ChangeNotifierProvider(
-            create: (_) =>
-                TtsProvider(preferences: createBusinessTestPreferences()),
-          ),
-          ChangeNotifierProvider(
-            create: (_) =>
-                UserProvider(preferences: createBusinessTestPreferences()),
-          ),
-          ChangeNotifierProvider(create: (_) => AskUserInteractionService()),
-          ChangeNotifierProvider(create: (_) => ToolApprovalService()),
-        ],
-        child: MaterialApp(
-          locale: const Locale('en'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
-            body: ChatMessageWidget(
-              message: ChatMessage(
-                id: 'imported-reasoning',
-                role: 'assistant',
-                conversationId: 'c1',
-                parts: const [ReasoningPart('imported plan')],
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(
+              create: (_) => SettingsProvider(createBusinessTestPreferences()),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => AssistantProvider(
+                preferences: createBusinessTestPreferences(),
               ),
-              showModelIcon: false,
+            ),
+            ChangeNotifierProvider(
+              create: (_) =>
+                  TtsProvider(preferences: createBusinessTestPreferences()),
+            ),
+            ChangeNotifierProvider(
+              create: (_) =>
+                  UserProvider(preferences: createBusinessTestPreferences()),
+            ),
+            ChangeNotifierProvider(create: (_) => AskUserInteractionService()),
+            ChangeNotifierProvider(create: (_) => ToolApprovalService()),
+          ],
+          child: MaterialApp(
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: ChatMessageWidget(
+                message: ChatMessage(
+                  id: 'imported-reasoning',
+                  role: 'assistant',
+                  conversationId: 'c1',
+                  parts: const [ReasoningPart('imported plan')],
+                ),
+                showModelIcon: false,
+              ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
-    final press = tester.widget<IosCardPress>(
-      find.descendant(
-        of: find.byKey(
-          const ValueKey('chatMessageTimelineStepShell:true:true'),
+      final press = tester.widget<IosCardPress>(
+        find.descendant(
+          of: find.byKey(
+            const ValueKey('chatMessageTimelineStepShell:true:true'),
+          ),
+          matching: find.byType(IosCardPress),
         ),
-        matching: find.byType(IosCardPress),
-      ),
-    );
-    expect(press.onTap, isNull);
-    final region = tester.widget<MouseRegion>(
-      find.descendant(
-        of: find.byType(IosCardPress).first,
-        matching: find.byType(MouseRegion),
-      ),
-    );
-    expect(region.cursor, isNot(SystemMouseCursors.click));
-  });
+      );
+      expect(press.onTap, isNotNull);
+      expect(find.text('imported plan'), findsNothing);
+      await tester.tap(find.text('Deep Thinking'));
+      await tester.pumpAndSettle();
+      expect(find.text('imported plan'), findsOneWidget);
+      await tester.tap(find.text('Deep Thinking'));
+      await tester.pumpAndSettle();
+      expect(find.text('imported plan'), findsNothing);
+      final region = tester.widget<MouseRegion>(
+        find.descendant(
+          of: find.byType(IosCardPress).first,
+          matching: find.byType(MouseRegion),
+        ),
+      );
+      expect(region.cursor, SystemMouseCursors.click);
+    },
+  );
 
   testWidgets('empty-id tools separated by body keep distinct live tools', (
     tester,
@@ -654,11 +665,11 @@ void main() {
                 conversationId: 'c1',
                 parts: const [
                   ToolCallPart(
-                    '{"id":"","name":"read_file","arguments":{"path":"a.dart"}}',
+                    '{"id":"","name":"search","arguments":{"path":"a.dart"}}',
                   ),
                   TextPart('middle'),
                   ToolCallPart(
-                    '{"id":"","name":"read_file","arguments":{"path":"b.dart"}}',
+                    '{"id":"","name":"search","arguments":{"path":"b.dart"}}',
                   ),
                 ],
               ),
@@ -666,13 +677,13 @@ void main() {
               toolParts: const [
                 ToolUIPart(
                   id: '',
-                  toolName: 'read_file',
+                  toolName: 'search',
                   arguments: {'path': 'a.dart'},
                   content: 'LIVE-A',
                 ),
                 ToolUIPart(
                   id: '',
-                  toolName: 'read_file',
+                  toolName: 'search',
                   arguments: {'path': 'b.dart'},
                   content: 'LIVE-B',
                 ),
@@ -735,7 +746,7 @@ void main() {
                     '{"id":"","name":"builtin_search","arguments":{}}',
                   ),
                   ToolCallPart(
-                    '{"id":"t1","name":"read_file","arguments":{"path":"a.dart"}}',
+                    '{"id":"t1","name":"search","arguments":{"path":"a.dart"}}',
                   ),
                 ],
               ),
@@ -749,7 +760,7 @@ void main() {
                 ),
                 ToolUIPart(
                   id: 't1',
-                  toolName: 'read_file',
+                  toolName: 'search',
                   arguments: {'path': 'a.dart'},
                   content: 'LIVE-FILE',
                 ),
@@ -807,10 +818,10 @@ void main() {
                 conversationId: 'c1',
                 parts: const [
                   ToolCallPart(
-                    '{"id":"","name":"read_file","arguments":{"path":"a.dart"}}',
+                    '{"id":"","name":"search","arguments":{"path":"a.dart"}}',
                   ),
                   ToolCallPart(
-                    '{"id":"read_file-0","name":"grep","arguments":{"q":"x"}}',
+                    '{"id":"read_file-0","name":"http","arguments":{"q":"x"}}',
                   ),
                 ],
               ),
@@ -818,13 +829,13 @@ void main() {
               toolParts: const [
                 ToolUIPart(
                   id: 'read_file-0',
-                  toolName: 'grep',
+                  toolName: 'http',
                   arguments: {'q': 'x'},
                   content: 'GREP-LIVE',
                 ),
                 ToolUIPart(
                   id: '',
-                  toolName: 'read_file',
+                  toolName: 'search',
                   arguments: {'path': 'a.dart'},
                   content: 'READ-LIVE',
                 ),
@@ -855,7 +866,7 @@ void main() {
         for (var i = 0; i < 3; i++)
           ToolUIPart(
             id: 't$i',
-            toolName: 'read_file',
+            toolName: 'search',
             arguments: {'path': 'lib/$i.dart'},
             content: 'ok $i',
           ),
@@ -919,7 +930,7 @@ void main() {
 
       tools[1] = ToolUIPart(
         id: 't1',
-        toolName: 'read_file',
+        toolName: 'search',
         arguments: const {'path': 'lib/1.dart'},
         content: 'changed',
       );

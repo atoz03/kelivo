@@ -3,7 +3,7 @@ part of '../desktop_settings_page.dart';
 // ===== Display Settings Body =====
 
 class _DisplaySettingsBody extends StatelessWidget {
-  const _DisplaySettingsBody({super.key});
+  const _DisplaySettingsBody();
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -121,6 +121,8 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _ToggleRowHideToolResultImages(),
                   _RowDivider(),
                   _ToggleRowInsertSuggestionOnly(),
+                  _RowDivider(),
+                  _CollapseLongUserMessagesSection(),
                   _RowDivider(),
                   _ToggleRowRegenerateDeleteTrailingMessages(),
                   _RowDivider(),
@@ -373,15 +375,19 @@ class _SettingsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
-              child: Text(
-                title,
-                // Align card title with other panes (15, semi-bold)
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: AppFontWeights.semibold,
-                  color: cs.onSurface,
+            SettingsSearchTarget.wrap(
+              context,
+              title,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 2, 4, 8),
+                child: Text(
+                  title,
+                  // Align card title with other panes (15, semi-bold)
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: AppFontWeights.semibold,
+                    color: cs.onSurface,
+                  ),
                 ),
               ),
             ),
@@ -418,7 +424,7 @@ class _LabeledRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Padding(
+    final row = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Row(
         mainAxisSize: MainAxisSize.max,
@@ -451,6 +457,7 @@ class _LabeledRow extends StatelessWidget {
         ],
       ),
     );
+    return SettingsSearchTarget.wrap(context, label, row);
   }
 }
 
@@ -1801,6 +1808,8 @@ class _DesktopAppFontRow extends StatelessWidget {
     final current = sp.appFontFamily;
     final displayText = (current == null || current.isEmpty)
         ? l10n.desktopFontFamilySystemDefault
+        : sp.appFontLocalAlias != null
+        ? l10n.displaySettingsPageFontLocalFileLabel
         : current;
     return _LabeledRow(
       label: l10n.desktopFontAppLabel,
@@ -1826,6 +1835,14 @@ class _DesktopAppFontRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Tooltip(
+            message: l10n.googleFontsTitle,
+            child: _IconBtn(
+              icon: lucide.Lucide.Download,
+              onTap: () => showGoogleFontsPicker(context, forCode: false),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Tooltip(
             message: l10n.displaySettingsPageFontResetLabel,
             child: _IconBtn(
               icon: lucide.Lucide.RotateCcw,
@@ -1848,6 +1865,8 @@ class _DesktopCodeFontRow extends StatelessWidget {
     final current = sp.codeFontFamily;
     final displayText = (current == null || current.isEmpty)
         ? l10n.desktopFontFamilyMonospaceDefault
+        : sp.codeFontLocalAlias != null
+        ? l10n.displaySettingsPageFontLocalFileLabel
         : current;
     return _LabeledRow(
       label: l10n.desktopFontCodeLabel,
@@ -1870,6 +1889,14 @@ class _DesktopCodeFontRow extends StatelessWidget {
                 await settingsProvider.setCodeFontSystemFamily(fam);
               }
             },
+          ),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: l10n.googleFontsTitle,
+            child: _IconBtn(
+              icon: lucide.Lucide.Download,
+              onTap: () => showGoogleFontsPicker(context, forCode: true),
+            ),
           ),
           const SizedBox(width: 8),
           Tooltip(
@@ -3067,7 +3094,7 @@ class _ToggleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Padding(
+    final row = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Row(
         children: [
@@ -3094,6 +3121,7 @@ class _ToggleRow extends StatelessWidget {
         ],
       ),
     );
+    return SettingsSearchTarget.wrap(context, label, row);
   }
 }
 
@@ -3111,6 +3139,99 @@ class _AutoCollapseCodeBlocksSection extends StatelessWidget {
           const _AutoCollapseCodeBlockLinesRow(),
         ],
       ],
+    );
+  }
+}
+
+class _CollapseLongUserMessagesSection extends StatelessWidget {
+  const _CollapseLongUserMessagesSection();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _ToggleRow(
+          label: l10n.displaySettingsPageCollapseLongUserMessagesTitle,
+          value: sp.collapseLongUserMessages,
+          onChanged: (v) =>
+              context.read<SettingsProvider>().setCollapseLongUserMessages(v),
+        ),
+        if (sp.collapseLongUserMessages) ...[
+          const _RowDivider(),
+          const _CollapseLongUserMessageCharsRow(),
+        ],
+      ],
+    );
+  }
+}
+
+class _CollapseLongUserMessageCharsRow extends StatefulWidget {
+  const _CollapseLongUserMessageCharsRow();
+  @override
+  State<_CollapseLongUserMessageCharsRow> createState() =>
+      _CollapseLongUserMessageCharsRowState();
+}
+
+class _CollapseLongUserMessageCharsRowState
+    extends State<_CollapseLongUserMessageCharsRow> {
+  late final TextEditingController _controller;
+  @override
+  void initState() {
+    super.initState();
+    final v = context.read<SettingsProvider>().collapseLongUserMessageChars;
+    _controller = TextEditingController(text: '$v');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _commit(String text) {
+    final n = int.tryParse(text.trim());
+    if (n == null) return;
+    final clamped = n.clamp(
+      SettingsProvider.minCollapseLongUserMessageChars,
+      SettingsProvider.maxCollapseLongUserMessageChars,
+    );
+    context.read<SettingsProvider>().setCollapseLongUserMessageChars(clamped);
+    _controller.text = '$clamped';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return _LabeledRow(
+      label: l10n.displaySettingsPageCollapseLongUserMessagesCharsTitle,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IntrinsicWidth(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 36, maxWidth: 72),
+              child: _BorderInput(
+                controller: _controller,
+                onSubmitted: _commit,
+                onFocusLost: _commit,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            l10n.displaySettingsPageCollapseLongUserMessagesCharsUnit,
+            style: TextStyle(
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
+              fontSize: 14,
+              decoration: TextDecoration.none,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

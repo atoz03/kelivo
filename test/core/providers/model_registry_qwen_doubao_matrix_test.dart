@@ -51,33 +51,41 @@ void main() {
       expect(plus.abilities, contains(ModelAbility.reasoning));
     });
 
-    test('DeepSeek vision SKU is multimodal; text V4 stays text-only', () {
-      final vision = ModelRegistry.infer(
+    test('DeepSeek Flash is multimodal; V4 Pro stays text-only', () {
+      final flash = ModelRegistry.infer(
+        ModelInfo(id: 'deepseek-flash', displayName: 'deepseek-flash'),
+      );
+      final namespaced = ModelRegistry.infer(
+        ModelInfo(
+          id: 'deepseek/deepseek-flash',
+          displayName: 'deepseek/deepseek-flash',
+        ),
+      );
+      final legacyFlash = ModelRegistry.infer(
+        ModelInfo(id: 'deepseek-v4-flash', displayName: 'deepseek-v4-flash'),
+      );
+      final legacyVision = ModelRegistry.infer(
         ModelInfo(
           id: 'deepseek-v4-flash-vision-exp',
           displayName: 'deepseek-v4-flash-vision-exp',
         ),
       );
-      final namespaced = ModelRegistry.infer(
-        ModelInfo(
-          id: 'deepseek/deepseek-v4-flash-vision-exp',
-          displayName: 'deepseek/deepseek-v4-flash-vision-exp',
-        ),
-      );
-      final flash = ModelRegistry.infer(
-        ModelInfo(id: 'deepseek-v4-flash', displayName: 'deepseek-v4-flash'),
-      );
       final pro = ModelRegistry.infer(
         ModelInfo(id: 'deepseek-v4-pro', displayName: 'deepseek-v4-pro'),
       );
 
-      expect(vision.input, contains(Modality.image));
+      expect(flash.input, contains(Modality.image));
       expect(namespaced.input, contains(Modality.image));
-      expect(flash.input, isNot(contains(Modality.image)));
+      expect(legacyFlash.input, contains(Modality.image));
+      expect(legacyVision.input, contains(Modality.image));
       expect(pro.input, isNot(contains(Modality.image)));
-      expect(vision.output, isNot(contains(Modality.image)));
+      expect(flash.output, isNot(contains(Modality.image)));
       expect(
-        vision.abilities,
+        flash.abilities,
+        containsAll([ModelAbility.tool, ModelAbility.reasoning]),
+      );
+      expect(
+        pro.abilities,
         containsAll([ModelAbility.tool, ModelAbility.reasoning]),
       );
     });
@@ -135,5 +143,34 @@ void main() {
         );
       },
     );
+
+    test('MiMo V2.6 and Grok 4.7 infer documented abilities', () {
+      for (final id in const [
+        'mimo-v2.6',
+        'mimo-v2.6-pro',
+        'mimo-v2.6-flash',
+        'mimo-v2.6-pro-ultraspeed',
+        'xiaomi/mimo-v2.6-pro',
+        'mimo-v2.5',
+        'mimo-v2-omni',
+        'grok-4.7',
+        'x-ai/grok-4.7',
+      ]) {
+        final model = ModelRegistry.infer(ModelInfo(id: id, displayName: id));
+        expect(model.input, contains(Modality.image), reason: id);
+        expect(model.output, isNot(contains(Modality.image)), reason: id);
+        expect(model.abilities, contains(ModelAbility.tool), reason: id);
+        expect(model.abilities, contains(ModelAbility.reasoning), reason: id);
+      }
+
+      final textOnlyPro = ModelRegistry.infer(
+        ModelInfo(id: 'mimo-v2.5-pro', displayName: 'mimo-v2.5-pro'),
+      );
+      expect(textOnlyPro.input, isNot(contains(Modality.image)));
+      expect(
+        textOnlyPro.abilities,
+        containsAll([ModelAbility.tool, ModelAbility.reasoning]),
+      );
+    });
   });
 }

@@ -778,6 +778,28 @@ class McpProvider extends ChangeNotifier {
     }
   }
 
+  /// Adds a validated import in one write, preserving existing connections.
+  Future<void> importServers(List<McpServerConfig> imported) async {
+    if (imported.isEmpty) return;
+    await _serializeServerMutation(() async {
+      final ids = _servers.map((server) => server.id).toSet();
+      for (final server in imported) {
+        if (!ids.add(server.id)) {
+          throw const FormatException('Duplicate MCP server ID');
+        }
+      }
+      await _persistServers([..._servers, ...imported]);
+      _servers = [..._servers, ...imported];
+      for (final server in imported) {
+        _connections[server.id] = _ServerConnection();
+      }
+      _notify();
+    });
+    for (final server in imported.where((server) => server.enabled)) {
+      unawaited(connect(server.id));
+    }
+  }
+
   McpServerConfig? getById(String id) {
     for (final s in _servers) {
       if (s.id == id) return s;

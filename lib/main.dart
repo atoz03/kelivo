@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'
-    show debugPrint, kIsWeb, defaultTargetPlatform, TargetPlatform;
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'dart:async';
 import 'dart:ui' show AppExitResponse;
 import 'l10n/app_localizations.dart';
@@ -17,7 +17,6 @@ import 'theme/palettes.dart';
 import 'theme/custom_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:dynamic_color/dynamic_color.dart';
-import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'core/providers/user_provider.dart';
 import 'core/providers/settings_provider.dart';
 import 'core/providers/mcp_provider.dart';
@@ -74,7 +73,7 @@ import 'dart:io'
         FileMode,
         Platform,
         stderr; // kept for global override usage inside provider
-import 'core/services/android_background.dart';
+import 'core/services/mobile_background.dart';
 import 'core/services/notification_service.dart';
 import 'features/home/controllers/chat_actions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -83,8 +82,6 @@ final RouteObserver<ModalRoute<dynamic>> routeObserver =
     RouteObserver<ModalRoute<dynamic>>();
 bool _didCheckUpdates = false; // one-time update check flag
 bool _didEnsureAssistants = false; // ensure defaults after l10n ready
-AppLifecycleListener? _displayModeLifecycleListener;
-const MethodChannel _displayModeChannel = MethodChannel('app.display_mode');
 
 Future<void> main() async {
   await runZoned(
@@ -100,9 +97,9 @@ Future<void> main() async {
         } catch (_) {}
       }
       FlutterLogger.installGlobalHandlers();
-      _initializeAndroidDisplayMode();
       final appDataDirectory = await AppDirectories.getAppDataDirectory();
       final RestoreReceipt? restoreOutcome;
+      RestoreBusinessLease? businessLease;
       // A restore large enough to take seconds would otherwise spend all of
       // them before the first frame, which is indistinguishable from a hang.
       // Only paint when there is actually work waiting: an ordinary launch
@@ -119,7 +116,7 @@ Future<void> main() async {
       try {
         // The lease remains process-owned through its internal registry until
         // process exit, preventing another instance from racing business I/O.
-        final businessLease = await RestoreBusinessLease.acquire(
+        businessLease = await RestoreBusinessLease.acquire(
           appDataDirectory: appDataDirectory,
         );
         restoreOutcome =
@@ -142,6 +139,7 @@ Future<void> main() async {
               stackTrace: stackTrace,
             ),
             appDataDirectory: appDataDirectory,
+            businessLease: businessLease,
           ),
         );
         return;
@@ -231,6 +229,7 @@ Future<void> main() async {
                 stackTrace: stackTrace,
               ),
               appDataDirectory: appDataDirectory,
+              businessLease: businessLease,
             ),
           );
           return;
@@ -259,35 +258,6 @@ Future<void> main() async {
       },
     ),
   );
-}
-
-void _initializeAndroidDisplayMode() {
-  if (!Platform.isAndroid || _displayModeLifecycleListener != null) return;
-
-  // Some Android variants clear refresh-rate requests in background.
-  _displayModeLifecycleListener = AppLifecycleListener(
-    onResume: _requestHighRefreshRate,
-  );
-  _requestHighRefreshRate();
-}
-
-void _requestHighRefreshRate() {
-  unawaited(_applyAndroidHighRefreshRate());
-}
-
-Future<void> _applyAndroidHighRefreshRate() async {
-  try {
-    final handledNatively =
-        await _displayModeChannel.invokeMethod<bool>(
-          'requestHighRefreshRate',
-        ) ??
-        false;
-    if (!handledNatively) {
-      await FlutterDisplayMode.setHighRefreshRate();
-    }
-  } catch (error) {
-    debugPrint('[DisplayMode] High refresh rate request failed: $error');
-  }
 }
 
 enum _AdmissionRecovery { none, rebuilt }
@@ -400,10 +370,15 @@ class _RestoreProgressApp extends StatelessWidget {
 }
 
 class _RestoreFailureApp extends StatelessWidget {
-  const _RestoreFailureApp({required this.report, this.appDataDirectory});
+  const _RestoreFailureApp({
+    required this.report,
+    this.appDataDirectory,
+    this.businessLease,
+  });
 
   final StartupFailureReport report;
   final Directory? appDataDirectory;
+  final RestoreBusinessLease? businessLease;
 
   @override
   Widget build(BuildContext context) {
@@ -421,6 +396,7 @@ class _RestoreFailureApp extends StatelessWidget {
               report: report,
               restart: PlatformUtils.restartApp,
               appDataDirectory: appDataDirectory,
+              businessLease: businessLease,
             ),
     );
   }
@@ -691,36 +667,6 @@ class MyApp extends StatelessWidget {
                 } catch (_) {}
               });
 
-              // Android-only: ensure background execution matches setting and prepare notifications if needed
-              WidgetsBinding.instance.addPostFrameCallback((_) async {
-                try {
-                  if (Platform.isAndroid) {
-                    final mode = settings.androidBackgroundChatMode;
-                    if (mode != AndroidBackgroundChatMode.off) {
-                      final l10n = AppLocalizations.of(context);
-                      if (l10n == null) return;
-                      // Enable only if currently disabled to avoid duplicate ROM prompts
-                      try {
-                        final already =
-                            await AndroidBackgroundManager.isEnabled();
-                        if (!already) {
-                          await AndroidBackgroundManager.ensureInitialized(
-                            notificationTitle:
-                                l10n.androidBackgroundNotificationTitle,
-                            notificationText:
-                                l10n.androidBackgroundNotificationText,
-                          );
-                          await AndroidBackgroundManager.setEnabled(true);
-                        }
-                      } catch (_) {}
-                      if (mode == AndroidBackgroundChatMode.onNotify) {
-                        await NotificationService.ensureAndroidNotificationsPermission();
-                      }
-                    }
-                  }
-                } catch (_) {}
-              });
-
               final useDyn = isAndroid && settings.useDynamicColor;
               final custom = settings.selectedCustomTheme;
               final palette =
@@ -856,6 +802,14 @@ class MyApp extends StatelessWidget {
                   // Desktop tray + close behaviour (minimize to tray) sync
                   final l10n = AppLocalizations.of(ctx);
                   if (l10n != null) {
+                    final backgroundSettings = ctx.watch<SettingsProvider>();
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!ctx.mounted) return;
+                      unawaited(
+                        MobileBackgroundCoordinator.instance
+                            .configureFromSettings(backgroundSettings, l10n),
+                      );
+                    });
                     WidgetsBinding.instance.addPostFrameCallback((_) async {
                       try {
                         final isDesktop =

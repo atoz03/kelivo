@@ -89,6 +89,8 @@ class StreamingContentNotifier {
     String content,
     int totalTokens, {
     List<MessagePart>? parts,
+    String? reasoningText,
+    DateTime? reasoningStartAt,
     List<int>? contentSplitOffsets,
     List<int>? reasoningCountAtSplit,
     List<int>? toolCountAtSplit,
@@ -104,6 +106,8 @@ class StreamingContentNotifier {
         content: content,
         totalTokens: totalTokens,
         parts: parts ?? current.parts,
+        reasoningText: reasoningText,
+        reasoningStartAt: reasoningStartAt,
         contentSplitOffsets: contentSplitOffsets ?? current.contentSplitOffsets,
         reasoningCountAtSplit:
             reasoningCountAtSplit ?? current.reasoningCountAtSplit,
@@ -222,12 +226,14 @@ class StreamingContentNotifier {
     notifier?.dispose();
   }
 
-  /// Clear all notifiers (e.g., when switching conversations).
-  void clear() {
-    for (final notifier in _notifiers.values) {
+  /// Dispose notifiers except those belonging to retained generation runs.
+  void clear({Set<String> keepMessageIds = const {}}) {
+    _notifiers.removeWhere((id, notifier) {
+      if (keepMessageIds.contains(id)) return false;
       notifier.dispose();
-    }
-    _notifiers.clear();
+      return true;
+    });
+    _pendingHeightIds.removeWhere((id) => !keepMessageIds.contains(id));
   }
 
   /// Dispose all resources.

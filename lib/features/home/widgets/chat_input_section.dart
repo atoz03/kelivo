@@ -43,8 +43,8 @@ class ChatInputSection extends StatelessWidget {
     this.onMore,
     this.onSelectModel,
     this.onLongPressSelectModel,
-    this.onOpenMcp,
-    this.onLongPressMcp,
+    this.onOpenTools,
+    this.onLongPressTools,
     this.onOpenSearch,
     this.onConfigureReasoning,
     this.onSend,
@@ -59,8 +59,6 @@ class ChatInputSection extends StatelessWidget {
     this.onPickCamera,
     this.onPickPhotos,
     this.onUploadFiles,
-    this.onToggleLearningMode,
-    this.onLongPressLearning,
     this.onClearContext,
     this.onCompressContext,
     this.conversationId,
@@ -84,8 +82,8 @@ class ChatInputSection extends StatelessWidget {
   final VoidCallback? onMore;
   final VoidCallback? onSelectModel;
   final VoidCallback? onLongPressSelectModel;
-  final VoidCallback? onOpenMcp;
-  final VoidCallback? onLongPressMcp;
+  final VoidCallback? onOpenTools;
+  final VoidCallback? onLongPressTools;
   final VoidCallback? onOpenSearch;
   final VoidCallback? onConfigureReasoning;
   final Future<ChatInputSubmissionResult> Function(ChatInputData)? onSend;
@@ -100,8 +98,6 @@ class ChatInputSection extends StatelessWidget {
   final VoidCallback? onPickCamera;
   final VoidCallback? onPickPhotos;
   final VoidCallback? onUploadFiles;
-  final VoidCallback? onToggleLearningMode;
-  final VoidCallback? onLongPressLearning;
   final VoidCallback? onClearContext;
   final VoidCallback? onCompressContext;
   final String? conversationId;
@@ -149,8 +145,8 @@ class ChatInputSection extends StatelessWidget {
       onSelectModel: onSelectModel,
       onLongPressSelectModel: onLongPressSelectModel,
       conversationId: conversationId,
-      onOpenMcp: onOpenMcp,
-      onLongPressMcp: onLongPressMcp,
+      onOpenTools: onOpenTools,
+      onLongPressTools: onLongPressTools,
       onStop: onStop,
       modelIcon: (pk != null && mid != null)
           ? CurrentModelIcon(
@@ -186,8 +182,8 @@ class ChatInputSection extends StatelessWidget {
       hasQueuedInput: hasQueuedInput,
       queuedPreviewText: queuedPreviewText,
       onCancelQueuedInput: onCancelQueuedInput,
-      showMcpButton: _shouldShowMcpButton(context, settings, a, pk, mid),
-      mcpActive: _isMcpActive(context, a),
+      showToolsButton: _shouldShowToolsButton(pk, mid),
+      toolsActive: _isToolsActive(context, a),
       showQuickPhraseButton: _hasQuickPhrases(context, a),
       onQuickPhrase: onQuickPhrase,
       onLongPressQuickPhrase: onLongPressQuickPhrase,
@@ -255,19 +251,15 @@ class ChatInputSection extends StatelessWidget {
     }
   }
 
-  bool _shouldShowMcpButton(
-    BuildContext context,
-    SettingsProvider settings,
-    Assistant? a,
-    String? pk,
-    String? mid,
-  ) {
+  /// The button hosts local tools as well as MCP, so it
+  /// shows for every tool-capable model rather than only when MCP is set up.
+  bool _shouldShowToolsButton(String? pk, String? mid) {
     if (pk == null || mid == null) return false;
-    final hasEnabledMcp = context.watch<McpProvider>().hasAnyEnabled;
-    return isToolModel(pk, mid) && hasEnabledMcp;
+    return isToolModel(pk, mid);
   }
 
-  bool _isMcpActive(BuildContext context, Assistant? a) {
+  bool _isToolsActive(BuildContext context, Assistant? a) {
+    if ((a?.localToolIds ?? const <String>[]).isNotEmpty) return true;
     final connected = context.watch<McpProvider>().connectedServers;
     final selected = a?.mcpServerIds ?? const <String>[];
     if (selected.isEmpty || connected.isEmpty) return false;

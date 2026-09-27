@@ -10,6 +10,10 @@
     <!-- Foreground service + notifications for background execution (Android only) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
      <!-- Assistant local tools: calendar query/create -->
      <uses-permission android:name="android.permission.READ_CALENDAR" />
@@ -31,16 +35,18 @@
          export), so system backup is disabled. -->
     <application
         android:label="Kelivo"
-        android:name="${applicationName}"
+        android:name=".KelivoApplication"
+        android:appCategory="productivity"
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true"
         android:icon="@mipmap/ic_launcher">
+        <!-- Shares from another task must reach the existing chat composer. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
+            android:launchMode="singleTask"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
@@ -63,9 +69,22 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:mimeType="text/plain"/>
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
         </activity>
         <activity
-            android:name=".McpOAuthCallbackActivity"
+            android:name=".OAuthCallbackActivity"
             android:excludeFromRecents="true"
             android:exported="true"
             android:launchMode="singleTask"
@@ -79,9 +98,14 @@
                 <data android:scheme="psyche.kelivo" android:host="mcp-oauth-callback"/>
             </intent-filter>
         </activity>
+        <!-- Custom Tabs binds here only while its authorization window is visible. -->
+        <service
+            android:name=".OAuthBrowserService"
+            android:exported="true" />
         <!-- Foreground service to keep Flutter isolate alive for background generation -->
         <service
-            android:name="de.julianassmann.flutter_background.IsolateHolderService"
+            android:name=".background.GenerationForegroundService"
+            android:stopWithTask="false"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
         <activity
@@ -100,6 +124,9 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

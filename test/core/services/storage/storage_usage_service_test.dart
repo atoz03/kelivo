@@ -410,4 +410,38 @@ void main() {
       expect(sources['assistant.png'], StorageFileSource.assistant);
     },
   );
+
+  test('upload cleanup cannot follow a symlinked directory', () async {
+    await _writeSizedFile(tempDir, 'external/private.txt', 4);
+    await Directory(p.join(tempDir.path, 'upload')).create();
+    await Link(
+      p.join(tempDir.path, 'upload', 'link'),
+    ).create(p.join(tempDir.path, 'external'));
+    expect(
+      await StorageUsageService.deleteUploadFiles([
+        p.join(tempDir.path, 'upload', 'link', 'private.txt'),
+      ], images: false),
+      0,
+    );
+    expect(
+      await File(p.join(tempDir.path, 'external', 'private.txt')).exists(),
+      isTrue,
+    );
+  });
+
+  test('upload cleanup deletes regular files of the requested kind', () async {
+    await _writeSizedFile(tempDir, 'upload/report.pdf', 4);
+    await _writeSizedFile(tempDir, 'upload/photo.png', 4);
+    final report = p.join(tempDir.path, 'upload', 'report.pdf');
+    final photo = p.join(tempDir.path, 'upload', 'photo.png');
+    expect(
+      await StorageUsageService.deleteUploadFiles([
+        report,
+        photo,
+      ], images: false),
+      1,
+    );
+    expect(await File(report).exists(), isFalse);
+    expect(await File(photo).exists(), isTrue);
+  });
 }

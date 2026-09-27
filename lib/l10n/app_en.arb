@@ -1,4 +1,18 @@
 {
+  "settingsSearchHint": "Search settings",
+  "settingsSearchCancel": "Cancel",
+  "settingsSearchClear": "Clear search",
+  "settingsSearchSuggestions": "Quick access",
+  "settingsSearchNoResults": "No settings found",
+  "settingsSearchNoResultsHint": "Try a different name or a shorter keyword.",
+  "settingsSearchResultCount": "{count, plural, =1{1 result} other{{count} results}}",
+  "@settingsSearchResultCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "settingsPageBackButton": "Back",
   "settingsPageTitle": "Settings",
   "settingsPageDarkMode": "Dark",
@@ -21,17 +35,6 @@
   "settingsPageBackup": "Backup",
   "settingsPageChatStorage": "Chat Storage",
   "settingsPageCalculating": "Calculating…",
-  "settingsPageFilesCount": "{count} files · {size}",
-  "@settingsPageFilesCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      },
-      "size": {
-        "type": "String"
-      }
-    }
-  },
   "storageSpacePageTitle": "Storage Space",
   "storageSpaceRefreshTooltip": "Refresh",
   "storageSpaceLoadFailed": "Failed to load storage usage",
@@ -72,14 +75,6 @@
   "storageSpaceCategoryCache": "Cache",
   "storageSpaceCategoryLogs": "Logs",
   "storageSpaceCategoryOther": "Other",
-  "storageSpaceFilesCount": "{count} files",
-  "@storageSpaceFilesCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "storageSpaceSafeToClearHint": "Safe to clear. This will not affect your chat history.",
   "storageSpaceNotSafeToClearHint": "May affect your chat history. Delete with care.",
   "storageSpaceBreakdownTitle": "Breakdown",
@@ -129,7 +124,7 @@
   "storageSpaceClearLogsButton": "Clear Logs",
   "storageSpaceViewLogsButton": "View Logs",
   "storageSpaceDeleteConfirmTitle": "Confirm deletion",
-  "storageSpaceDeleteUploadsConfirmMessage": "Delete {count} items? Attachments in chat history may become unavailable.",
+  "storageSpaceDeleteUploadsConfirmMessage": "Delete {count} items and their associated conversation attachment copies? These attachments will no longer be available in chat history.",
   "@storageSpaceDeleteUploadsConfirmMessage": {
     "placeholders": {
       "count": {
@@ -233,14 +228,22 @@
   "languageDisplaySpanish": "Spanish",
   "languageSelectSheetClearButton": "Clear Translation",
   "homePageClearContext": "Clear Context",
-  "homePageClearContextWithCount": "Clear Context ({actual}/{configured})",
-  "@homePageClearContextWithCount": {
+  "contextMessageCount": "{count} messages",
+  "@contextMessageCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "contextMessageCountLimited": "{actual}/{configured} messages",
+  "@contextMessageCountLimited": {
     "placeholders": {
       "actual": {
-        "type": "String"
+        "type": "int"
       },
       "configured": {
-        "type": "String"
+        "type": "int"
       }
     }
   },
@@ -412,17 +415,8 @@
   "displaySettingsPageChatMessageBackgroundDefault": "Default",
   "displaySettingsPageChatMessageBackgroundFrosted": "Frosted Glass",
   "displaySettingsPageChatMessageBackgroundSolid": "Solid Color",
-  "displaySettingsPageAndroidBackgroundChatTitle": "Background Generation (Android)",
   "androidBackgroundStatusOn": "On",
   "androidBackgroundStatusOff": "Off",
-  "androidBackgroundStatusOther": "On and notify",
-  "androidBackgroundOptionOn": "On",
-  "androidBackgroundOptionOnNotify": "On and notify when done",
-  "androidBackgroundOptionOff": "Off",
-  "notificationChatCompletedTitle": "Generation complete",
-  "notificationChatCompletedBody": "Assistant reply has been generated",
-  "androidBackgroundNotificationTitle": "Kelivo is running",
-  "androidBackgroundNotificationText": "Keeping chat generation alive in background",
   "assistantEditEmojiDialogTitle": "Choose Emoji",
   "assistantEditEmojiDialogHint": "Type or paste any emoji",
   "assistantEditEmojiDialogCancel": "Cancel",
@@ -499,6 +493,8 @@
   "assistantEditVariableMessage": "Message",
   "assistantEditPreviewTitle": "Preview",
   "assistantEditPromptTimeVarWarning": "Using time variables in the system prompt makes the beginning of every request different, so prompt caching cannot hit and both cost and time-to-first-token go up. If the model needs to know the current time, use the \"Append current time\" switch below.",
+  "assistantEditPromptIso8601Title": "Use ISO 8601 format",
+  "assistantEditPromptIso8601Subtitle": "Include the time zone offset, e.g. 2026-08-08T14:30:05+08:00",
   "assistantEditPromptAppendTimeTitle": "Append current time",
   "assistantEditPromptAppendTimeSubtitle": "Append the send time to the end of each user message. Time stays at the end of the request, so prompt caching is unaffected.",
   "assistantEditPromptAppendTimeInfoTitle": "Appended time format",
@@ -1128,6 +1124,12 @@
   "displaySettingsPageAutoCollapseCodeBlockTitle": "Auto-collapse Code Blocks",
   "displaySettingsPageAutoCollapseCodeBlockLinesTitle": "Auto-collapse threshold",
   "displaySettingsPageAutoCollapseCodeBlockLinesUnit": "lines",
+  "displaySettingsPageCollapseLongUserMessagesTitle": "Collapse Long Messages",
+  "displaySettingsPageCollapseLongUserMessagesSubtitle": "Fold user messages past the threshold behind an expand button",
+  "displaySettingsPageCollapseLongUserMessagesCharsTitle": "Collapse threshold",
+  "displaySettingsPageCollapseLongUserMessagesCharsUnit": "chars",
+  "chatMessageExpandLongText": "Expand",
+  "chatMessageCollapseLongText": "Collapse",
   "messageExportSheetFormatTitle": "Export Format",
   "messageExportSheetMarkdown": "Markdown",
   "messageExportSheetSingleMarkdownSubtitle": "Export this message as a Markdown file",
@@ -1283,7 +1285,7 @@
   "chatInputBarSelectModelTooltip": "Select Model",
   "chatInputBarOnlineSearchTooltip": "Online Search",
   "chatInputBarReasoningStrengthTooltip": "Reasoning Strength",
-  "chatInputBarMcpServersTooltip": "MCP Servers",
+  "chatInputBarToolsTooltip": "Tools",
   "chatInputBarMoreTooltip": "Add",
   "chatInputBarVoiceInputTooltip": "Voice input",
   "chatInputBarVoiceCancelTooltip": "Discard recording",
@@ -1373,6 +1375,15 @@
   "defaultModelPageChatModelSubtitle": "Global default chat model",
   "defaultModelPagePerChatModelTitle": "Per-Chat Model",
   "defaultModelPagePerChatModelSubtitle": "On: picking a model in a chat applies to that chat only. Off: it becomes the current assistant's model, so every chat using that assistant follows it.",
+  "googleFontsTitle": "Google Fonts",
+  "googleFontsRefresh": "Refresh font list",
+  "googleFontsSearchHint": "Search fonts or languages",
+  "googleFontsHint": "Download a regular font to preview and apply it. Installed fonts work offline. Catalog: Expo Google Fonts; downloads: Google Fonts.",
+  "googleFontsNoResults": "No matching fonts",
+  "googleFontsFailed": "Could not load, download, or apply the font. Check your connection and try again.",
+  "googleFontsDownloading": "Downloading font…",
+  "googleFontsPreview": "The quick brown fox 0123456789 · 字体预览",
+  "googleFontsLicense": "Font license",
   "defaultModelPageTitleModelTitle": "Title Summary Model",
   "defaultModelPageTitleModelSubtitle": "Summarizes conversation titles using the current chat model by default, or a selected model.",
   "titleModelThinkingTitle": "Enable Thinking",
@@ -2299,6 +2310,10 @@
   "searchProviderTinyFishDescription": "TinyFish Search API with region/language filters. Requires an API key. Fetch/Scrape is not supported here.",
   "searchServiceNameAnySearch": "AnySearch",
   "searchProviderAnySearchDescription": "Unified search for AI agents with automatic routing across web and specialist data sources. API key is optional.",
+  "searchServiceNameKagi": "Kagi",
+  "searchProviderKagiDescription": "Kagi Search API. Returns premium web search results from Kagi.",
+  "searchServiceNameKimi": "Kimi",
+  "searchProviderKimiDescription": "Kimi Search API. Pro returns relevant web content excerpts; Basic returns titles, links, and snippets.",
   "searchServiceNameParallel": "Parallel",
   "searchProviderParallelDescription": "Parallel Search API. Returns LLM-optimized web excerpts with turbo, fast, basic, and advanced modes.",
   "searchServicesDialogSearchMode": "Search mode",
@@ -3487,7 +3502,254 @@
   "toolSchemaSettingsToolName": "Tool name",
   "toolSchemaEditorPageTitle": "Edit description",
   "toolSchemaSettingsCancel": "Cancel",
+  "workspaceFileNotAvailable": "File not available",
+  "commonClose": "Close",
+  "incomingShareTitle": "Shared content",
+  "incomingShareReplaceDraft": "There is unsent content in the input box. Replace it with the shared content in a new chat?",
+  "incomingShareFailed": "Some shared content could not be imported. Check file access and available storage. Up to 32 files can be shared at once.",
+  "incomingShareImporting": "Importing",
+  "incomingShareMoveTo": "Move to…",
+  "incomingShareNewChat": "New conversation",
+  "incomingShareMoveHint": "Move this draft and its attachments to another conversation. Nothing will be sent automatically.",
+  "incomingShareNoConversations": "No matching conversations",
+  "chatInputBarRemoveAttachment": "Remove attachment",
+  "incomingShareMoveFailed": "Could not switch conversations. Your draft has been kept.",
   "healthDataSettingsCategoryReproductive": "Reproductive health",
   "healthDataSettingsTypeMenstrualFlowTitle": "Menstrual flow",
-  "healthDataSettingsTypeMenstrualFlowSubtitle": "Recorded menstrual flow and cycle starts in the past 90 days"
+  "healthDataSettingsTypeMenstrualFlowSubtitle": "Recorded menstrual flow and cycle starts in the past 90 days",
+  "assistantEditGradientBackgroundTitle": "Gradient background",
+  "assistantEditGradientStaticTitle": "Static mode",
+  "assistantEditGradientStaticDescription": "Saves power during long chats and streaming.",
+  "assistantEditGradientHorizontal": "Horizontal position",
+  "assistantEditGradientVertical": "Vertical position",
+  "assistantEditGradientPreview": "Preview",
+  "assistantEditGradientNextFrame": "Another frame",
+  "backgroundSettingsTitle": "Background tasks",
+  "backgroundTaskTitle": "Kelivo task",
+  "backgroundCompleted": "Generation complete",
+  "backgroundFailed": "Generation failed. Open the chat for details.",
+  "backgroundCancelled": "Generation cancelled",
+  "backgroundInterrupted": "Background generation was interrupted. Open the chat to continue.",
+  "backgroundRequesting": "Connecting",
+  "backgroundGenerating": "Generating reply",
+  "backgroundThinking": "Thinking",
+  "backgroundToolRunning": "Running tool",
+  "backgroundRetrying": "Waiting to retry",
+  "backgroundWorking": "Working",
+  "backgroundTasks": "Tasks",
+  "backgroundStopTasks": "Stop tasks",
+  "backgroundOpenChat": "Open chat",
+  "backgroundAndroidEnabled": "Background generation",
+  "backgroundAndroidEnabledDetail": "Keep current tasks running when locked, in the background, or removed from recent apps. A system notification is required while tasks run.",
+  "backgroundNotifications": "Task notifications",
+  "backgroundNotificationsDetail": "Notify when a task completes or fails outside the chat you are viewing. Does not control Android’s required ongoing notification.",
+  "backgroundPrivacy": "Task status privacy",
+  "backgroundPrivacyDetail": "Hide conversation titles and tool details in notifications and live status. Only generic status, task count and elapsed time are shown.",
+  "backgroundOverlay": "Floating task status",
+  "backgroundOverlayDetail": "Show a draggable task capsule over other apps. Tap it to open the chat; closing it only hides the capsule.",
+  "backgroundLiveUpdates": "Live Updates",
+  "backgroundLiveUpdatesDetail": "Use Android 16 Live Updates on supported devices. A promoted notification takes priority over the floating capsule.",
+  "backgroundFinishVisibility": "Completed status duration",
+  "backgroundFinishImmediately": "Immediately dismiss",
+  "backgroundFinishOneMinute": "1 minute",
+  "backgroundFinishFiveMinutes": "5 minutes",
+  "backgroundFinishUntilForeground": "Until returning to the app",
+  "backgroundFinishVisibilityDetail": "Applies to the Android capsule and iOS Lock Screen completion card. Returning to the app clears completed status; the maximum is 15 minutes. Cancellation dismisses immediately.",
+  "backgroundOverlayIcon": "Floating icon",
+  "backgroundIconDefault": "Kelivo icon",
+  "backgroundIconImage": "Choose image",
+  "backgroundIconEmoji": "Choose Emoji",
+  "backgroundPermissionsTitle": "Permissions and system settings",
+  "backgroundNotificationsPermission": "Notification permission",
+  "backgroundBatteryOptimization": "Battery optimization",
+  "backgroundBatteryOptimizationDetail": "Allow unrestricted battery usage for more reliable background work.",
+  "backgroundAutostart": "Autostart and background usage",
+  "backgroundAutostartDetail": "Check your device’s autostart and background restrictions manually. Android does not provide a reliable permission query for these vendor settings.",
+  "backgroundSystemSettings": "App system settings",
+  "backgroundPermissionGranted": "Allowed",
+  "backgroundPermissionDenied": "Not allowed",
+  "backgroundPermissionUnknown": "Check manually",
+  "backgroundRuntimeTitle": "Current status",
+  "backgroundRuntimeActive": "Running",
+  "backgroundRuntimeIdle": "Inactive",
+  "backgroundOverlayActive": "Floating window",
+  "backgroundLastError": "Last interruption or error",
+  "backgroundNoError": "None recorded",
+  "backgroundUnsupported": "Unavailable on this device or disabled in system settings",
+  "backgroundAndroidLimit": "Check notification, battery and vendor background settings if tasks stop. Force stop and system process termination can still interrupt generation.",
+  "backgroundStale": "Status has not updated. Open the app to check.",
+  "backgroundIconError": "Unable to import this image. Please choose another image.",
+  "backgroundCompletionChannel": "Completion notification channel",
+  "backgroundOngoingChannel": "Running task notification channel",
+  "backgroundOverlayAppearance": "Floating window appearance",
+  "backgroundOverlayAppearanceDetail": "Size, artwork, progress ring and visible content",
+  "backgroundOverlayPreviewHint": "Drag to move · Tap to open chat · Hold to dismiss",
+  "backgroundOverlayCard": "Card",
+  "backgroundOverlayCircle": "Circular icon",
+  "backgroundOverlaySize": "Size and shape",
+  "backgroundOverlayWidth": "Width",
+  "backgroundOverlayHeight": "Height",
+  "backgroundOverlayCornerRadius": "Corner radius",
+  "backgroundOverlayIconSize": "Icon size",
+  "backgroundOverlayProgressSize": "Progress ring diameter",
+  "backgroundOverlayProgressStroke": "Progress ring thickness",
+  "backgroundOverlayContent": "Visible content",
+  "backgroundOverlayShowProgress": "Show progress ring",
+  "backgroundOverlayShowTitle": "Show title",
+  "backgroundOverlayShowSubtitle": "Show subtitle",
+  "backgroundOverlayShowTime": "Show elapsed time",
+  "backgroundOverlayShowClose": "Show close button",
+  "backgroundOverlayShowBackground": "Show background",
+  "backgroundOverlayShowBorder": "Show border",
+  "backgroundOverlayReset": "Restore default appearance",
+  "mcpArgumentsHint": "Separate arguments with spaces; quote values containing spaces. Use '' for an empty argument.",
+  "mcpArgumentsInvalid": "Check for an unclosed quote or trailing escape in arguments.",
+  "mcpImportJson": "Import JSON",
+  "mcpImportJsonHint": "Paste a Claude Desktop or Cursor MCP configuration. Preview and add servers without replacing existing ones.",
+  "mcpImportPaste": "Paste from Clipboard",
+  "mcpImportPreview": "Preview",
+  "mcpImportConfirm": "Import",
+  "startupRecoverySnapshotTitle": "Restore from a database snapshot",
+  "startupRecoverySnapshotBody": "Choose a snapshot on this device to recover your chats and settings, even when the database cannot open. Do not uninstall Kelivo: uninstalling also removes these snapshots.",
+  "startupRecoverySnapshotEmpty": "No database snapshots were found on this device. Export your data before trying other recovery actions.",
+  "startupRecoverySnapshotButton": "Choose a snapshot",
+  "startupRecoverySnapshotConfirm": "Restore chats and settings from {when}? Changes made after this snapshot will not be included. Existing attachment files and the snapshot will be kept. Kelivo will restart to complete the restore.",
+  "startupRecoverySnapshotFailed": "Could not prepare the snapshot restore: {reason}",
+  "startupRecoverySnapshotReady": "The snapshot is ready. Restart Kelivo to complete the restore.",
+  "@startupRecoverySnapshotConfirm": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "@startupRecoverySnapshotFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "assistantConversationSystemPromptTitle": "Per-conversation system prompt",
+  "assistantConversationSystemPromptHint": "Allow each conversation to use its own system prompt.",
+  "conversationSystemPromptTitle": "Conversation system prompt",
+  "conversationSystemPromptHint": "Applies only to this conversation. Leave blank to use the assistant’s system prompt.",
+  "conversationSystemPromptClear": "Use assistant prompt",
+  "conversationSystemPromptPlaceholder": "Write a system prompt for this conversation…",
+  "oauthAccountsTab": "Accounts",
+  "oauthLogin": "Log in",
+  "oauthConnected": "Connected",
+  "oauthWaiting": "Waiting for {provider} authorization",
+  "@oauthWaiting": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "oauthCancel": "Cancel authorization",
+  "oauthOpenBrowser": "Open authorization page",
+  "oauthCopyCode": "Copy code",
+  "oauthCodeHint": "Enter this code on the authorization page",
+  "oauthDeviceHint": "Enable device code login in your ChatGPT security settings or workspace permissions first.",
+  "oauthDeviceLogin": "Use device code",
+  "oauthDetails": "View account details",
+  "oauthConnectAnother": "Connect another account",
+  "oauthRelogin": "Log in again",
+  "oauthNeedsLogin": "Login required",
+  "oauthExpired": "{provider} login has expired",
+  "@oauthExpired": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "oauthLoginRestored": "Logged in. Use the message retry button to send again.",
+  "oauthLogout": "Log out",
+  "oauthLogoutDescription": "Remove this account’s saved credentials from this device",
+  "oauthRefreshing": "Refreshing authorization…",
+  "oauthRefreshUsage": "Refresh usage",
+  "oauthUsageDetails": "Usage details",
+  "oauthUsageUnavailable": "Usage is currently unavailable",
+  "oauthLastUpdated": "Updated {time}",
+  "@oauthLastUpdated": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "oauthSyncModels": "Sync",
+  "oauthSyncing": "Syncing models…",
+  "oauthModelsHint": "Available models are synced from your account.",
+  "oauthNoModels": "Sync models to start chatting",
+  "oauthConnectionInfo": "Connection details",
+  "oauthEndpoint": "Endpoint",
+  "oauthScope": "Authorization scope",
+  "oauthAccountId": "Account ID",
+  "oauthTokenExpiry": "Token expires",
+  "oauthName": "Provider name",
+  "oauthEnabledHint": "Show these models in the model picker",
+  "oauthWeekly": "Weekly window",
+  "oauthMonthly": "Monthly window",
+  "oauthTotal": "Total quota",
+  "oauthHours": "{count} hour window",
+  "@oauthHours": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "oauthMinutes": "{count} minute window",
+  "@oauthMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "oauthDays": "{count} day window",
+  "@oauthDays": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "oauthWindow": "Usage window",
+  "oauthResetsAt": "Resets {time}",
+  "@oauthResetsAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "oauthNetworkError": "Could not connect. Check your network and try again.",
+  "oauthInvalidResponse": "Authorization did not complete. Please try again.",
+  "oauthTimeout": "Authorization timed out. Please try again.",
+  "oauthDenied": "Authorization was not granted. Please try again.",
+  "oauthQuotaExceeded": "This account has no available quota.",
+  "oauthRateLimited": "Too many requests. Please try again later.",
+  "oauthPermissionDenied": "This account cannot access this resource.",
+  "oauthRequestFailed": "The provider could not complete the request.",
+  "oauthQuotaAvailable": "Quota is available",
+  "oauthSavedResets": "Available usage resets: {count}",
+  "@oauthSavedResets": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "oauthPrimaryWindow": "Primary window",
+  "oauthSecondaryWindow": "Secondary window",
+  "oauthAuthorizationCode": "Authorization code or callback URL",
+  "oauthAuthorizationCodeHint": "If the browser does not return automatically, paste the final callback URL or authorization code here.",
+  "oauthInvalidAuthorizationCode": "Enter the code or callback URL from this login attempt.",
+  "oauthSubmitAuthorizationCode": "Complete login",
+  "oauthExtraUsage": "Extra usage",
+  "oauthPromptCachingHelp": "Reuse context across messages and choose how long the cache is retained."
 }

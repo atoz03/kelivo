@@ -197,8 +197,7 @@ abstract final class StorageUsageService {
     }
 
     try {
-      await for (final ent in root.list(recursive: true, followLinks: false)) {
-        if (ent is! File) continue;
+      await for (final ent in _listFiles(root)) {
         int bytes = 0;
         try {
           bytes = await ent.length();
@@ -313,11 +312,7 @@ abstract final class StorageUsageService {
     // Platform cache directory (e.g. Android /data/user/0/<package>/cache).
     try {
       if (await systemCacheDir.exists()) {
-        await for (final ent in systemCacheDir.list(
-          recursive: true,
-          followLinks: false,
-        )) {
-          if (ent is! File) continue;
+        await for (final ent in _listFiles(systemCacheDir)) {
           int bytes = 0;
           try {
             bytes = await ent.length();
@@ -622,8 +617,7 @@ abstract final class StorageUsageService {
     }) async {
       if (!await d.exists()) return;
       try {
-        await for (final ent in d.list(recursive: true, followLinks: false)) {
-          if (ent is! File) continue;
+        await for (final ent in _listFiles(d)) {
           final name = p.basename(ent.path);
           final isImg = _isImageExt(name);
           if (isImg && !includeImages) continue;
@@ -680,25 +674,61 @@ abstract final class StorageUsageService {
     final dir = await AppDirectories.getUploadDirectory();
     final imagesDir = await AppDirectories.getImagesDirectory();
     final roots = <String>[
-      p.normalize(Directory(dir.path).absolute.path),
-      if (images) p.normalize(Directory(imagesDir.path).absolute.path),
+      p.normalize(dir.absolute.path),
+      p.normalize(imagesDir.absolute.path),
     ];
-    int deleted = 0;
+    final realRoots = await Future.wait(
+      roots.map((root) async {
+        try {
+          return await Directory(root).resolveSymbolicLinks();
+        } catch (_) {
+          return root;
+        }
+      }),
+    );
+    var deleted = 0;
     for (final raw in paths) {
       try {
         final abs = p.normalize(File(raw).absolute.path);
-        final allowed = roots.any(
-          (root) => p.isWithin(root, abs) || abs == root,
-        );
-        if (!allowed) continue;
-        final f = File(abs);
-        if (await f.exists()) {
-          await f.delete();
-          deleted += 1;
+        if (_isImageExt(abs) != images) continue;
+        if (!roots.any((root) => p.isWithin(root, abs))) continue;
+        // A symlinked child directory must not let storage cleanup escape the
+        // app's upload roots. Only regular files are eligible for deletion.
+        final parent = await File(abs).parent.resolveSymbolicLinks();
+        if (!realRoots.any(
+          (root) => p.equals(root, parent) || p.isWithin(root, parent),
+        )) {
+          continue;
         }
+        if (await FileSystemEntity.type(abs, followLinks: false) !=
+            FileSystemEntityType.file) {
+          continue;
+        }
+        await File(abs).delete();
+        deleted += 1;
       } catch (_) {}
     }
     return deleted;
+  }
+
+  /// Lists files below [root] without following links. An unreadable
+  /// directory is skipped so the rest can still be measured or listed.
+  static Stream<File> _listFiles(Directory root) async* {
+    final pending = <Directory>[root];
+    while (pending.isNotEmpty) {
+      final dir = pending.removeLast();
+      try {
+        await for (final entity in dir.list(followLinks: false)) {
+          if (entity is Directory) {
+            pending.add(entity);
+          } else if (entity is File) {
+            yield entity;
+          }
+        }
+      } on FileSystemException {
+        // Other directories can still be measured/listed.
+      }
+    }
   }
 
   static Future<void> _deleteDirectoryContents(

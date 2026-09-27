@@ -1,8 +1,13 @@
 import 'package:Kelivo/core/database/generation_run.dart';
 import 'package:Kelivo/core/models/chat_message.dart';
+import 'package:Kelivo/core/models/message_part.dart';
+import 'package:Kelivo/core/models/provider_oauth.dart';
+import 'package:Kelivo/core/models/mobile_background_settings.dart';
+import 'package:Kelivo/core/services/mobile_background.dart';
 import 'package:Kelivo/core/providers/settings_provider.dart';
 import 'package:Kelivo/core/services/chat/chat_service.dart';
 import 'package:Kelivo/features/home/controllers/chat_controller.dart';
+import 'package:Kelivo/features/home/controllers/chat_actions.dart';
 import 'package:Kelivo/features/home/controllers/generation_controller.dart';
 import 'package:Kelivo/features/home/controllers/home_view_model.dart';
 import 'package:Kelivo/features/home/controllers/stream_controller.dart';
@@ -10,6 +15,7 @@ import 'package:Kelivo/features/home/services/message_builder_service.dart';
 import 'package:Kelivo/features/home/services/message_generation_service.dart';
 import 'package:Kelivo/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,7 +23,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../support/business_test_harness.dart';
 
 class _ThrowingFinalizeChatService extends ChatService {
+  _ThrowingFinalizeChatService({this.failCompletion = true});
+  final bool failCompletion;
   final terminalStates = <GenerationRunState>[];
+  ChatMessage? lastMessage;
+  String? lastErrorCode;
 
   @override
   Future<GenerationRun?> finalizeGenerationRunSilent({
@@ -31,23 +41,193 @@ class _ThrowingFinalizeChatService extends ChatService {
     String? errorCode,
   }) async {
     terminalStates.add(terminalState);
-    if (terminalState == GenerationRunState.completed) {
+    lastMessage = message;
+    lastErrorCode = errorCode;
+    if (failCompletion && terminalState == GenerationRunState.completed) {
       throw StateError('persist failed');
     }
     return null;
   }
 }
 
+({ChatActions actions, HomeViewModel viewModel}) _actionsFor(
+  BuildContext context,
+  ChatService service,
+  SettingsProvider settings,
+  MobileBackgroundCoordinator background,
+) {
+  final chatController = ChatController(chatService: service);
+  final streamController = StreamController(
+    onStateChanged: () {},
+    getSettingsProvider: () => settings,
+    getCurrentConversationId: () => 'conversation-1',
+  );
+  final messageBuilder = MessageBuilderService(
+    chatService: service,
+    contextProvider: context,
+  );
+  final generationController = GenerationController(
+    chatService: service,
+    chatController: chatController,
+    streamController: streamController,
+    messageBuilderService: messageBuilder,
+    contextProvider: context,
+    onStateChanged: () {},
+    getTitleForLocale: (_) => 'title',
+  );
+  final messageGeneration = MessageGenerationService(
+    chatService: service,
+    messageBuilderService: messageBuilder,
+    generationController: generationController,
+    streamController: streamController,
+    contextProvider: context,
+  );
+  final viewModel = HomeViewModel(
+    chatService: service,
+    messageBuilderService: messageBuilder,
+    messageGenerationService: messageGeneration,
+    generationController: generationController,
+    streamController: streamController,
+    chatController: chatController,
+    contextProvider: context,
+    getTitleForLocale: (_) => 'title',
+  );
+  final actions = ChatActions(
+    chatService: service,
+    chatController: chatController,
+    streamController: streamController,
+    generationController: generationController,
+    messageGenerationService: messageGeneration,
+    contextProvider: context,
+    viewModel: viewModel,
+    backgroundCoordinator: background,
+  );
+  return (actions: actions, viewModel: viewModel);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues(const {});
+
+  testWidgets('OAuth 失效保留部分回复并持久化恢复入口，不触发普通错误提示', (tester) async {
+    final service = _ThrowingFinalizeChatService(failCompletion: false);
+    final settings = SettingsProvider(createBusinessTestPreferences());
+    final background = MobileBackgroundCoordinator(
+      platform: TargetPlatform.linux,
+    );
+    addTearDown(background.dispose);
+    addTearDown(settings.dispose);
+    final errors = <String>[];
+    late ChatActions actions;
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<SettingsProvider>.value(value: settings),
+          ChangeNotifierProvider<ChatService>.value(value: service),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) {
+              actions = _actionsFor(
+                context,
+                service,
+                settings,
+                background,
+              ).actions;
+              actions.onStreamError = errors.add;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
+    );
+    final state = StreamingState(
+      GenerationContext(
+        assistantMessage: ChatMessage(
+          id: 'assistant-1',
+          role: 'assistant',
+          content: '',
+          providerId: 'account',
+          conversationId: 'conversation-1',
+          isStreaming: true,
+        ),
+        apiMessages: const [],
+        userImagePaths: const [],
+        allowImagesApiRouting: false,
+        providerKey: 'account',
+        modelId: 'test',
+        assistant: null,
+        settings: settings,
+        config: ProviderConfig(
+          id: 'account',
+          enabled: true,
+          name: 'ChatGPT',
+          apiKey: '',
+          baseUrl: '',
+        ),
+        toolDefs: const [],
+        supportsReasoning: false,
+        enableReasoning: false,
+        streamOutput: true,
+      ),
+    );
+    state.fullContentRaw = 'Partial reply';
+    await actions.debugHandleStreamError(
+      const ProviderOAuthException(
+        ProviderOAuthFailure.loginRequired,
+        providerId: 'account',
+      ),
+      state,
+    );
+    expect(state.terminalPersisted, true);
+    expect(service.lastErrorCode, 'oauth_login_required');
+    expect(service.terminalStates, [GenerationRunState.failed]);
+    expect(service.lastMessage!.content, 'Partial reply');
+    expect(
+      service.lastMessage!.parts
+          .whereType<ProviderAuthErrorPart>()
+          .single
+          .providerId,
+      'account',
+    );
+    expect(service.lastMessage!.isStreaming, false);
+    expect(errors, isEmpty);
+  });
 
   testWidgets('终态写库失败仍走 failed 收尾并通知 onStreamError', (tester) async {
     final service = _ThrowingFinalizeChatService();
     final settings = SettingsProvider(createBusinessTestPreferences());
     final streamErrors = <String>[];
     var assistantFinishedCount = 0;
-    late HomeViewModel viewModel;
+    late ChatActions actions;
+    const channel = MethodChannel('test.chat_actions.background');
+    final notifications = <String?>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          channel,
+          (call) async => call.method == 'sync' ? <String, dynamic>{} : null,
+        );
+    final background = MobileBackgroundCoordinator(
+      platform: TargetPlatform.android,
+      channel: channel,
+      notificationSender: ({required conversationId, title, body}) async {
+        expect(service.terminalStates.last, GenerationRunState.failed);
+        notifications.add(body);
+      },
+    );
+    addTearDown(background.dispose);
+    await background.configure(
+      const MobileBackgroundSettings(notificationsEnabled: true),
+      await AppLocalizations.delegate.load(const Locale('en')),
+    );
+    await background.start(
+      id: 'assistant-1',
+      conversationId: 'conversation-1',
+      title: 'Test',
+      cancel: () async {},
+    );
 
     await tester.pumpWidget(
       MultiProvider(
@@ -60,44 +240,10 @@ void main() {
           supportedLocales: AppLocalizations.supportedLocales,
           home: Builder(
             builder: (context) {
-              final chatController = ChatController(chatService: service);
-              final streamController = StreamController(
-                onStateChanged: () {},
-                getSettingsProvider: () => settings,
-                getCurrentConversationId: () => 'conversation-1',
-              );
-              final messageBuilder = MessageBuilderService(
-                chatService: service,
-                contextProvider: context,
-              );
-              final generationController = GenerationController(
-                chatService: service,
-                chatController: chatController,
-                streamController: streamController,
-                messageBuilderService: messageBuilder,
-                contextProvider: context,
-                onStateChanged: () {},
-                getTitleForLocale: (_) => 'title',
-              );
-              final messageGeneration = MessageGenerationService(
-                chatService: service,
-                messageBuilderService: messageBuilder,
-                generationController: generationController,
-                streamController: streamController,
-                contextProvider: context,
-              );
-              viewModel = HomeViewModel(
-                chatService: service,
-                messageBuilderService: messageBuilder,
-                messageGenerationService: messageGeneration,
-                generationController: generationController,
-                streamController: streamController,
-                chatController: chatController,
-                contextProvider: context,
-                getTitleForLocale: (_) => 'title',
-              );
-              viewModel.debugChatActions.onStreamError = streamErrors.add;
-              viewModel.onAssistantMessageFinished = (_) {
+              final graph = _actionsFor(context, service, settings, background);
+              actions = graph.actions;
+              actions.onStreamError = streamErrors.add;
+              actions.onAssistantMessageFinished = (_) {
                 assistantFinishedCount++;
               };
               return const SizedBox.shrink();
@@ -139,17 +285,16 @@ void main() {
     state.fullContentRaw = 'partial';
 
     await expectLater(
-      viewModel.debugChatActions.debugFinishStreaming(state),
+      actions.debugFinishStreaming(state),
       throwsA(isA<StateError>()),
     );
     expect(state.finishHandled, isTrue);
     expect(state.terminalPersisted, isFalse);
     expect(service.terminalStates, [GenerationRunState.completed]);
+    expect(background.activeTaskIds, {'assistant-1'});
+    expect(notifications, isEmpty);
 
-    await viewModel.debugChatActions.debugHandleStreamError(
-      StateError('persist failed'),
-      state,
-    );
+    await actions.debugHandleStreamError(StateError('persist failed'), state);
 
     expect(state.terminalPersisted, isTrue);
     expect(service.terminalStates, [
@@ -158,5 +303,7 @@ void main() {
     ]);
     expect(streamErrors, ['Bad state: persist failed']);
     expect(assistantFinishedCount, 0);
+    expect(background.activeTaskIds, isEmpty);
+    expect(notifications, ['Generation failed. Open the chat for details.']);
   });
 }

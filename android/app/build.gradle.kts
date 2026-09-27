@@ -27,6 +27,11 @@ android {
         versionName = flutter.versionName
     }
 
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+        unitTests.isIncludeAndroidResources = true
+    }
+
     val keystorePropertiesFile = rootProject.file("key.properties")
     val keystoreProperties = Properties()
     if (keystorePropertiesFile.exists()) {
@@ -67,4 +72,6 @@ dependencies {
     implementation("androidx.browser:browser:1.9.0")
     // Required for core library desugaring (used by flutter_local_notifications)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.16.1")
 }

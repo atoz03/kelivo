@@ -7,9 +7,9 @@ import '../../../core/providers/settings_provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ios_tactile.dart';
 import '../../model/widgets/ocr_prompt_sheet.dart';
-import 'package:Kelivo/theme/app_font_weights.dart';
 import 'package:Kelivo/theme/app_semantic_colors.dart';
 import '../../../shared/widgets/section_card.dart';
+import 'tools_sheet_row.dart';
 
 class BottomToolsSheet extends StatelessWidget {
   const BottomToolsSheet({
@@ -18,16 +18,12 @@ class BottomToolsSheet extends StatelessWidget {
     this.onPhotos,
     this.onUpload,
     this.onClear,
-    this.clearLabel,
-    this.assistantId,
   });
 
   final VoidCallback? onCamera;
   final VoidCallback? onPhotos;
   final VoidCallback? onUpload;
   final VoidCallback? onClear;
-  final String? clearLabel;
-  final String? assistantId;
 
   @override
   Widget build(BuildContext context) {
@@ -135,11 +131,7 @@ class BottomToolsSheet extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    _LearningAndClearSection(
-                      clearLabel: clearLabel,
-                      onClear: onClear,
-                      assistantId: assistantId,
-                    ),
+                    _OcrAndContextSection(onClear: onClear),
                   ],
                 ),
               ),
@@ -151,78 +143,23 @@ class BottomToolsSheet extends StatelessWidget {
   }
 }
 
-class _LearningAndClearSection extends StatefulWidget {
-  const _LearningAndClearSection({
-    this.onClear,
-    this.clearLabel,
-    this.assistantId,
-  });
+class _OcrAndContextSection extends StatelessWidget {
+  const _OcrAndContextSection({this.onClear});
+
   final VoidCallback? onClear;
-  final String? clearLabel;
-  final String? assistantId;
-
-  @override
-  State<_LearningAndClearSection> createState() =>
-      _LearningAndClearSectionState();
-}
-
-class _LearningAndClearSectionState extends State<_LearningAndClearSection> {
-  Widget _row({
-    required IconData icon,
-    required String label,
-    bool selected = false,
-    VoidCallback? onTap,
-    VoidCallback? onLongPress,
-    Widget? trailing,
-  }) {
-    final cs = Theme.of(context).colorScheme;
-    final onColor = selected ? cs.primary : cs.onSurface;
-    final radius = BorderRadius.circular(14);
-    return SizedBox(
-      height: 48,
-      child: IosCardPress(
-        borderRadius: radius,
-        baseColor: sheetTileColor(context),
-        duration: const Duration(milliseconds: 260),
-        onTap: onTap,
-        onLongPress: onLongPress,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: onColor),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: AppFontWeights.medium,
-                  color: onColor,
-                ),
-              ),
-            ),
-            trailing ??
-                (selected
-                    ? Icon(Lucide.Check, size: 18, color: cs.primary)
-                    : const SizedBox(width: 18)),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final settings = context.watch<SettingsProvider>();
-    final cs = Theme.of(context).colorScheme;
     final hasOcrModel =
         settings.ocrModelProvider != null && settings.ocrModelId != null;
+    final chevron = ToolsSheetRow.chevron(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (hasOcrModel) ...[
-          _row(
+          ToolsSheetRow(
             icon: Lucide.Eye,
             label: l10n.bottomToolsSheetOcr,
             selected: settings.ocrEnabled,
@@ -235,20 +172,16 @@ class _LearningAndClearSectionState extends State<_LearningAndClearSection> {
             },
             onLongPress: () => showOcrPromptSheet(context),
           ),
+          const SizedBox(height: 8),
         ],
-        const SizedBox(height: 8),
-        _row(
+        ToolsSheetRow(
           icon: Lucide.workflow,
           label: l10n.contextManagement,
           onTap: () {
             Haptics.light();
-            widget.onClear?.call();
+            onClear?.call();
           },
-          trailing: Icon(
-            Lucide.ChevronRight,
-            size: 18,
-            color: cs.onSurface.withValues(alpha: 0.55),
-          ),
+          trailing: chevron,
         ),
       ],
     );

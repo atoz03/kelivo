@@ -247,9 +247,15 @@ class _PromptTabState extends State<_PromptTab> {
     );
   }
 
-  Future<void> _showAppendCurrentTimeInfoDialog(BuildContext context) {
+  Future<void> _showAppendCurrentTimeInfoDialog(
+    BuildContext context,
+    Assistant assistant,
+  ) {
     final l10n = AppLocalizations.of(context)!;
-    const example = '<current_time>Mon 2026-08-08 14:30:05</current_time>';
+    final example = MemoryPrompts.formatCurrentTimeTag(
+      DateTime(2026, 8, 8, 14, 30, 5),
+      useIso8601: assistant.useIso8601TimeFormat,
+    );
     return showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -457,8 +463,21 @@ class _PromptTabState extends State<_PromptTab> {
         _AppendCurrentTimeRow(
           value: a.appendCurrentTimeToUserMessage,
           onChanged: (enabled) => _onAppendCurrentTimeChanged(a, enabled),
-          onInfoTap: () => _showAppendCurrentTimeInfoDialog(context),
+          onInfoTap: () => _showAppendCurrentTimeInfoDialog(context, a),
         ),
+        if (a.appendCurrentTimeToUserMessage) ...[
+          _iosDivider(context),
+          _iosSwitchRow(
+            context,
+            icon: Lucide.clock,
+            label: l10n.assistantEditPromptIso8601Title,
+            subtitle: l10n.assistantEditPromptIso8601Subtitle,
+            value: a.useIso8601TimeFormat,
+            onChanged: (value) => context
+                .read<AssistantProvider>()
+                .updateAssistant(a.copyWith(useIso8601TimeFormat: value)),
+          ),
+        ],
       ],
     );
 
@@ -894,6 +913,21 @@ class _PromptTabState extends State<_PromptTab> {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
       children: [
         sysCard,
+        const SizedBox(height: 12),
+        SectionCard(
+          dividers: true,
+          children: [
+            _ConversationPromptOption(
+              icon: Lucide.FileText,
+              title: l10n.assistantConversationSystemPromptTitle,
+              subtitle: l10n.assistantConversationSystemPromptHint,
+              value: a.allowConversationSystemPrompt,
+              onChanged: (value) => ap.updateAssistant(
+                a.copyWith(allowConversationSystemPrompt: value),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 12),
         appendTimeCard,
         const SizedBox(height: 12),
@@ -1715,4 +1749,71 @@ class _VarExplainList extends StatelessWidget {
       ],
     );
   }
+}
+
+class _ConversationPromptOption extends StatelessWidget {
+  const _ConversationPromptOption({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) => IosCardPress(
+    baseColor: Colors.transparent,
+    borderRadius: BorderRadius.zero,
+    pressedScale: 1,
+    haptics: false,
+    onTap: () => onChanged(!value),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 36,
+          child: Icon(
+            icon,
+            size: 20,
+            color: value
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: AppFontWeights.semibold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.3,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        IosSwitch(value: value, onChanged: onChanged, semanticLabel: title),
+      ],
+    ),
+  );
 }
