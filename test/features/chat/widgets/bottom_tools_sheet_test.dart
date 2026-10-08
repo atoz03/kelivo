@@ -22,6 +22,9 @@ void main() {
   Future<AppLocalizations> pumpSheet(
     WidgetTester tester, {
     VoidCallback? onClear,
+    VoidCallback? onCamera,
+    VoidCallback? onPhotos,
+    VoidCallback? onUpload,
   }) async {
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1.0;
@@ -33,7 +36,14 @@ void main() {
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(body: BottomToolsSheet(onClear: onClear)),
+          home: Scaffold(
+            body: BottomToolsSheet(
+              onClear: onClear,
+              onCamera: onCamera,
+              onPhotos: onPhotos,
+              onUpload: onUpload,
+            ),
+          ),
         ),
       ),
     );
@@ -45,11 +55,27 @@ void main() {
     (widget) => widget is ToolsSheetRow && widget.label == label,
   );
 
+  testWidgets('hides camera and photos when those callbacks are null', (
+    tester,
+  ) async {
+    final l10n = await pumpSheet(tester, onUpload: () {});
+
+    expect(find.text(l10n.bottomToolsSheetCamera), findsNothing);
+    expect(find.text(l10n.bottomToolsSheetPhotos), findsNothing);
+    expect(find.text(l10n.bottomToolsSheetUpload), findsOneWidget);
+  });
+
   testWidgets('offers attachments and context management without OCR', (
     tester,
   ) async {
     var cleared = 0;
-    final l10n = await pumpSheet(tester, onClear: () => cleared++);
+    final l10n = await pumpSheet(
+      tester,
+      onClear: () => cleared++,
+      onCamera: () {},
+      onPhotos: () {},
+      onUpload: () {},
+    );
 
     expect(find.text(l10n.bottomToolsSheetCamera), findsOneWidget);
     expect(find.text(l10n.bottomToolsSheetPhotos), findsOneWidget);

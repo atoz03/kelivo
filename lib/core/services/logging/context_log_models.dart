@@ -238,7 +238,13 @@ ContextSource inferContextSource(Map<String, dynamic> message) {
 }
 
 /// Rebuild display segments from the tagged api message (post-trim, pre-strip).
-List<ContextSegment> segmentsFromTaggedMessage(Map<String, dynamic> message) {
+/// Usage accounting passes [elideDataUris] as false to retain the sent text;
+/// diagnostic logs keep the default elision of large encoded payloads.
+List<ContextSegment> segmentsFromTaggedMessage(
+  Map<String, dynamic> message, {
+  bool estimateTokenCounts = true,
+  bool elideDataUris = true,
+}) {
   var content = extractApiMessageText(message['content']);
   final toolCalls = message['tool_calls'];
   if (toolCalls != null) {
@@ -253,12 +259,12 @@ List<ContextSegment> segmentsFromTaggedMessage(Map<String, dynamic> message) {
 
   final tags = ContextSegmentTags.read(message);
   if (tags.isEmpty) {
-    final text = truncateBase64DataUris(content);
+    final text = elideDataUris ? truncateBase64DataUris(content) : content;
     return [
       ContextSegment(
         source: inferContextSource(message),
         text: text,
-        tokens: estimateTokens(text),
+        tokens: estimateTokenCounts ? estimateTokens(text) : 0,
       ),
     ];
   }
@@ -279,23 +285,27 @@ List<ContextSegment> segmentsFromTaggedMessage(Map<String, dynamic> message) {
       slice = content.substring(offset, end);
       offset = end;
     }
-    final text = truncateBase64DataUris(slice);
+    final text = elideDataUris ? truncateBase64DataUris(slice) : slice;
     out.add(
       ContextSegment(
         source: source,
         text: text,
-        tokens: estimateTokens(text),
+        tokens: estimateTokenCounts ? estimateTokens(text) : 0,
         meta: meta,
       ),
     );
   }
-  return splitMemorySnapshotUserText(out);
+  return splitMemorySnapshotUserText(
+    out,
+    estimateTokenCounts: estimateTokenCounts,
+  );
 }
 
 /// If a memory-snapshot segment still contains the user turn, split it.
 List<ContextSegment> splitMemorySnapshotUserText(
-  List<ContextSegment> segments,
-) {
+  List<ContextSegment> segments, {
+  bool estimateTokenCounts = true,
+}) {
   final out = <ContextSegment>[];
   for (final segment in segments) {
     if (segment.source != ContextSource.memorySnapshot) {
@@ -311,7 +321,7 @@ List<ContextSegment> splitMemorySnapshotUserText(
       ContextSegment(
         source: ContextSource.memorySnapshot,
         text: split.prefix,
-        tokens: estimateTokens(split.prefix),
+        tokens: estimateTokenCounts ? estimateTokens(split.prefix) : 0,
         meta: {...?segment.meta, 'kind': split.kind},
       ),
     );
@@ -319,7 +329,7 @@ List<ContextSegment> splitMemorySnapshotUserText(
       ContextSegment(
         source: ContextSource.chatHistory,
         text: split.rest,
-        tokens: estimateTokens(split.rest),
+        tokens: estimateTokenCounts ? estimateTokens(split.rest) : 0,
       ),
     );
   }

@@ -27,6 +27,32 @@ Map<String, dynamic> _choice({
 }
 
 void main() {
+  test('a tool-only message with null content preserves its reasoning', () {
+    final decoder = ChatCompletionsStreamDecoder(needsReasoningEcho: true);
+    final result = decoder.accept(
+      _event({
+        'choices': [
+          {
+            'message': {
+              'content': null,
+              'reasoning_content': ' plan\n',
+              'tool_calls': [
+                {
+                  'id': 'a',
+                  'type': 'function',
+                  'function': {'name': 'lookup', 'arguments': '{}'},
+                },
+              ],
+            },
+            'finish_reason': 'tool_calls',
+          },
+        ],
+      }),
+    );
+    expect(decoder.reasoningEcho, ' plan\n');
+    expect(result.chunks.first, isA<ReasoningDelta>());
+    expect(result.chunks.whereType<ReasoningDelta>().single.text, ' plan\n');
+  });
   test('streams text and reasoning without emitting Finish', () {
     final decoder = ChatCompletionsStreamDecoder();
     final reasoning = decoder.accept(
@@ -229,6 +255,68 @@ void main() {
       'title': 'https://example.com',
     });
   });
+
+  test(
+    'accumulates source annotations without losing titles or duplicates',
+    () {
+      final decoder = ChatCompletionsStreamDecoder();
+      decoder.accept(
+        _event({
+          'citations': ['https://example.com/first'],
+        }),
+      );
+      final titled = decoder.accept(
+        _event(
+          _choice(
+            message: {
+              'annotations': [
+                {
+                  'type': 'url_citation',
+                  'url_citation': {
+                    'url': 'https://example.com/first',
+                    'title': 'First',
+                  },
+                },
+              ],
+            },
+          ),
+        ),
+      );
+      final update = _choice(
+        delta: {
+          'annotations': [
+            {
+              'type': 'url_citation',
+              'url': 'https://example.com/first',
+              'title': '',
+            },
+            {
+              'type': 'url_citation',
+              'url': 'https://example.com/second',
+              'title': 'Second',
+            },
+            {'type': 'url_citation'},
+          ],
+        },
+      );
+      final next = decoder.accept(_event(update));
+      expect(
+        next.chunks.whereType<ServerToolEnd>().single.id,
+        titled.chunks.whereType<ServerToolEnd>().single.id,
+      );
+      expect(
+        (next.chunks.whereType<ServerToolEnd>().single.output as Map)['items'],
+        [
+          {'index': 1, 'url': 'https://example.com/first', 'title': 'First'},
+          {'index': 2, 'url': 'https://example.com/second', 'title': 'Second'},
+        ],
+      );
+      expect(
+        decoder.accept(_event(update)).chunks.whereType<ServerToolEnd>(),
+        isEmpty,
+      );
+    },
+  );
 
   test('emits Image events only when image output is requested', () {
     final off = ChatCompletionsStreamDecoder();

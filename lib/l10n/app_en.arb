@@ -191,6 +191,22 @@
   "statsPageOutputTokens": "Output Tokens",
   "statsPageCachedTokens": "Cached Tokens",
   "statsPageLaunchCount": "App Launches",
+  "statsPageCost": "Cost ({currency})",
+  "@statsPageCost": {
+    "placeholders": {
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "statsPageModelsWithoutPricing": "{count, plural, one{{count} model without pricing} other{{count} models without pricing}}",
+  "@statsPageModelsWithoutPricing": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "statsPageUsageTrendTitle": "Usage Trend",
   "statsPageModelUsageTitle": "Model Usage",
   "statsPageAssistantUsageTitle": "Assistant Usage",
@@ -301,7 +317,6 @@
   "displaySettingsPageLanguageChineseLabel": "Simplified Chinese",
   "displaySettingsPageLanguageEnglishLabel": "English",
   "homePagePleaseSelectModel": "Please select a model first",
-  "homePageAudioAttachmentUnsupported": "The current model does not support audio attachments. Switch to a model that supports audio input or remove the audio file and try again.",
   "homePagePleaseSetupTranslateModel": "Please set a translation model first",
   "homePageTranslating": "Translating...",
   "homePageTranslateFailed": "Translation failed: {error}",
@@ -388,7 +403,9 @@
   "assistantEditContextMessagesTitle": "Context Messages",
   "assistantEditContextMessagesDescription": "How many recent messages to keep in context",
   "assistantEditStreamOutputTitle": "Stream Output",
-  "assistantEditThinkingBudgetTitle": "Thinking Budget",
+  "assistantEditThinkingBudgetTitle": "Thinking",
+  "assistantEditReasoningFollowDefault": "Follow model default",
+  "assistantEditReasoningClampedSubtitle": "The actual level is clamped to what each model supports",
   "assistantEditMaxTokensTitle": "Max Tokens",
   "assistantEditMaxTokensDescription": "Leave empty for unlimited",
   "assistantEditMaxTokensHint": "Unlimited",
@@ -741,7 +758,7 @@
   "backupPageSelectImportMode": "Select Import Mode",
   "backupPageSelectImportModeDescription": "Choose a restore mode. The chat and file switches determine which components are included.",
   "backupPageOverwriteMode": "Complete Overwrite",
-  "backupPageOverwriteModeDescription": "Replace the selected components; keep unselected components and unrelated local settings",
+  "backupPageOverwriteModeDescription": "Replace the selected components; keep unselected components and unrelated local settings. Replacing chats also clears local unsent drafts.",
   "backupPageMergeMode": "Merge",
   "backupPageMergeModeDescription": "Keep local data and add backup data. Identical conversations are skipped and conflicting conversations receive new IDs.",
   "backupPageRestore": "Restore",
@@ -763,6 +780,17 @@
   "backupPageBackupUploaded": "Backup uploaded",
   "backupProgressCancel": "Cancel",
   "backupProgressCancelled": "Cancelled",
+  "backupProgressFailed": "Operation failed",
+  "backupProgressFailedAt": "Failed during: {phase}",
+  "@backupProgressFailedAt": {
+    "placeholders": {
+      "phase": {
+        "type": "String"
+      }
+    }
+  },
+  "backupProgressCopyError": "Copy error",
+  "backupProgressErrorCopied": "Error copied",
   "backupProgressPreparing": "Preparing",
   "backupProgressSnapshotting": "Creating database snapshot",
   "backupProgressPacking": "Packing",
@@ -949,27 +977,42 @@
   "messageMoreSheetCreateBranch": "Create Branch",
   "messageMoreSheetDelete": "Delete This Version",
   "messageMoreSheetDeleteAllVersions": "Delete All Versions",
-  "reasoningBudgetSheetOff": "Off",
-  "reasoningBudgetSheetAuto": "Auto",
-  "reasoningBudgetSheetLight": "Light Reasoning",
-  "reasoningBudgetSheetMedium": "Medium Reasoning",
-  "reasoningBudgetSheetHeavy": "Heavy Reasoning",
-  "reasoningBudgetSheetXhigh": "Extreme Reasoning",
-  "reasoningBudgetSheetMax": "Maximum Reasoning",
   "reasoningBudgetSheetTitle": "Reasoning Chain Strength",
-  "reasoningBudgetSheetOffSubtitle": "Turn off reasoning, answer directly",
-  "reasoningBudgetSheetAutoSubtitle": "Let the model decide reasoning level automatically",
-  "reasoningBudgetSheetLightSubtitle": "Use light reasoning to answer questions",
-  "reasoningBudgetSheetMediumSubtitle": "Use moderate reasoning to answer questions",
-  "reasoningBudgetSheetHeavySubtitle": "Use heavy reasoning for complex questions",
-  "reasoningBudgetSheetXhighSubtitle": "Use maximum reasoning depth for the toughest problems",
-  "reasoningBudgetSheetCustomLabel": "Custom Reasoning Budget",
-  "reasoningBudgetSheetCustomHint": "e.g. 2048 (-1 auto, 0 off)",
-  "reasoningBudgetSliderLow": "Low",
-  "reasoningBudgetSliderMedium": "Medium",
-  "reasoningBudgetSliderHigh": "High",
-  "reasoningBudgetSliderXhigh": "XHigh",
-  "reasoningBudgetSliderMax": "Max",
+  "reasoningLevelSheetTitle": "Reasoning",
+  "reasoningLevelAuto": "Auto",
+  "reasoningLevelAutoSubtitle": "Uses the model or provider default",
+  "reasoningLevelOff": "Off",
+  "reasoningLevelOffSubtitle": "Turn off reasoning and answer directly",
+  "reasoningLevelMinimal": "Minimal",
+  "reasoningLevelMinimalSubtitle": "Use the lightest reasoning to answer questions",
+  "reasoningLevelLow": "Low",
+  "reasoningLevelLowSubtitle": "Use light reasoning to answer questions",
+  "reasoningLevelMedium": "Medium",
+  "reasoningLevelMediumSubtitle": "Use moderate reasoning to answer questions",
+  "reasoningLevelHigh": "High",
+  "reasoningLevelHighSubtitle": "Use heavy reasoning for complex questions",
+  "reasoningLevelXhigh": "Extra High",
+  "reasoningLevelXhighSubtitle": "Use very high reasoning depth for harder problems",
+  "reasoningLevelMax": "Max",
+  "reasoningLevelMaxSubtitle": "Use maximum reasoning depth for the toughest problems",
+  "reasoningLevelFollowModelDefaultSubtitle": "Use the model's default when the assistant doesn't set one",
+  "reasoningLevelNoReasoning": "This model does not support reasoning",
+  "reasoningLevelCustomBudget": "Custom Reasoning Budget",
+  "reasoningLevelCustomBudgetHint": "Token budget, e.g. 2048",
+  "reasoningLevelCompactMin": "min",
+  "reasoningLevelCompactLow": "low",
+  "reasoningLevelCompactMid": "mid",
+  "reasoningLevelCompactHigh": "high",
+  "reasoningLevelCompactXhigh": "xhigh",
+  "reasoningLevelCompactMax": "max",
+  "reasoningLevelBudgetTokens": "{budget} tokens",
+  "@reasoningLevelBudgetTokens": {
+    "placeholders": {
+      "budget": {
+        "type": "String"
+      }
+    }
+  },
   "chatMessageWidgetFileNotFound": "File not found: {fileName}",
   "@chatMessageWidgetFileNotFound": {
     "placeholders": {
@@ -1024,6 +1067,12 @@
       "query": {
         "type": "String"
       }
+    }
+  },
+  "chatMessageWidgetWebFetch": "Read page: {target}",
+  "@chatMessageWidgetWebFetch": {
+    "placeholders": {
+      "target": { "type": "String" }
     }
   },
   "chatMessageWidgetBuiltinSearch": "Built-in Search",
@@ -1292,11 +1341,54 @@
   "chatInputBarVoiceStopTooltip": "Stop and transcribe to input",
   "chatInputBarVoiceSendTooltip": "Transcribe and send",
   "chatInputBarVoiceTranscribing": "Recognizing…",
+  "chatInputBarVoiceAttachAudioTooltip": "Stop and attach as audio",
+  "chatInputBarVoiceSendAudioTooltip": "Send recording",
+  "chatInputBarVoiceSavingAudio": "Saving audio…",
+  "audioClipPlayTooltip": "Play audio",
+  "audioClipPauseTooltip": "Pause",
+  "audioClipPlaybackFailed": "Couldn't play this audio",
   "chatInputBarImageProcessing": "Processing image",
   "chatInputBarImageMode": "Image mode",
   "chatInputBarDisableImageModeTooltip": "Turn off image mode",
   "chatInputBarQueuedPending": "Queued to send",
   "chatInputBarQueuedCancel": "Cancel Queue",
+  "chatInputBarExpand": "Expand",
+  "chatInputBarCollapse": "Collapse",
+  "contextUsageTitle": "Context window",
+  "contextUsageStateExact": "Exact (from last response)",
+  "contextUsageStateExactCalibrated": "Exact (breakdown scaled from estimate)",
+  "contextUsageStateEstimated": "Estimated",
+  "contextUsageStateStale": "Stale, updating…",
+  "contextUsageStateComputing": "Computing…",
+  "contextUsageStateNone": "No data yet",
+  "contextUsageBucketSystem": "System prompt",
+  "contextUsageBucketHistory": "Messages",
+  "contextUsageBucketTools": "Built-in tools",
+  "contextUsageBucketMemory": "Memory",
+  "contextUsageBucketSearch": "Search prompt",
+  "contextUsageBucketMcpTools": "MCP tools",
+  "contextUsageBucketAttachments": "Attachments",
+  "contextUsageBucketDraft": "Draft",
+  "contextUsageBucketUsed": "Used",
+  "contextUsageFreeSpace": "Free space",
+  "contextUsageUsedWindow": "{used} / {window} ({percent}%)",
+  "@contextUsageUsedWindow": {
+    "description": "Context usage summary: used tokens, window size, and percent",
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "window": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "contextUsageNoWindow": "No context window",
+  "contextUsageSetWindow": "Set context window",
+  "contextUsageRefresh": "Refresh",
   "mcpPageBackTooltip": "Back",
   "mcpPageAddMcpTooltip": "Add MCP",
   "mcpPageNoServers": "No MCP servers",
@@ -1544,6 +1636,110 @@
   "modelDetailSheetHeaderValueHint": "Header Value",
   "modelDetailSheetBodyKeyHint": "Body Key",
   "modelDetailSheetBodyJsonHint": "Body JSON",
+  "modelSpecFormSourceCustom": "Custom",
+  "modelSpecFormSourceCatalog": "Catalog",
+  "modelSpecFormSourceInferred": "Inferred",
+  "modelSpecFormSourceDefault": "Default",
+  "modelSpecFormReset": "Reset to default",
+  "modelSpecFormModalitiesSection": "Modalities & abilities",
+  "modelSpecFormImageType": "Image",
+  "modelSpecFormAudioMode": "Audio",
+  "modelSpecFormVideoMode": "Video",
+  "modelSpecFormPdfMode": "PDF",
+  "modelSpecFormStructuredOutputAbility": "Structured Output",
+  "modelSpecFormReasoningSection": "Reasoning",
+  "modelSpecFormDialect": "Dialect",
+  "modelSpecFormDialectNone": "None",
+  "modelSpecFormDialectNoneSubtitle": "No reasoning fields",
+  "modelSpecFormDialectOpenaiReasoningEffort": "OpenAI reasoning effort",
+  "modelSpecFormDialectOpenaiReasoningEffortSubtitle": "reasoning_effort",
+  "modelSpecFormDialectOpenaiResponsesReasoning": "OpenAI Responses reasoning",
+  "modelSpecFormDialectOpenaiResponsesReasoningSubtitle": "reasoning.effort",
+  "modelSpecFormDialectOpenrouterReasoning": "OpenRouter reasoning",
+  "modelSpecFormDialectOpenrouterReasoningSubtitle": "reasoning",
+  "modelSpecFormDialectAnthropicBudget": "Anthropic budget",
+  "modelSpecFormDialectAnthropicBudgetSubtitle": "thinking.budget_tokens",
+  "modelSpecFormDialectAnthropicAdaptiveEffort": "Anthropic adaptive effort",
+  "modelSpecFormDialectAnthropicAdaptiveEffortSubtitle": "thinking + output_config.effort",
+  "modelSpecFormDialectAnthropicEffort": "Anthropic effort",
+  "modelSpecFormDialectAnthropicEffortSubtitle": "thinking + output_config.effort",
+  "modelSpecFormDialectGeminiThinkingBudget": "Gemini thinking budget",
+  "modelSpecFormDialectGeminiThinkingBudgetSubtitle": "thinkingConfig.thinkingBudget",
+  "modelSpecFormDialectGeminiThinkingLevel": "Gemini thinking level",
+  "modelSpecFormDialectGeminiThinkingLevelSubtitle": "thinkingConfig.thinkingLevel",
+  "modelSpecFormDialectQwenEnableThinking": "Qwen enable thinking",
+  "modelSpecFormDialectQwenEnableThinkingSubtitle": "enable_thinking",
+  "modelSpecFormDialectThinkingType": "Thinking type",
+  "modelSpecFormDialectThinkingTypeSubtitle": "thinking.type",
+  "modelSpecFormDialectSiliconflowEnableThinking": "SiliconFlow enable thinking",
+  "modelSpecFormDialectSiliconflowEnableThinkingSubtitle": "enable_thinking",
+  "modelSpecFormDialectInternThinkingMode": "Intern thinking mode",
+  "modelSpecFormDialectInternThinkingModeSubtitle": "thinking_mode",
+  "modelSpecFormDialectChatTemplateKwargs": "Chat template kwargs",
+  "modelSpecFormDialectChatTemplateKwargsSubtitle": "chat_template_kwargs.enable_thinking",
+  "modelSpecFormDialectKimiThinking": "Kimi thinking",
+  "modelSpecFormDialectKimiThinkingSubtitle": "thinking",
+  "modelSpecFormDialectCustom": "Custom JSON",
+  "modelSpecFormDialectCustomSubtitle": "Per-level JSON patch",
+  "modelSpecFormLevels": "Supported levels",
+  "modelSpecFormCanDisable": "Allow disabling",
+  "modelSpecFormDefaultLevel": "Default level",
+  "modelSpecFormBudgets": "Token budgets",
+  "modelSpecFormBudgetPlaceholder": "{tokens}",
+  "@modelSpecFormBudgetPlaceholder": {
+    "placeholders": {
+      "tokens": {
+        "type": "String"
+      }
+    }
+  },
+  "modelSpecFormCustomPatch": "JSON patch ({level})",
+  "@modelSpecFormCustomPatch": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "modelSpecFormCustomPatchHint": "e.g. reasoning_effort: high",
+  "modelSpecFormInvalidJson": "Custom reasoning patch must be a valid JSON object",
+  "modelSpecFormInvalidNumber": "Please enter a valid number",
+  "modelSpecFormStrategySection": "Strategy",
+  "modelSpecFormSampling": "Sampling",
+  "modelSpecFormDynamicWebSearch": "Dynamic filtering search tools",
+  "modelSpecFormDynamicWebSearchSubtitle": "When dynamic filtering is on, send the 2026-03-18 web search and fetch tools",
+  "modelSpecFormRemoteImageUrls": "Remote image links",
+  "modelSpecFormRemoteImageUrlsSubtitle": "Send http(s) image links as-is; when off, remote links are dropped and only local images are sent",
+  "modelSpecFormPromptCacheControl": "Prompt cache marker",
+  "modelSpecFormPromptCacheControlSubtitle": "When prompt caching is on, add cache_control to OpenRouter requests",
+  "modelSpecFormSamplingAlways": "Always",
+  "modelSpecFormSamplingAlwaysSubtitle": "Keep temperature and other sampling fields",
+  "modelSpecFormSamplingOnlyWhenReasoningOff": "Only when reasoning is off",
+  "modelSpecFormSamplingOnlyWhenReasoningOffSubtitle": "Strip sampling fields while the model is thinking",
+  "modelSpecFormSamplingNever": "Never",
+  "modelSpecFormSamplingNeverSubtitle": "Always strip sampling fields",
+  "modelSpecFormReplay": "Reasoning replay",
+  "modelSpecFormReplayNone": "None",
+  "modelSpecFormReplayNoneSubtitle": "Do not send prior reasoning back to the model",
+  "modelSpecFormReplayToolTurns": "Tool turns",
+  "modelSpecFormReplayToolTurnsSubtitle": "Replay reasoning on tool-call turns",
+  "modelSpecFormReplayAll": "All",
+  "modelSpecFormReplayAllSubtitle": "Replay reasoning on every follow-up turn",
+  "modelSpecFormReplayField": "Replay field",
+  "modelSpecFormReplayFieldReasoningContent": "reasoning_content",
+  "modelSpecFormReplayFieldReasoning": "reasoning",
+  "modelSpecFormReplayFieldReasoningDetails": "reasoning_details",
+  "modelSpecFormLimitsSection": "Limits",
+  "modelSpecFormLimitsPricingSection": "Limits & pricing",
+  "modelSpecFormContextWindow": "Context window",
+  "modelSpecFormMaxOutput": "Max output",
+  "modelSpecFormPricingSection": "Pricing / 1M",
+  "modelSpecFormPricingInput": "Input",
+  "modelSpecFormPricingOutput": "Output",
+  "modelSpecFormPricingCacheRead": "Cache read",
+  "modelSpecFormPricingCacheWrite": "Cache write",
+  "modelSpecFormCurrency": "Currency",
+  "modelSpecFormAdvancedSection": "Request",
   "modelSelectSheetSearchHint": "Search models or providers",
   "modelSelectSheetFavoritesSection": "Favorites",
   "modelSelectSheetFollowAssistant": "Follow assistant",
@@ -1570,6 +1766,8 @@
   "providerDetailPageShowTooltip": "Show",
   "providerDetailPageApiPathLabel": "API Path",
   "providerDetailPageResponseApiTitle": "Response API (/responses)",
+  "providerDetailPagePromptCacheKeyTitle": "Send Conversation Cache Key",
+  "providerDetailPagePromptCacheKeyHelp": "Adds a stable prompt_cache_key for each conversation to OpenAI-compatible requests. Enable only if your provider supports it. Custom Body values take precedence; cache hits are not guaranteed.",
   "providerDetailPageAihubmixAppCodeLabel": "APP-Code (10% off)",
   "providerDetailPageAihubmixAppCodeHelp": "Adds header APP-Code requests to get a 10% discount. Only affects AIhubmix.",
   "providerDetailPageClaudePromptCachingTitle": "Claude Prompt Caching",
@@ -1640,6 +1838,50 @@
   "providersPageAddTooltip": "Add",
   "providersPageSearchHint": "Search providers or groups",
   "providersPageProviderAddedSnackbar": "Provider added",
+  "modelCatalogTitle": "Model catalog",
+  "modelCatalogSourceBundled": "Bundled snapshot · {date}",
+  "@modelCatalogSourceBundled": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "modelCatalogSourceRemote": "models.dev · updated {date}",
+  "@modelCatalogSourceRemote": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "modelCatalogAutoUpdate": "Auto-update every 24 hours",
+  "modelCatalogRefresh": "Update now",
+  "modelCatalogUpdated": "Model catalog updated",
+  "modelCatalogRefreshFailed": "Update failed: {error}",
+  "@modelCatalogRefreshFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "modelCatalogProviderCount": "{count} providers",
+  "@modelCatalogProviderCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "modelCatalogModelCount": "{count} models",
+  "@modelCatalogModelCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "providerGroupsGroupLabel": "Group",
   "providerGroupsOther": "Other",
   "providerGroupsOtherUngroupedOption": "Other (Ungrouped)",
@@ -1715,6 +1957,28 @@
   "searchServicesPageSearchProviders": "Search Providers",
   "searchServicesPageGeneralOptions": "General Options",
   "searchServicesPageAutoTestTitle": "Auto-test connections on launch",
+  "searchServicesPageWebFetchSection": "Web page reading",
+  "searchServicesPageWebFetchModeTitle": "Read pages with",
+  "searchServicesPageWebFetchFollow": "Follow search service",
+  "searchServicesPageWebFetchFollowValue": "Follow search · {name}",
+  "@searchServicesPageWebFetchFollowValue": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "searchServicesPageWebFetchFollowSubtitle": "Currently {name}",
+  "@searchServicesPageWebFetchFollowSubtitle": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "searchServicesPageWebFetchLocal": "Local",
+  "searchServicesPageWebFetchLocalSubtitle": "Free. This device requests the page directly.",
+  "searchServicesPageWebFetchProviderSubtitle": "Uses this service's API key and quota",
+  "searchServicesPageWebFetchOff": "Off",
+  "searchServicesPageWebFetchOffSubtitle": "Search only, without reading pages",
+  "searchServicesPageWebFetchFooter": "With web search on, the model can also read full pages. When the search service can't read pages, local reading is used, which can't handle pages that need JavaScript or block bots.",
+  "searchServicesPageWebFetchSupported": "Can read web pages",
   "searchServicesPageMaxResults": "Max Results",
   "searchServicesPageTimeoutSeconds": "Timeout (seconds)",
   "searchServicesPageAtLeastOneServiceRequired": "At least one search service is required",
@@ -1742,6 +2006,7 @@
   "searchServicesAddDialogAdd": "Add",
   "searchServicesFieldCustomUrlOptional": "Custom URL (optional)",
   "searchServicesDialogApiKey": "API Key",
+  "searchServicesDialogApiKeyOptional": "API Key (optional)",
   "searchServicesDialogModel": "Model",
   "searchServicesDialogSystemPrompt": "System Prompt",
   "searchServicesAddDialogInstanceUrl": "Instance URL",
@@ -1840,6 +2105,24 @@
       }
     }
   },
+  "searchServiceEditorTestModeSearch": "Search",
+  "searchServiceEditorTestModeFetch": "Read page",
+  "searchServiceEditorTestUrlHint": "Enter a URL",
+  "searchServiceEditorTestFetchRun": "Run test fetch",
+  "searchServiceEditorTestFetchRunning": "Reading…",
+  "searchServiceEditorTestFetchFailed": "Fetch failed: {message}",
+  "@searchServiceEditorTestFetchFailed": {
+    "placeholders": {
+      "message": { "type": "String" }
+    }
+  },
+  "searchServiceEditorTestFetchStats": "{characters} characters · {seconds}s",
+  "@searchServiceEditorTestFetchStats": {
+    "placeholders": {
+      "characters": { "type": "String" },
+      "seconds": { "type": "String" }
+    }
+  },
   "searchServiceEditorResultOpenTooltip": "Open result",
   "searchServiceEditorDeleteTooltip": "Delete search service",
   "searchServiceEditorDeleteTitle": "Delete search service?",
@@ -1909,10 +2192,14 @@
   "displaySettingsPageShowProviderInChatMessageTitle": "Show Provider After Model Name",
   "displaySettingsPageChatModelIconTitle": "Chat Model Icon",
   "displaySettingsPageShowTokenStatsTitle": "Show Token & Context Stats",
+  "displaySettingsPageShowTotalTokensTitle": "Show tokens for the entire turn",
+  "displaySettingsPageShowTotalTokensSubtitle": "Sum usage across all API requests in a reply. When off, show only the final request. Statistics always include all requests.",
   "displaySettingsPageShowThinkingCardsTitle": "Show Thinking Cards",
   "displaySettingsPageShowThinkingCardsSubtitle": "When off, thinking-process cards are hidden in chat.",
   "displaySettingsPageShowToolCardsTitle": "Show Tool Cards",
   "displaySettingsPageShowToolCardsSubtitle": "When off, tool-use cards are hidden in chat.",
+  "displaySettingsShowReasoningLevelBadge": "Show reasoning level on the button",
+  "displaySettingsShowReasoningLevelBadgeSubtitle": "Show the current level next to the reasoning icon in the input bar",
   "displaySettingsPageAutoCollapseThinkingTitle": "Auto-collapse Thinking",
   "displaySettingsPageCollapseThinkingStepsTitle": "Collapse Thinking Steps",
   "displaySettingsPageShowToolResultSummaryTitle": "Show Tool Result Summary",
@@ -2272,6 +2559,7 @@
   "searchProviderDuckDuckGoDescription": "Privacy-focused DuckDuckGo search via DDGS. No API key required; supports region selection.",
   "searchProviderBraveDescription": "Independent search engine by Brave. Privacy-focused with no tracking or profiling.",
   "searchProviderExaDescription": "Neural search with semantic understanding. Great for research and finding specific content.",
+  "searchProviderExaMcpDescription": "Exa search via MCP. An API key is optional for limited free usage.",
   "searchProviderLinkUpDescription": "Search API with sourced answers. Provides both results and AI-generated summaries.",
   "searchProviderMetasoDescription": "Chinese search by Metaso. Optimized for Chinese content with AI capabilities.",
   "searchProviderSearXNGDescription": "Privacy-respecting metasearch engine. Self-hosted instance required; no tracking.",
@@ -2283,6 +2571,7 @@
   "searchServiceNameDuckDuckGo": "DuckDuckGo",
   "searchServiceNameTavily": "Tavily",
   "searchServiceNameExa": "Exa",
+  "searchServiceNameExaMcp": "Exa MCP",
   "searchServiceNameZhipu": "Zhipu AI",
   "searchServiceNameSearXNG": "SearXNG",
   "searchServiceNameLinkUp": "LinkUp",
@@ -3094,11 +3383,43 @@
       }
     }
   },
+  "tokenDetailFirstToken": "{value}s (first token)",
+  "@tokenDetailFirstToken": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "tokenDetailTotalTokens": "{count} tokens",
   "@tokenDetailTotalTokens": {
     "placeholders": {
       "count": {
         "type": "int"
+      }
+    }
+  },
+  "tokenDetailReasoningTokens": "{count} tokens",
+  "@tokenDetailReasoningTokens": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tokenDetailCacheWriteTokens": "{count} cache write tokens",
+  "@tokenDetailCacheWriteTokens": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tokenDetailCost": "{amount}",
+  "@tokenDetailCost": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
       }
     }
   },
@@ -3426,7 +3747,7 @@
   "localSnapshotActionPin": "Keep this copy",
   "localSnapshotActionUnpin": "Stop keeping",
   "localSnapshotRestoreTitle": "Restore this copy?",
-  "localSnapshotRestoreMessage": "Your current chats and settings will be replaced by this copy from {when}. A copy of what you have now is saved first, so this can be undone.",
+  "localSnapshotRestoreMessage": "Your current chats and settings will be replaced by this copy from {when}. A copy of the current chats and settings is saved first. Unsent drafts are excluded from copies and will be cleared.",
   "@localSnapshotRestoreMessage": {
     "placeholders": {
       "when": {
@@ -3720,6 +4041,14 @@
   },
   "oauthWindow": "Usage window",
   "oauthResetsAt": "Resets {time}",
+  "oauthUsedValue": "Used {value}",
+  "@oauthUsedValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "@oauthResetsAt": {
     "placeholders": {
       "time": {
@@ -3751,5 +4080,34 @@
   "oauthInvalidAuthorizationCode": "Enter the code or callback URL from this login attempt.",
   "oauthSubmitAuthorizationCode": "Complete login",
   "oauthExtraUsage": "Extra usage",
-  "oauthPromptCachingHelp": "Reuse context across messages and choose how long the cache is retained."
+  "oauthPromptCachingHelp": "Reuse context across messages and choose how long the cache is retained.",
+  "composerDraftLabel": "Draft",
+  "composerDraftRecovered": "An unsent message was recovered.",
+  "composerDraftRestore": "Continue editing",
+  "composerDraftDiscard": "Discard",
+  "composerDraftSaveFailed": "Your latest draft could not be saved. It is still in this window.",
+  "composerDraftRetry": "Retry saving",
+  "composerDraftConflictTitle": "This conversation already has a draft",
+  "composerDraftConflictBody": "Append keeps both texts and attachments. Replace discards the existing draft. Nothing is sent automatically.",
+  "composerDraftAppend": "Append",
+  "composerDraftReplace": "Replace draft",
+  "composerDraftMissingFile": "An attachment is unavailable. Remove it or choose the file again.",
+  "composerDraftMessageMissing": "The message being edited no longer exists. Copy the text to a new message or discard this edit.",
+  "composerDraftDeleteNotice": "Unsent drafts in these conversations will also be deleted.",
+  "mcpOAuthSettings": "OAuth settings",
+  "mcpOAuthAutomatic": "Automatic",
+  "mcpOAuthMetadataUrl": "Client metadata document URL",
+  "mcpOAuthClientAuthentication": "Client authentication",
+  "mcpOAuthPublicClient": "Public client",
+  "mcpOAuthRedirectUri": "Local callback URL (optional)",
+  "mcpOAuthFillRedirectExample": "Fill example",
+  "mcpOAuthRedirectHint": "Leave empty to use the platform default. Use an HTTP loopback URL if the service only allows localhost callbacks. Port 0 selects an available port; a pre-registered client may require a fixed port.",
+  "mcpOAuthClientIdRequired": "Enter a client ID or choose automatic registration.",
+  "mcpOAuthMetadataUrlInvalid": "Enter an HTTPS metadata document URL with a path.",
+  "mcpOAuthSecretRequired": "This client authentication method requires a client secret.",
+  "mcpOAuthRedirectInvalid": "Use an HTTP callback on localhost, 127.0.0.1 or [::1], without credentials, query parameters or a fragment.",
+  "mcpOAuthDiscovering": "Discovering authorization server…",
+  "mcpOAuthRegistering": "Preparing authorization…",
+  "mcpOAuthWaitingBrowser": "Waiting for browser authorization…",
+  "mcpOAuthExchangingToken": "Completing sign-in…"
 }

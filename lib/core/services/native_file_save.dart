@@ -60,8 +60,7 @@ class NativeFileSave {
 
     final result = await _channel.invokeMethod<dynamic>('saveFileFromPath', {
       'sourcePath': sourcePath,
-      if (fileName != null && fileName.trim().isNotEmpty)
-        'fileName': fileName.trim(),
+      if (fileName != null && fileName.isNotEmpty) 'fileName': fileName,
     });
     if (result is bool) return result;
     return result == true;

@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
 import '../../database/app_database.dart';
+import '../../database/backup_portability.dart';
 import '../../database/schema_migrations.dart';
 import '../../database/business_repository.dart';
 import '../../database/business_restore_service.dart';
@@ -1032,6 +1033,7 @@ final class RestoreBundleStaging {
     }
     final database = AppDatabase.open(file: databaseFile);
     try {
+      await BackupPortability.sanitizeDatabase(database);
       await BusinessRestoreService(BusinessRepository(database)).overwrite(
         args.settings,
         entityRowIds: args.entityRowIds,

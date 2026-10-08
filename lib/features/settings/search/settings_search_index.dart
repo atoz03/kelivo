@@ -344,7 +344,7 @@ class SettingsSearchIndex {
       (l) => l.settingsPageSearch,
       page: true,
       keywords:
-          'web internet tavily exa brave bing google search 联网 聯網 搜索 搜尋 引擎',
+          'web internet tavily exa brave bing google search fetch url reader 联网 聯網 搜索 搜尋 引擎 抓取 网页 網頁 读取 讀取',
     );
     add(
       'tts',
@@ -544,6 +544,12 @@ class SettingsSearchIndex {
       keywords: 'token usage 令牌 消耗 用量',
     );
     add(
+      'displaySettingsPageShowTotalTokensTitle',
+      SettingsSearchDestination.chatDisplay,
+      (l) => l.displaySettingsPageShowTotalTokensTitle,
+      keywords: 'token usage total API finish 累计 整轮 消耗 用量',
+    );
+    add(
       'displaySettingsPageShowThinkingCardsTitle',
       SettingsSearchDestination.chatDisplay,
       (l) => l.displaySettingsPageShowThinkingCardsTitle,
@@ -552,6 +558,11 @@ class SettingsSearchIndex {
       'displaySettingsPageShowToolCardsTitle',
       SettingsSearchDestination.chatDisplay,
       (l) => l.displaySettingsPageShowToolCardsTitle,
+    );
+    add(
+      'displaySettingsShowReasoningLevelBadge',
+      SettingsSearchDestination.chatDisplay,
+      (l) => l.displaySettingsShowReasoningLevelBadge,
     );
     add(
       'displaySettingsPageEnableDollarLatexTitle',

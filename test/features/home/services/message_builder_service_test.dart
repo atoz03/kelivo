@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,10 +16,6 @@ import 'package:Kelivo/core/services/chat/chat_service.dart';
 import 'package:Kelivo/core/services/api/providers/google/gemini_thought_signature.dart';
 import 'package:Kelivo/core/utils/multimodal_input_utils.dart';
 import 'package:Kelivo/features/home/services/message_builder_service.dart';
-import 'package:Kelivo/features/home/services/message_generation_service.dart';
-import 'package:Kelivo/features/home/controllers/generation_controller.dart';
-import 'package:Kelivo/features/home/controllers/stream_controller.dart'
-    as stream_ctrl;
 import 'package:Kelivo/features/home/services/ocr_service.dart';
 
 import '../../../support/business_test_harness.dart';
@@ -50,26 +49,6 @@ class _FakeChatService extends ChatService {
   }
 }
 
-class _StubGenerationController extends Fake implements GenerationController {}
-
-class _StubStreamController extends Fake
-    implements stream_ctrl.StreamController {}
-
-MessageGenerationService _messageGenerationServiceForAudioCheck() {
-  final chatService = _FakeChatService(const {});
-  final messageBuilderService = MessageBuilderService(
-    chatService: chatService,
-    contextProvider: _FakeBuildContext(),
-  );
-  return MessageGenerationService(
-    chatService: chatService,
-    messageBuilderService: messageBuilderService,
-    generationController: _StubGenerationController(),
-    streamController: _StubStreamController(),
-    contextProvider: _FakeBuildContext(),
-  );
-}
-
 ChatMessage _message({
   required String id,
   required String role,
@@ -90,6 +69,34 @@ ChatMessage _message({
 }
 
 void main() {
+  test(
+    'inlineLocalImages leaves view_image error text and snapshots to the provider',
+    () async {
+      final service = MessageBuilderService(
+        chatService: _FakeChatService(const {}),
+        contextProvider: _FakeBuildContext(),
+      );
+      final dir = await Directory.systemTemp.createTemp('image_error_history_');
+      addTearDown(() => dir.delete(recursive: true));
+      final file = File('${dir.path}/private.png');
+      await file.writeAsBytes([1, 2, 3]);
+      final error = jsonEncode({
+        'error': 'path_error',
+        'message': '/invalid/![](${file.path})',
+      });
+      final snapshot = '![](${file.path})';
+      final messages = <Map<String, dynamic>>[
+        {'role': 'tool', 'name': 'view_image', 'content': error},
+        {'role': 'tool', 'name': 'view_image', 'content': snapshot},
+        {'role': 'user', 'content': snapshot},
+      ];
+      await service.inlineLocalImages(messages);
+      expect(messages[0]['content'], error);
+      expect(messages[1]['content'], snapshot);
+      expect(messages[2]['content'], contains('data:image/png;base64,AQID'));
+    },
+  );
+
   test('collapseVersions 按真实版本号选择消息', () {
     final service = MessageBuilderService(
       chatService: _FakeChatService(const {}),
@@ -541,41 +548,6 @@ void main() {
       );
       expect(refs.single.mime, 'audio/wav');
     });
-
-    test(
-      'assistant audio media refs trip apiMessagesContainAudioAttachments',
-      () {
-        final builder = MessageBuilderService(
-          chatService: _FakeChatService(const {}),
-          contextProvider: _FakeBuildContext(),
-        );
-        final apiMessages = builder.buildApiMessages(
-          messages: [
-            _message(id: 'u1', role: 'user', content: 'hi'),
-            ChatMessage(
-              id: 'a1',
-              role: 'assistant',
-              conversationId: 'c1',
-              parts: const [
-                TextPart('voice reply'),
-                FilePart(
-                  uri: '/tmp/assistant.wav',
-                  name: 'assistant.wav',
-                  mime: 'audio/wav',
-                ),
-              ],
-            ),
-          ],
-          versionSelections: const {},
-          currentConversation: Conversation(title: 'test'),
-        );
-        final generation = _messageGenerationServiceForAudioCheck();
-        expect(
-          generation.apiMessagesContainAudioAttachments(apiMessages),
-          isTrue,
-        );
-      },
-    );
   });
 
   group('MessageBuilderService.buildApiMessages', () {
@@ -1308,7 +1280,7 @@ void main() {
       expect(apiMessages.last['content'], 'message-1506');
     });
 
-    test('上下文裁剪不会保留缺少 tool result 的 assistant tool call', () {
+    test('上下文裁剪回退到工具轮次的 user 起点', () {
       final service = MessageBuilderService(
         chatService: _FakeChatService({}),
         contextProvider: _FakeBuildContext(),
@@ -1348,13 +1320,16 @@ void main() {
 
       expect(
         apiMessages.where((message) => message['tool_calls'] is List),
-        isEmpty,
+        hasLength(1),
       );
       expect(
         apiMessages.where((message) => message['role'] == 'tool'),
-        isEmpty,
+        hasLength(1),
       );
       expect(apiMessages.map((message) => message['content']).toList(), [
+        'before',
+        '\n\n',
+        'ok',
         'done',
         'next',
       ]);
@@ -1407,6 +1382,7 @@ void main() {
         hasLength(1),
       );
       expect(apiMessages.map((message) => message['role']).toList(), [
+        'user',
         'assistant',
         'tool',
         'assistant',

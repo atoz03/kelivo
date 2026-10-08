@@ -84,9 +84,13 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _RowDivider(),
                   _ToggleRowShowTokenStats(),
                   _RowDivider(),
+                  _ToggleRowShowTotalTokens(),
+                  _RowDivider(),
                   _ToggleRowShowThinkingCards(),
                   _RowDivider(),
                   _ToggleRowShowToolCards(),
+                  _RowDivider(),
+                  _ToggleRowShowReasoningLevelBadge(),
                 ],
               ),
               const SizedBox(height: 16),
@@ -2425,6 +2429,21 @@ class _ToggleRowShowTokenStats extends StatelessWidget {
   }
 }
 
+class _ToggleRowShowTotalTokens extends StatelessWidget {
+  const _ToggleRowShowTotalTokens();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: l10n.displaySettingsPageShowTotalTokensTitle,
+      tip: l10n.displaySettingsPageShowTotalTokensSubtitle,
+      value: sp.showTotalTokens,
+      onChanged: (v) => context.read<SettingsProvider>().setShowTotalTokens(v),
+    );
+  }
+}
+
 class _ToggleRowShowProviderInCapsule extends StatelessWidget {
   const _ToggleRowShowProviderInCapsule();
   @override
@@ -2557,6 +2576,22 @@ class _ToggleRowShowToolCards extends StatelessWidget {
       tip: l10n.displaySettingsPageShowToolCardsSubtitle,
       value: sp.showToolCards,
       onChanged: (v) => context.read<SettingsProvider>().setShowToolCards(v),
+    );
+  }
+}
+
+class _ToggleRowShowReasoningLevelBadge extends StatelessWidget {
+  const _ToggleRowShowReasoningLevelBadge();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: l10n.displaySettingsShowReasoningLevelBadge,
+      tip: l10n.displaySettingsShowReasoningLevelBadgeSubtitle,
+      value: sp.showReasoningLevelBadge,
+      onChanged: (v) =>
+          context.read<SettingsProvider>().setShowReasoningLevelBadge(v),
     );
   }
 }
@@ -3115,7 +3150,7 @@ class _ToggleRow extends StatelessWidget {
               ],
             ),
           ),
-          if (tip != null) SettingTipIcon(message: tip!),
+          if (tip != null) TipIcon(message: tip!),
           const SizedBox(width: 12),
           IosSwitch(value: value, onChanged: onChanged),
         ],

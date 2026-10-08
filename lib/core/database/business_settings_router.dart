@@ -26,6 +26,7 @@ final class BusinessKeyRegistry {
     'desktop_hotkeys_enabled_v1',
     'display_chat_font_scale_v1',
     'flutter_log_enabled_v1',
+    'model_catalog_auto_update_v1',
   };
 
   static const discardedKeys = <String>{
@@ -55,6 +56,7 @@ final class BusinessKeyRegistry {
     'search_selected_v1',
     'search_enabled_v1',
     'search_auto_test_on_launch_v1',
+    'search_web_fetch_v1',
     'tts_selected_v1',
     'tts_selected_service_id_v1',
     'tts_auto_play_assistant_replies_v1',
@@ -103,7 +105,7 @@ final class BusinessKeyRegistry {
     'suggestion_insert_on_tap_only_v1',
     'compress_model_v1',
     'compress_prompt_v1',
-    'thinking_budget_v1',
+    'reasoning_choice_by_model_v1',
     'image_cropper_enabled_v1',
     'image_upload_quality_v1',
     'image_compress_custom_quality_v1',
@@ -487,11 +489,11 @@ final class BusinessSettingsRouter {
             'temperature',
             'topP',
             'contextMessageSize',
-            'thinkingBudget',
             'maxTokens',
             'recentChatsSummaryMessageCount',
             'memoryOrganizeEveryNTurns',
           },
+          maps: const {'reasoning'},
           lists: const {
             'customHeaders',
             'customBody',
@@ -535,6 +537,7 @@ final class BusinessSettingsRouter {
           booleans: const {
             'enabled',
             'useResponseApi',
+            'promptCacheKeyEnabled',
             'vertexAI',
             'proxyEnabled',
             'multiKeyEnabled',
@@ -891,7 +894,6 @@ final class BusinessSettingsRouter {
     );
     switch (payload['type']) {
       case 'bing_local':
-        _validateKnownFields(kind, payload, strings: const {'acceptLanguage'});
       case 'kelivo':
         break;
       case 'tavily':
@@ -901,6 +903,13 @@ final class BusinessSettingsRouter {
           payload,
           requiredStrings: const {'apiKey'},
           strings: const {'url'},
+          stringLists: const {'apiKeys'},
+        );
+      case 'exa_mcp':
+        _validateKnownFields(
+          kind,
+          payload,
+          strings: const {'apiKey', 'url'},
           stringLists: const {'apiKeys'},
         );
       case 'zhipu':

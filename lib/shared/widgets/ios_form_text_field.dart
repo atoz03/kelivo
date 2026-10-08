@@ -16,6 +16,7 @@ class IosFormTextField extends StatelessWidget {
     this.keyboardType,
     this.textAlign,
     this.autofocus = false,
+    this.obscureText = false,
     this.enabled = true,
     this.onChanged,
     this.onSubmitted,
@@ -39,6 +40,7 @@ class IosFormTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final TextAlign? textAlign;
   final bool autofocus;
+  final bool obscureText;
   final bool enabled;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
@@ -90,6 +92,7 @@ class IosFormTextField extends StatelessWidget {
       maxLines: maxLines,
       minLines: minLines,
       autofocus: autofocus,
+      obscureText: obscureText,
       enabled: enabled,
       keyboardType: keyboardType,
       textAlign: textAlign ?? _defaultTextAlign(),
@@ -117,19 +120,30 @@ class IosFormTextField extends StatelessWidget {
         fontSize: 15,
         fontWeight: AppFontWeights.medium,
         color: valueColor,
-        height: maxLines > 1 ? 1.25 : 1.15,
+        height: maxLines > 1 ? 1.25 : 1.0,
       ),
+      strutStyle: maxLines == 1
+          ? const StrutStyle(
+              fontSize: 15,
+              height: 1.0,
+              leading: 0,
+              forceStrutHeight: true,
+            )
+          : null,
       decoration: InputDecoration(
         isDense: true,
-        isCollapsed: true,
+        isCollapsed: maxLines > 1,
         hintText: hintText,
         hintStyle: TextStyle(
           fontSize: 15,
           fontWeight: AppFontWeights.medium,
           color: hintColor,
+          height: maxLines > 1 ? 1.25 : 1.0,
         ),
         border: InputBorder.none,
-        contentPadding: EdgeInsets.zero,
+        contentPadding: maxLines == 1
+            ? const EdgeInsets.symmetric(vertical: 10)
+            : EdgeInsets.zero,
       ),
     );
 
@@ -169,10 +183,7 @@ class IosFormTextField extends StatelessWidget {
           color: enabled ? fieldBg : fieldBg.withValues(alpha: 0.55),
           borderRadius: BorderRadius.circular(10),
         ),
-        padding: EdgeInsets.symmetric(
-          horizontal: fieldHorizontalPadding,
-          vertical: 9,
-        ),
+        padding: EdgeInsets.symmetric(horizontal: fieldHorizontalPadding),
         child: field,
       );
       return Padding(
@@ -202,7 +213,7 @@ class IosFormTextField extends StatelessWidget {
       ),
       padding: EdgeInsets.symmetric(
         horizontal: 12,
-        vertical: maxLines > 1 ? 12 : 9,
+        vertical: maxLines > 1 ? 12 : 0,
       ),
       child: field,
     );

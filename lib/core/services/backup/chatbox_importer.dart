@@ -406,8 +406,6 @@ class ChatboxImporter {
       final contextCount = (sessionSettings['maxContextMessageCount'] as num?)
           ?.toInt();
 
-      final thinkingBudget = _extractThinkingBudget(sessionSettings);
-
       // Use first system message as assistant system prompt.
       final sysPrompt = _extractSystemPromptFromSession(
         session,
@@ -432,7 +430,7 @@ class ChatboxImporter {
         'contextMessageSize': contextCount ?? 64,
         'limitContextMessages': true,
         'streamOutput': stream ?? true,
-        'thinkingBudget': thinkingBudget,
+        'reasoning': null,
         'maxTokens': maxTokens,
         'systemPrompt': sysPrompt,
         'messageTemplate': '{{ message }}',
@@ -752,7 +750,7 @@ class ChatboxImporter {
         'contextMessageSize': 64,
         'limitContextMessages': true,
         'streamOutput': true,
-        'thinkingBudget': null,
+        'reasoning': null,
         'maxTokens': null,
         'systemPrompt': (copilot['prompt'] ?? '').toString(),
         'messageTemplate': '{{ message }}',
@@ -845,7 +843,7 @@ class ChatboxImporter {
           'temperature',
           'topP',
           'maxTokens',
-          'thinkingBudget',
+          'reasoning',
         ]) {
           final value = assistant[key];
           if (value != null) local[key] = value;
@@ -970,31 +968,6 @@ class ChatboxImporter {
       }
     }
     return fallback;
-  }
-
-  static int? _extractThinkingBudget(Map<String, dynamic> sessionSettings) {
-    final opts = sessionSettings['providerOptions'];
-    if (opts is Map) {
-      final claude = opts['claude'];
-      if (claude is Map) {
-        final thinking = claude['thinking'];
-        if (thinking is Map) {
-          final type = (thinking['type'] ?? '').toString();
-          if (type == 'disabled') return 0;
-          final budget = (thinking['budgetTokens'] as num?)?.toInt();
-          if (budget != null) return budget;
-        }
-      }
-      final google = opts['google'];
-      if (google is Map) {
-        final thinkingConfig = google['thinkingConfig'];
-        if (thinkingConfig is Map) {
-          final budget = (thinkingConfig['thinkingBudget'] as num?)?.toInt();
-          if (budget != null) return budget;
-        }
-      }
-    }
-    return null;
   }
 
   static DateTime? _parseIsoDateTime(String raw) {

@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 // ignore: depend_on_referenced_packages
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 import 'package:Kelivo/core/database/app_database.dart';
 import 'package:Kelivo/core/database/chat_database_repository.dart';
@@ -143,6 +144,47 @@ void main() {
     },
   );
 
+  test('native PDF bypasses extraction even from API refs', () async {
+    final s = await setUpService();
+    final uri = '${tempDir.path}/report.pdf';
+    final apiMessages = <Map<String, dynamic>>[
+      {
+        'role': 'user',
+        'content': 'Read this PDF',
+        MessageBuilderService.internalRevisionIdKey: 'pdf-user',
+        multimodalInternalDocumentPathsKey: [
+          encodeInternalDocumentRef((
+            uri: uri,
+            name: 'report.pdf',
+            mime: 'application/pdf',
+          )),
+        ],
+      },
+    ];
+    expect(s.service.hasPendingAttachmentWork(apiMessages, s.settings), isTrue);
+    expect(
+      s.service.hasPendingAttachmentWork(
+        apiMessages,
+        s.settings,
+        nativePdfInput: true,
+      ),
+      isFalse,
+    );
+    await s.service.processUserMessagesForApi(
+      apiMessages,
+      s.settings,
+      null,
+      nativePdfInput: true,
+    );
+    expect(apiMessages.single['content'], 'Read this PDF');
+    expect(
+      parseInternalDocumentRefs(
+        apiMessages.single[multimodalInternalDocumentPathsKey],
+      ).single.uri,
+      uri,
+    );
+  });
+
   test('with a sandbox the data file stays out of the prompt', () async {
     final s = await setUpService();
     final apiMessages = s.service.buildApiMessages(
@@ -250,7 +292,10 @@ void main() {
       await database.close();
     });
 
-    Future<String> replay({required bool sandboxDataFiles}) async {
+    Future<String> replay({
+      required bool sandboxDataFiles,
+      bool nativePdfInput = false,
+    }) async {
       final apiMessages = service.buildApiMessages(
         messages: [stored],
         versionSelections: const {},
@@ -263,6 +308,7 @@ void main() {
         conversation: convo,
         sourceMessages: [stored],
         sandboxDataFiles: sandboxDataFiles,
+        nativePdfInput: nativePdfInput,
       );
       return apiMessages.single['content'] as String;
     }
@@ -290,5 +336,45 @@ void main() {
       expect(await replay(sandboxDataFiles: false), contains('region,amount'));
       expect(await replay(sandboxDataFiles: true), contains('region,amount'));
     });
+
+    test(
+      'PDF switches between native bytes and extraction without stale frozen text',
+      () async {
+        final document = PdfDocument();
+        document.pages.add().graphics.drawString(
+          'Original PDF text',
+          PdfStandardFont(PdfFontFamily.helvetica, 12),
+        );
+        final pdf = File('${tempDir.path}/report.pdf');
+        await pdf.writeAsBytes(await document.save());
+        document.dispose();
+        stored = await chatService.addMessage(
+          conversationId: convo.id,
+          role: 'user',
+          content: 'analyse PDF',
+          parts: [
+            const TextPart('analyse PDF'),
+            FilePart(
+              uri: pdf.path,
+              name: 'report.pdf',
+              mime: 'application/pdf',
+            ),
+          ],
+        );
+        expect(
+          await replay(sandboxDataFiles: false, nativePdfInput: true),
+          'analyse PDF',
+        );
+        expect(await repo.getMessagePrompt(stored.id), isNull);
+        final extracted = await replay(sandboxDataFiles: false);
+        expect(extracted, contains('Original PDF text'));
+        expect(
+          await replay(sandboxDataFiles: false, nativePdfInput: true),
+          'analyse PDF',
+        );
+        expect((await repo.getMessagePrompt(stored.id))!.payload, extracted);
+        expect(await replay(sandboxDataFiles: false), extracted);
+      },
+    );
   });
 }

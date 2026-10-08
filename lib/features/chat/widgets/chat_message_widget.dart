@@ -33,13 +33,15 @@ import '../../../core/models/assistant.dart';
 import '../../../core/providers/tts_provider.dart';
 import '../../../shared/widgets/markdown_with_highlight.dart';
 import '../../../shared/widgets/snackbar.dart';
+import '../../../shared/widgets/audio_clip_player.dart';
+import '../../../core/utils/multimodal_input_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../theme/chat_bubble_style.dart';
 import 'package:Kelivo/theme/app_semantic_colors.dart';
 import 'frosted/frosted_surface.dart';
-import '../../../core/providers/model_provider.dart';
+import '../../../core/services/model_spec/model_spec_resolver.dart';
 import '../../../core/models/assistant_regex.dart';
 import '../../../shared/widgets/custom_bottom_sheet.dart';
 import '../../../shared/widgets/ios_checkbox.dart';
@@ -441,6 +443,8 @@ IconData _toolIconFor(String name, [Map<String, dynamic> args = const {}]) {
       return Lucide.Search;
     case 'search_web':
       return Lucide.Earth;
+    case 'fetch_url':
+      return Lucide.Link;
     case 'builtin_search':
       return Lucide.Search;
     // Provider built-in server tools. These are the names the decoders emit,
@@ -630,6 +634,10 @@ String _toolTitleFor(
       return l10n.chatMessageWidgetWebSearch(q);
     case 'builtin_search':
       return l10n.chatMessageWidgetBuiltinSearch;
+    case 'fetch_url':
+      final url = (args['url'] ?? '').toString().trim();
+      final host = Uri.tryParse(url)?.host ?? '';
+      return l10n.chatMessageWidgetWebFetch(host.isEmpty ? url : host);
     default:
       return isResult
           ? l10n.chatMessageWidgetToolResult(name)
@@ -1368,38 +1376,18 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     }
 
     final providerId = widget.message.providerId;
-    String baseId = modelId;
+    String displayName = modelId;
     String? providerName;
     if (providerId != null && providerId.isNotEmpty) {
       try {
         final cfg = settings.getProviderConfig(providerId);
         providerName = cfg.name.trim();
-        final ov = cfg.modelOverrides[modelId] as Map?;
-        if (ov != null) {
-          final name = (ov['name'] as String?)?.trim();
-          if (name != null && name.isNotEmpty) {
-            if (settings.showProviderInChatMessage && providerName.isNotEmpty) {
-              return '$name | $providerName';
-            }
-            return name;
-          }
-          final apiId = (ov['apiModelId'] ?? ov['api_model_id'])
-              ?.toString()
-              .trim();
-          if (apiId != null && apiId.isNotEmpty) {
-            baseId = apiId;
-          }
-        }
+        final resolved = ModelSpecResolver.instance.resolve(cfg, modelId);
+        displayName = resolved.override.displayName ?? resolved.spec.upstreamId;
       } catch (_) {
-        // ignore lookup failures; fall through to inferred name.
+        // ignore lookup failures; fall through to the logical model id.
       }
     }
-
-    final inferred = ModelRegistry.infer(
-      ModelInfo(id: baseId, displayName: baseId),
-    );
-    final fallback = inferred.displayName.trim();
-    final displayName = fallback.isNotEmpty ? fallback : baseId;
     if (settings.showProviderInChatMessage &&
         providerName != null &&
         providerName.isNotEmpty) {
@@ -2250,6 +2238,71 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
 
       if (part is FilePart) {
         final d = part;
+        final uri = d.uri.trim();
+        final localAudio =
+            !d.unavailable &&
+            isAudioMime(
+              inferMediaMimeFromSource(d.name, fallbackMime: d.mime ?? ''),
+            ) &&
+            !uri.startsWith('http://') &&
+            !uri.startsWith('https://') &&
+            !uri.startsWith('data:');
+        if (localAudio) {
+          items.add(
+            AudioClipPlayer(
+              key: ValueKey(
+                '$roleKey-message-attachment:${widget.message.id}:$partIndex',
+              ),
+              path: SandboxPathResolver.fix(uri),
+              builder: (context, button, time) => Container(
+                padding: const EdgeInsets.fromLTRB(4, 4, 12, 4),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? cs.onSurface.withValues(alpha: 0.08)
+                      : cs.surface.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: cs.outlineVariant.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    button,
+                    const SizedBox(width: 4),
+                    // The name yields width so the button and time always fit.
+                    Flexible(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 180),
+                        child: Text(
+                          d.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: cs.onSurface.withValues(alpha: 0.86),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (time != null) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        time,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          color: cs.onSurface.withValues(alpha: 0.55),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          );
+          continue;
+        }
         items.add(
           IosCardPress(
             key: ValueKey(
@@ -2741,6 +2794,10 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     final showModelTimestamp = context.select<SettingsProvider, bool>(
       (s) => s.showModelTimestamp,
     );
+    final showTotalTokens = context.select<SettingsProvider, bool>(
+      (s) => s.showTotalTokens,
+    );
+    final finishUsage = showTotalTokens ? null : widget.message.finishUsage;
     final enableAssistantMarkdown = context.select<SettingsProvider, bool>(
       (s) => s.enableAssistantMarkdown,
     );
@@ -3387,11 +3444,30 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                               widget.message.totalTokens != null) ...[
                             const Spacer(),
                             TokenDisplayWidget(
-                              totalTokens: widget.message.totalTokens!,
-                              promptTokens: widget.message.promptTokens,
-                              completionTokens: widget.message.completionTokens,
-                              cachedTokens: widget.message.cachedTokens,
+                              totalTokens:
+                                  finishUsage?.totalTokens ??
+                                  widget.message.totalTokens!,
+                              promptTokens:
+                                  finishUsage?.promptTokens ??
+                                  widget.message.promptTokens,
+                              completionTokens:
+                                  finishUsage?.completionTokens ??
+                                  widget.message.completionTokens,
+                              cachedTokens:
+                                  finishUsage?.cachedTokens ??
+                                  widget.message.cachedTokens,
+                              reasoningTokens:
+                                  finishUsage?.reasoningTokens ??
+                                  widget.message.reasoningTokens,
+                              cacheWriteTokens:
+                                  finishUsage?.cacheWriteTokens ??
+                                  widget.message.cacheWriteTokens,
                               durationMs: widget.message.durationMs,
+                              firstTokenMs: widget.message.firstTokenMs,
+                              totalCompletionTokens:
+                                  widget.message.completionTokens,
+                              providerId: widget.message.providerId,
+                              modelId: widget.message.modelId,
                             ),
                           ],
                         ],

@@ -1564,6 +1564,8 @@ class GenerationContext {
   GenerationContext({
     required this.assistantMessage,
     required this.apiMessages,
+    this.contextUsageConfiguration,
+    this.contextUsageRevision,
     required this.userImagePaths,
     required this.allowImagesApiRouting,
     required this.providerKey,
@@ -1585,6 +1587,8 @@ class GenerationContext {
 
   final ChatMessage assistantMessage;
   final List<Map<String, dynamic>> apiMessages;
+  final Object? contextUsageConfiguration;
+  final int? contextUsageRevision;
   final List<String> userImagePaths;
   final bool allowImagesApiRouting;
   final String providerKey;
@@ -1606,18 +1610,34 @@ class GenerationContext {
 
 /// State object for streaming message generation.
 class StreamingState {
-  StreamingState(this.ctx)
+  StreamingState(this.ctx, {this.responsesTurnPrefix, this.claudeTurnPrefix})
     : _content = StreamTextBuffer(ctx.assistantMessage.content),
+      totalTokens = ctx.assistantMessage.totalTokens ?? 0,
+      firstTokenMs = ctx.assistantMessage.firstTokenMs,
+      _previousUsage = ctx.assistantMessage.tokenUsage,
       partsHandler = StreamChunkHandler(seed: ctx.assistantMessage.parts);
 
   final GenerationContext ctx;
+
+  /// Immutable native history already owned by this message before resuming.
+  final String? responsesTurnPrefix;
+  final String? claudeTurnPrefix;
   final StreamTextBuffer _content;
   String get fullContentRaw => _content.value;
   set fullContentRaw(String text) => _content.value = text;
   bool get hasContent => !_content.isEmpty;
   void appendContent(String delta) => _content.add(delta);
-  int totalTokens = 0;
+  int totalTokens;
   TokenUsage? usage;
+  final TokenUsage _previousUsage;
+  TokenUsage? get totalUsage {
+    final current = partsHandler.totalUsage ?? usage;
+    // Answering a tool question can resume the same persisted message.
+    return _previousUsage.hasReportedTokens
+        ? _previousUsage + (current ?? const TokenUsage())
+        : current;
+  }
+
   final StreamTextBuffer _bufferedReasoning = StreamTextBuffer();
   String get bufferedReasoning => _bufferedReasoning.value;
   set bufferedReasoning(String text) => _bufferedReasoning.value = text;
@@ -1626,7 +1646,48 @@ class StreamingState {
   bool finishHandled = false;
   bool terminalPersisted = false;
   bool titleQueued = false;
-  DateTime? streamStartedAt;
+  DateTime? requestStartedAt;
+  DateTime? requestFinishedAt;
+  int? firstTokenMs;
+
+  /// Whole-generation elapsed time, including waiting and reasoning. A tool
+  /// answer can resume the same message, so keep time spent in earlier runs.
+  int? get durationMs {
+    final previous = ctx.assistantMessage.durationMs;
+    final elapsed = _requestElapsedMs(requestFinishedAt ?? DateTime.now());
+    return elapsed == null ? previous : (previous ?? 0) + elapsed;
+  }
+
+  int? _requestElapsedMs(DateTime end) {
+    final start = requestStartedAt;
+    if (start == null) return null;
+    final elapsed = end.difference(start).inMilliseconds;
+    // Device clock rollback must not persist a negative duration.
+    return elapsed < 0 ? null : elapsed;
+  }
+
+  void recordFirstOutput(StreamChunk chunk) {
+    if (firstTokenMs != null ||
+        requestFinishedAt != null ||
+        ctx.assistantMessage.durationMs != null) {
+      return;
+    }
+    final hasOutput = switch (chunk) {
+      TextDelta(:final text) || ReasoningDelta(:final text) => text.isNotEmpty,
+      ToolCallStart(:final toolName) ||
+      ServerToolStart(:final toolName) => toolName.isNotEmpty,
+      ToolCallDelta(:final toolNameDelta, :final inputDelta) =>
+        toolNameDelta.isNotEmpty || inputDelta.isNotEmpty,
+      ServerToolInputDelta(:final inputDelta) => inputDelta.isNotEmpty,
+      ImageDelta(:final data) || ImageSnapshot(:final data) => data.isNotEmpty,
+      GeneratedFile(:final uri) => uri.isNotEmpty,
+      _ => false,
+    };
+    if (hasOutput) firstTokenMs = _requestElapsedMs(DateTime.now());
+  }
+
+  /// Freeze before UI draining, persistence or cancellation cleanup.
+  void finishRequestTiming() => requestFinishedAt ??= DateTime.now();
   int? generationStateRevision;
   bool generationStreamingStarted = false;
   final Map<String, String> pendingToolNames = <String, String>{};

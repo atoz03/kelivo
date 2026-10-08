@@ -16,7 +16,7 @@ import 'theme_settings_page.dart';
 import '../../../theme/palettes.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ios_switch.dart';
-import '../../../shared/widgets/setting_tip_icon.dart';
+import '../../../shared/widgets/tip_icon.dart';
 import '../../../core/services/haptics.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:Kelivo/theme/app_font_weights.dart';
@@ -1316,7 +1316,7 @@ Widget _iosSwitchRow(
             },
           ),
         ),
-        if (tip != null) SettingTipIcon(message: tip),
+        if (tip != null) TipIcon(message: tip),
         const SizedBox(width: 12),
         IosSwitch(value: value, onChanged: onChanged),
       ],
@@ -1549,6 +1549,16 @@ class ChatItemDisplaySettingsPage extends StatelessWidget {
               _iosDivider(context),
               _iosSwitchRow(
                 context,
+                icon: Lucide.Calculator,
+                label: l10n.displaySettingsPageShowTotalTokensTitle,
+                tip: l10n.displaySettingsPageShowTotalTokensSubtitle,
+                value: sp.showTotalTokens,
+                onChanged: (v) =>
+                    context.read<SettingsProvider>().setShowTotalTokens(v),
+              ),
+              _iosDivider(context),
+              _iosSwitchRow(
+                context,
                 icon: Lucide.Sparkles,
                 label: l10n.displaySettingsPageShowThinkingCardsTitle,
                 tip: l10n.displaySettingsPageShowThinkingCardsSubtitle,
@@ -1565,6 +1575,17 @@ class ChatItemDisplaySettingsPage extends StatelessWidget {
                 value: sp.showToolCards,
                 onChanged: (v) =>
                     context.read<SettingsProvider>().setShowToolCards(v),
+              ),
+              _iosDivider(context),
+              _iosSwitchRow(
+                context,
+                icon: Lucide.Lightbulb,
+                label: l10n.displaySettingsShowReasoningLevelBadge,
+                tip: l10n.displaySettingsShowReasoningLevelBadgeSubtitle,
+                value: sp.showReasoningLevelBadge,
+                onChanged: (v) => context
+                    .read<SettingsProvider>()
+                    .setShowReasoningLevelBadge(v),
               ),
             ],
           ),

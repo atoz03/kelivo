@@ -632,7 +632,9 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
       builder: (ctx) {
         return AlertDialog(
           title: Text(l10n.sideDrawerMenuDelete),
-          content: Text('${l10n.sideDrawerMenuDelete} "${chat.title}"?'),
+          content: Text(
+            '${l10n.sideDrawerMenuDelete} "${chat.title}"?\n\n${l10n.composerDraftDeleteNotice}',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
@@ -662,7 +664,9 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
       builder: (ctx) {
         return AlertDialog(
           title: Text(l10n.sideDrawerSelectionDeleteConfirmTitle),
-          content: Text(l10n.sideDrawerSelectionDeleteConfirmContent(count)),
+          content: Text(
+            '${l10n.sideDrawerSelectionDeleteConfirmContent(count)}\n\n${l10n.composerDraftDeleteNotice}',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
@@ -930,9 +934,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
     final mdlId = settings.titleModelId ?? chatModel.modelId;
     if (provKey == null || mdlId == null) return;
     final cfg = settings.getProviderConfig(provKey);
-    final budget = settings.titleGenerationThinkingBudgetFor(
-      assistant?.thinkingBudget,
-    );
+    final reasoning = settings.titleGenerationReasoningFor(assistant);
     final locale = Localizations.localeOf(context).toLanguageTag();
 
     try {
@@ -947,7 +949,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
         config: cfg,
         modelId: mdlId,
         prompt: prompt,
-        thinkingBudget: budget,
+        reasoning: reasoning,
         skipImageParsing: true,
       )).trim();
       if (title.isNotEmpty) {
@@ -4440,6 +4442,20 @@ class _ChatTileState extends State<_ChatTile> {
                         ),
                       ),
                     ),
+                    if (context.select<ChatService, bool>(
+                      (service) =>
+                          service.composerDrafts?.hasDraft(widget.chat.id) ??
+                          false,
+                    )) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        AppLocalizations.of(context)!.composerDraftLabel,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ],
                     if (widget.loading) ...[
                       const SizedBox(width: 8),
                       _LoadingDot(),

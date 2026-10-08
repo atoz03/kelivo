@@ -66,13 +66,15 @@ dependencies:
   xml: ^6.5.0
   open_filex: ^4.5.0
   easy_image_viewer: ^1.4.6
-  share_plus: ^11.1.0
+  share_plus: ^12.0.2
   pretty_qr_code: ^3.5.0
   mobile_scanner: ^7.0.1
   mcp_client: # ^1.0.2
     path: ./dependencies/mcp_client
   flutter_highlight: ^0.7.0
   highlight: ^0.7.0
+  re_editor:
+    path: ./dependencies/re_editor
   syncfusion_flutter_core: ^31.2.5
   syncfusion_flutter_sliders: ^31.2.5
   syncfusion_flutter_pdf: ^31.2.5
@@ -162,6 +164,7 @@ flutter:
     - assets/icon_mac.png
     - assets/mermaid.min.js
     - assets/html/mark.html
+    - assets/model_catalog/models_dev.json
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

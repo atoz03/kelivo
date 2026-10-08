@@ -576,6 +576,7 @@ class HomeDesktopScaffold extends StatelessWidget {
           }
         },
       ),
+
       const SizedBox(width: 6),
     ];
   }

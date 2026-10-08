@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'dart:ui' as ui;
 
 import '../icons/lucide_adapter.dart' as lucide;
+import 'package:lucide_icons_flutter/lucide_icons.dart' show LucideIcons;
 import '../l10n/app_localizations.dart';
 import '../features/settings/pages/google_fonts_picker_page.dart';
 import '../theme/app_font_weights.dart';
@@ -17,7 +18,8 @@ import '../core/providers/settings_provider.dart';
 import '../core/services/chat/chat_service.dart';
 import '../core/providers/model_provider.dart';
 import '../core/services/logging/flutter_logger.dart';
-import '../core/services/model_override_resolver.dart';
+import '../core/services/model_catalog/model_catalog_service.dart';
+import '../core/services/model_spec/model_spec_resolver.dart';
 import '../core/services/provider_balance_service.dart';
 import 'model_fetch_dialog.dart' show showModelFetchDialog;
 import 'widgets/desktop_select_dropdown.dart';
@@ -34,8 +36,10 @@ import '../utils/sandbox_path_resolver.dart';
 import 'dart:io' show Directory, File, Platform;
 import '../utils/app_directories.dart';
 import 'add_provider_dialog.dart' show showDesktopAddProviderDialog;
-import 'model_edit_dialog.dart'
-    show showDesktopCreateModelDialog, showDesktopModelEditDialog;
+import 'import_provider_dialog.dart' show showDesktopImportProviderDialog;
+import 'model_catalog_popover.dart' show showDesktopModelCatalogPopover;
+import 'model_spec_edit_dialog.dart'
+    show showDesktopCreateModelSpecDialog, showDesktopModelSpecEditDialog;
 // Use the unified model selector (desktop dialog on desktop platforms)
 import '../features/model/widgets/model_select_sheet.dart'
     show showModelSelector;
@@ -82,7 +86,7 @@ import 'package:Kelivo/theme/app_semantic_colors.dart';
 import '../theme/custom_theme.dart';
 import '../features/settings/widgets/custom_theme_widgets.dart';
 import '../features/settings/pages/message_style_settings_page.dart';
-import '../shared/widgets/setting_tip_icon.dart';
+import '../shared/widgets/tip_icon.dart';
 
 part 'setting/assistants_pane.dart';
 part 'setting/providers_pane.dart';

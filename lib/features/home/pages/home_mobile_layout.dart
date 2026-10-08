@@ -290,6 +290,7 @@ class HomeMobileScaffold extends StatelessWidget {
                 )
               : null,
         ),
+
         const SizedBox(width: 4),
       ],
     );

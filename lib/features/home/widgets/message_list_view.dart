@@ -1546,6 +1546,7 @@ class _MessageListViewState extends State<MessageListView> {
         old.completionTokens != current.completionTokens ||
         old.cachedTokens != current.cachedTokens ||
         old.durationMs != current.durationMs ||
+        old.firstTokenMs != current.firstTokenMs ||
         _partsIdentityChanged(old.parts, current.parts);
   }
 
@@ -1751,7 +1752,11 @@ class _MessageListViewState extends State<MessageListView> {
 
             final userScrollAwareList = Listener(
               onPointerDown: (event) {
-                if (_isDesktopPlatform) _keyboardFocusNode.requestFocus();
+                // Keep copy shortcuts on a focused text selection when the
+                // second click of a double-click reaches the list.
+                if (_isDesktopPlatform && !_keyboardFocusNode.hasFocus) {
+                  _keyboardFocusNode.requestFocus();
+                }
                 if (event.buttons != 0 &&
                     event.buttons != kSecondaryMouseButton) {
                   _pointerDragInProgress = true;

@@ -1,3 +1,4 @@
+import 'package:sqlite3/sqlite3.dart' as composer_sqlite;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -16,6 +17,7 @@ import '../../database/business_preferences.dart';
 import '../../database/business_restore_service.dart';
 import '../../database/business_settings_router.dart';
 import '../../database/app_database.dart';
+import '../../database/backup_portability.dart';
 import '../../database/chat_database_repository.dart';
 import '../../database/schema_migrations.dart';
 import '../../models/backup.dart';
@@ -636,6 +638,7 @@ class DataSync {
       settingsTmp = settingsFile;
 
       ChatDatabaseSnapshotInfo? snapshotInfo;
+      var publishedDraftFiles = <String>{};
       if (includeChats) {
         final databaseFile = File(p.join(workDir.path, '_bk_kelivo.db'));
         databaseTmp = databaseFile;
@@ -647,8 +650,23 @@ class DataSync {
           ),
         );
         snapshotInfo = await snapshotDatabase(databaseFile);
+        publishedDraftFiles = _publishedDraftFilesFrom(databaseFile);
+        await _sanitizeBackupDatabase(databaseFile);
       }
 
+      if (!includeChats && includeFiles) {
+        final store = chatService.composerDrafts;
+        publishedDraftFiles = store != null
+            ? await store.publishedFiles()
+            : _publishedDraftFilesFrom(
+                File(
+                  p.join(
+                    (await AppDirectories.getAppDataDirectory()).path,
+                    'kelivo.db',
+                  ),
+                ),
+              );
+      }
       final packageInfo = await PackageInfo.fromPlatform();
       final appVersion = packageInfo.buildNumber.trim().isEmpty
           ? packageInfo.version
@@ -682,6 +700,7 @@ class DataSync {
           avatarsDirPath: avatarsDirPath,
           imagesDirPath: imagesDirPath,
           fontsDirPath: fontsDirPath,
+          publishedDraftFiles: publishedDraftFiles,
         ),
         cancelToken: cancelToken,
         onProgress: onProgress,
@@ -710,6 +729,24 @@ class DataSync {
         await _deleteFileQuietly(databaseTmp);
         await _deleteFileQuietly(manifestTmp);
       }
+    }
+  }
+
+  static Set<String> _publishedDraftFilesFrom(File file) {
+    if (!file.existsSync()) return {};
+    final database = composer_sqlite.sqlite3.open(
+      file.path,
+      mode: composer_sqlite.OpenMode.readOnly,
+    );
+    try {
+      return {
+        for (final row in database.select(
+          "SELECT id FROM extension_entity_rows WHERE kind = 'composerPublishedFile'",
+        ))
+          row['id'] as String,
+      };
+    } finally {
+      database.close();
     }
   }
 
@@ -974,6 +1011,7 @@ class DataSync {
       avatarsDirPath: args.avatarsDirPath,
       imagesDirPath: args.imagesDirPath,
       fontsDirPath: args.fontsDirPath,
+      publishedDraftFiles: args.publishedDraftFiles,
       ctx: ctx,
     );
     _verifyPackedBackupSync(
@@ -1012,23 +1050,32 @@ class DataSync {
     required String avatarsDirPath,
     required String imagesDirPath,
     required String fontsDirPath,
+    Set<String> publishedDraftFiles = const {},
     BackupIsolateContext? ctx,
   }) {
     if (includeChats != (databasePath != null && snapshotInfo != null)) {
       throw StateError('backup_database_component');
     }
-    final uploadFiles = includeFiles
-        ? _listFilesSync(uploadDirPath)
-        : const <File>[];
-    final avatarFiles = includeFiles
-        ? _listFilesSync(avatarsDirPath)
-        : const <File>[];
-    final imageFiles = includeFiles
-        ? _listFilesSync(imagesDirPath)
-        : const <File>[];
-    final fontFiles = includeFiles
-        ? _listFilesSync(fontsDirPath)
-        : const <File>[];
+    // Unsent draft attachments are device-local; only published ones travel.
+    List<File> portableFiles(String dirPath) {
+      if (!includeFiles) return const <File>[];
+      return _listFilesSync(dirPath).where((file) {
+        if (!RegExp(
+          r'^draft-[0-9a-f-]{36}-[0-9]+',
+        ).hasMatch(p.basename(file.path))) {
+          return true;
+        }
+        final relative = p.relative(file.path, from: p.dirname(dirPath));
+        final uri =
+            'kelivo-file:///${p.split(relative).map(Uri.encodeComponent).join('/')}';
+        return publishedDraftFiles.contains(uri);
+      }).toList();
+    }
+
+    final uploadFiles = portableFiles(uploadDirPath);
+    final avatarFiles = portableFiles(avatarsDirPath);
+    final imageFiles = portableFiles(imagesDirPath);
+    final fontFiles = portableFiles(fontsDirPath);
     var totalBytes = _fileSizeSync(settingsPath) + _fileSizeSync(databasePath);
     for (final file in [
       ...uploadFiles,
@@ -2966,6 +3013,16 @@ class DataSync {
     );
   }
 
+  static Future<void> _sanitizeBackupDatabase(File file) async {
+    final database = AppDatabase.open(file: file);
+    try {
+      await BackupPortability.sanitizeDatabase(database);
+    } finally {
+      await database.close();
+    }
+    await ChatDatabaseRepository.normalizeSnapshotJournal(file);
+  }
+
   /// Reads a backup file's manifest and reports what restoring it would mean.
   ///
   /// Only the manifest entry is decoded, so this stays cheap enough to run
@@ -3154,6 +3211,9 @@ class DataSync {
           return;
         }
         if (restoreChats) {
+          await _sanitizeBackupDatabase(
+            File(p.join(extractDir.path, _databaseEntryName)),
+          );
           beginNonCancellableCommit();
           _lastMergeReport = await chatService.mergeDatabaseSnapshot(
             File(p.join(extractDir.path, _databaseEntryName)),
@@ -3578,6 +3638,7 @@ class _BackupPackArgs {
     required this.avatarsDirPath,
     required this.imagesDirPath,
     required this.fontsDirPath,
+    this.publishedDraftFiles = const {},
   });
 
   final String outPath;
@@ -3593,6 +3654,7 @@ class _BackupPackArgs {
   final String avatarsDirPath;
   final String imagesDirPath;
   final String fontsDirPath;
+  final Set<String> publishedDraftFiles;
 }
 
 class _BackupByteMeter {

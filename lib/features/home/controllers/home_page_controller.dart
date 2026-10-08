@@ -1,3 +1,6 @@
+import '../../../core/database/composer_draft_store.dart';
+import '../../../core/models/composer_draft.dart';
+import '../../../core/services/app_exit_flush.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
@@ -9,6 +12,7 @@ import '../../../core/models/chat_input_data.dart';
 import '../../../core/models/chat_message.dart';
 import '../../../core/models/message_part.dart';
 import '../../../core/models/conversation.dart';
+import '../../../core/models/reasoning_request.dart';
 import '../../../core/models/quick_phrase.dart';
 import '../../../core/models/assistant_regex.dart';
 import '../../../core/providers/assistant_provider.dart';
@@ -41,6 +45,7 @@ import 'stream_controller.dart' as stream_ctrl;
 import 'generation_controller.dart';
 import 'scroll_controller.dart' as scroll_ctrl;
 import 'home_view_model.dart';
+import '../services/context_usage_service.dart';
 import '../services/message_builder_service.dart';
 import '../services/message_generation_service.dart';
 import '../services/local_tools_service.dart';
@@ -247,8 +252,270 @@ class HomePageController extends ChangeNotifier {
 
   // Input bar measurement
   double _inputBarHeight = 72;
+  bool _inputBarExpanded = false;
 
   UserMessageEditState? _userMessageEditState;
+  ComposerDraftStore? _composerDrafts;
+  String? _composerOwner;
+  int _composerSwitch = 0;
+  bool _applyingComposer = false;
+  bool _composerDisposed = false;
+  Future<void>? _composerBinding;
+  String? _composerBindingTarget;
+
+  void _attachComposerDrafts() {
+    if (_composerDrafts != null) return;
+    final drafts = _chatService.composerDrafts;
+    if (drafts == null) return;
+    _composerDrafts = drafts;
+    _mediaController.draftStore = drafts;
+    _mediaController.onDraftChanged = _saveComposerDraft;
+    _mediaController.onRecoverDraft = () => unawaited(_restoreRecoveredDraft());
+    _mediaController.onDiscardRecoveredDraft = () {
+      if (_composerOwner != null) drafts.discardPending(_composerOwner!);
+      notifyListeners();
+    };
+    _mediaController.onRetrySave = () {
+      _composerBinding = null;
+      if (_mediaController.restoringDraft) {
+        unawaited(_activateComposerDraft().catchError((Object _) {}));
+      } else {
+        unawaited(drafts.flush().catchError((Object _) {}));
+      }
+    };
+    _mediaController.onBeginSubmission = (input) {
+      final owner = _composerOwner;
+      if (owner == null || _chatService.isTemporaryConversation(owner)) {
+        return Future.value(null);
+      }
+      return drafts.beginSubmission(owner, input).catchError((Object error) {
+        _recoverComposerSubmission(owner);
+        throw error;
+      });
+    };
+    _inputController.addListener(_saveComposerDraft);
+    drafts.addListener(_onComposerStatusChanged);
+    AppExitFlush.register(drafts.flush);
+  }
+
+  int _lastExternalComposerRevision = 0;
+  int _composerResetRevision = 0;
+  void _onComposerStatusChanged() {
+    final drafts = _composerDrafts;
+    if (_composerDisposed) return;
+    if (drafts != null && drafts.resetRevision != _composerResetRevision) {
+      _composerResetRevision = drafts.resetRevision;
+      _composerSwitch++;
+      _composerOwner = null;
+      _mediaController.draftOwnerId = null;
+      _composerBinding = null;
+      _userMessageEditState = null;
+      _applyComposerValue(const ComposerDraftInput());
+      unawaited(_activateComposerDraft().catchError((Object _) {}));
+    }
+    if (!_composerDisposed &&
+        drafts != null &&
+        drafts.externalRevision != _lastExternalComposerRevision) {
+      _lastExternalComposerRevision = drafts.externalRevision;
+      if (!_applyingComposer &&
+          drafts.externalOwner == _composerOwner &&
+          _composerOwner != null &&
+          drafts.peek(_composerOwner!) != null) {
+        final next = drafts.peek(_composerOwner!)!.active;
+        if (!next.sameValue(
+          _mediaController.snapshotDraft(_inputController.text),
+        )) {
+          _applyComposerValue(next, resetHistory: false);
+        }
+      }
+    }
+    if (!_composerDisposed) notifyListeners();
+  }
+
+  Future<String?> _chooseDraftConflict() {
+    final l10n = AppLocalizations.of(_context)!;
+    return showDialog<String>(
+      context: _context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.composerDraftConflictTitle),
+        content: Text(l10n.composerDraftConflictBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.homePageCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'replace'),
+            child: Text(l10n.composerDraftReplace),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'append'),
+            child: Text(l10n.composerDraftAppend),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _restoreRecoveredDraft() async {
+    final owner = _composerOwner;
+    final drafts = _composerDrafts;
+    if (owner == null || drafts == null || drafts.submitting.contains(owner)) {
+      return;
+    }
+    _saveComposerDraft();
+    final draft = drafts.peek(owner)!;
+    final revision = draft.revision;
+    final choice = draft.hasRecoveryConflict
+        ? await _chooseDraftConflict()
+        : 'restore';
+    if (choice == null ||
+        owner != _composerOwner ||
+        draft.revision != revision) {
+      return;
+    }
+    drafts.restorePending(
+      owner,
+      append: choice == 'append',
+      replace: choice == 'replace',
+    );
+    _applyComposerValue(draft.active);
+    _userMessageEditState = draft.editMessageId == null
+        ? null
+        : UserMessageEditState(
+            messageId: draft.editMessageId!,
+            previewText: draft.active.text,
+          );
+    notifyListeners();
+  }
+
+  void _saveComposerDraft() {
+    final owner = _composerOwner;
+    if (_applyingComposer ||
+        _composerDisposed ||
+        owner == null ||
+        _chatService.isTemporaryConversation(owner)) {
+      return;
+    }
+    _composerDrafts?.setInput(
+      owner,
+      _mediaController.snapshotDraft(_inputController.text),
+    );
+  }
+
+  Future<void> _activateComposerDraft() {
+    _attachComposerDrafts();
+    final drafts = _composerDrafts;
+    final conversation = currentConversation;
+    if (drafts == null || drafts.suspended || conversation == null) {
+      return Future.value();
+    }
+    if (_composerOwner == conversation.id && !_mediaController.restoringDraft) {
+      return Future.value();
+    }
+    if (_composerBindingTarget == conversation.id &&
+        _mediaController.restoringDraft &&
+        _composerBinding != null) {
+      return _composerBinding!;
+    }
+    _composerBindingTarget = conversation.id;
+    return _composerBinding = _bindComposerDraft(drafts, conversation);
+  }
+
+  Future<void> _bindComposerDraft(
+    ComposerDraftStore drafts,
+    Conversation conversation,
+  ) async {
+    final serial = ++_composerSwitch;
+    _saveComposerDraft();
+    unawaited(drafts.flush().catchError((Object _) {}));
+    _applyingComposer = true;
+    _mediaController.restoringDraft = true;
+    _composerOwner = null;
+    _mediaController.draftOwnerId = null;
+    _mediaController.sharedDraftAction.value = null;
+    _applyComposerValue(const ComposerDraftInput());
+    try {
+      final temporary = _chatService.isTemporaryConversation(conversation.id);
+      final draft = temporary
+          ? null
+          : await drafts.load(
+              conversation.id,
+              assistantId: conversation.assistantId,
+            );
+      if (_composerDisposed ||
+          serial != _composerSwitch ||
+          currentConversation?.id != conversation.id) {
+        return;
+      }
+      _inputFocus.unfocus();
+      _composerOwner = conversation.id;
+      _mediaController.draftOwnerId = conversation.id;
+      _applyComposerValue(draft?.active ?? const ComposerDraftInput());
+      _userMessageEditState = draft?.editMessageId == null
+          ? null
+          : UserMessageEditState(
+              messageId: draft!.editMessageId!,
+              previewText: draft.active.text,
+            );
+    } catch (error) {
+      // Do not let an unreadable stored draft get overwritten by an empty editor.
+      if (serial == _composerSwitch) {
+        _mediaController.restoringDraft = true;
+        rethrow;
+      }
+    } finally {
+      if (serial == _composerSwitch && !_composerDisposed) {
+        _applyingComposer = false;
+        if (_composerOwner == conversation.id) {
+          _mediaController.restoringDraft = false;
+        }
+        notifyListeners();
+      }
+    }
+  }
+
+  void _applyComposerValue(
+    ComposerDraftInput input, {
+    bool resetHistory = true,
+  }) {
+    final wasApplying = _applyingComposer;
+    _applyingComposer = true;
+    _inputController.value = TextEditingValue(
+      text: input.text,
+      selection: TextSelection(
+        baseOffset: input.selectionBase < 0
+            ? input.text.length
+            : input.selectionBase.clamp(0, input.text.length),
+        extentOffset: input.selectionExtent < 0
+            ? input.text.length
+            : input.selectionExtent.clamp(0, input.text.length),
+      ),
+    );
+    _mediaController.restoreDraft(input, resetHistory: resetHistory);
+    _applyingComposer = wasApplying;
+  }
+
+  void _recoverComposerSubmission(String owner) {
+    final drafts = _composerDrafts;
+    if (drafts == null) return;
+    drafts.restorePending(owner);
+    final draft = drafts.peek(owner);
+    if (_composerOwner == owner && !_composerDisposed && draft != null) {
+      if (!draft.active.sameValue(
+        _mediaController.snapshotDraft(_inputController.text),
+      )) {
+        _applyComposerValue(draft.active);
+      }
+      _userMessageEditState = draft.editMessageId == null
+          ? null
+          : UserMessageEditState(
+              messageId: draft.editMessageId!,
+              previewText: draft.active.text,
+            );
+      notifyListeners();
+    }
+  }
 
   // Animation tuning
   static const Duration _postSwitchScrollDelay = Duration(milliseconds: 220);
@@ -403,8 +670,26 @@ class HomePageController extends ChangeNotifier {
       onStateChanged: () => notifyListeners(),
       getSettingsProvider: () => _context.read<SettingsProvider>(),
       getCurrentConversationId: () => currentConversation?.id,
-      onStreamTick: () => _scrollCtrl.autoScrollToBottomIfNeeded(),
+      onStreamTick: _handleStreamTick,
     );
+  }
+
+  /// Minimum gap between generation haptics. Stream ticks arrive every 50ms;
+  /// pulsing on each one blurs into a continuous buzz.
+  static const Duration _generateHapticInterval = Duration(milliseconds: 100);
+  final Stopwatch _generateHapticClock = Stopwatch();
+
+  void _handleStreamTick() {
+    _scrollCtrl.autoScrollToBottomIfNeeded();
+    if (!_context.read<SettingsProvider>().hapticsOnGenerate) return;
+    if (_generateHapticClock.isRunning &&
+        _generateHapticClock.elapsed < _generateHapticInterval) {
+      return;
+    }
+    _generateHapticClock
+      ..reset()
+      ..start();
+    Haptics.light();
   }
 
   void _initializeServices() {
@@ -469,6 +754,13 @@ class HomePageController extends ChangeNotifier {
   }
 
   void _initializeViewModel() {
+    ContextUsageService? contextUsage;
+    try {
+      contextUsage = _context.read<ContextUsageService>();
+    } catch (_) {}
+    contextUsage?.bindAssembler(
+      _messageGenerationService.previewContextAssembly,
+    );
     _viewModel = HomeViewModel(
       chatService: _chatService,
       messageBuilderService: _messageBuilderService,
@@ -478,10 +770,12 @@ class HomePageController extends ChangeNotifier {
       chatController: _chatController,
       contextProvider: _context,
       getTitleForLocale: _titleForLocale,
+      contextUsage: contextUsage,
     );
     _viewModel.onBackgroundTaskError = _showBackgroundTaskFailure;
     _viewModel.addListener(() {
       _streamController.refreshPresentation();
+      unawaited(_activateComposerDraft().catchError((Object _) {}));
       notifyListeners();
     });
   }
@@ -558,12 +852,7 @@ class HomePageController extends ChangeNotifier {
   }
 
   String _localizeGenerationError(AppLocalizations l10n, String error) {
-    switch (error) {
-      case 'audio_attachment_unsupported':
-        return l10n.homePageAudioAttachmentUnsupported;
-      default:
-        return '${l10n.generationInterrupted}: $error';
-    }
+    return '${l10n.generationInterrupted}: $error';
   }
 
   void _initializeScrollController() {
@@ -822,6 +1111,7 @@ class HomePageController extends ChangeNotifier {
           await _createNewConversation();
         }
       }
+      await _activateComposerDraft();
       _chatInitialized = true;
     } finally {
       _startupConversationPending = false;
@@ -908,6 +1198,64 @@ class HomePageController extends ChangeNotifier {
   // ============================================================================
 
   Future<ChatInputSubmissionResult> sendMessage(ChatInputData input) async {
+    final submission = input.draftSubmission;
+    final drafts = _composerDrafts;
+    if (submission == null || drafts == null) {
+      return _sendComposerMessage(input);
+    }
+    try {
+      final prepared = await drafts.prepareSubmissionInput(input);
+      final result = await _sendComposerMessage(prepared);
+      if (result == ChatInputSubmissionResult.queued) return result;
+      await _finishComposerSubmission(submission);
+      if (await drafts.wasSubmitted(submission.id)) {
+        return ChatInputSubmissionResult.sent;
+      }
+      _recoverComposerSubmission(submission.conversationId);
+      return result;
+    } catch (_) {
+      if (await drafts.wasSubmitted(submission.id)) {
+        await _finishComposerSubmission(submission);
+        return ChatInputSubmissionResult.sent;
+      }
+      _recoverComposerSubmission(submission.conversationId);
+      if (_context.mounted) {
+        showAppSnackBar(
+          _context,
+          message: AppLocalizations.of(_context)!.composerDraftSaveFailed,
+          type: NotificationType.error,
+        );
+      }
+      return ChatInputSubmissionResult.rejected;
+    } finally {
+      drafts.submissionIdle(submission.conversationId);
+    }
+  }
+
+  Future<void> _finishComposerSubmission(DraftSubmission submission) async {
+    final drafts = _composerDrafts!;
+    // The widget still owns the live edit during persistence. Release an empty
+    // edit only when its UI can be updated in the same synchronous step.
+    await drafts.finishSubmission(submission, preserveEdit: true);
+    final draft = drafts.peek(submission.conversationId);
+    if (draft == null ||
+        draft.submissionId != null ||
+        draft.editMessageId != submission.editMessageId ||
+        draft.edit?.isEmpty != true) {
+      return;
+    }
+    if (!_composerDisposed &&
+        _composerOwner == submission.conversationId &&
+        _userMessageEditState?.messageId == submission.editMessageId) {
+      _exitUserMessageEdit(clearDraft: false);
+    } else {
+      drafts.endEdit(submission.conversationId);
+    }
+  }
+
+  Future<ChatInputSubmissionResult> _sendComposerMessage(
+    ChatInputData input,
+  ) async {
     final content = input.text.trim();
     if (content.isEmpty &&
         input.imagePaths.isEmpty &&
@@ -915,12 +1263,35 @@ class HomePageController extends ChangeNotifier {
       return ChatInputSubmissionResult.rejected;
     }
     _warmupSerial++;
-    final editState = _userMessageEditState;
+    final editState = input.draftSubmission?.editMessageId != null
+        ? UserMessageEditState(
+            messageId: input.draftSubmission!.editMessageId!,
+            previewText: input.text,
+          )
+        : input.draftSubmission == null
+        ? _userMessageEditState
+        : null;
     if (editState != null) {
       final newMsg = await _saveEditedUserMessageVersion(input, editState);
-      if (newMsg == null) return ChatInputSubmissionResult.rejected;
-      _exitUserMessageEdit(clearDraft: false);
-      await regenerateAtMessage(newMsg);
+      if (newMsg == null) {
+        if (_context.mounted) {
+          showAppSnackBar(
+            _context,
+            message: AppLocalizations.of(_context)!.composerDraftMessageMissing,
+            type: NotificationType.warning,
+          );
+        }
+        return ChatInputSubmissionResult.rejected;
+      }
+      if (input.draftSubmission == null &&
+          currentConversation?.id == newMsg.conversationId &&
+          _userMessageEditState?.messageId == editState.messageId) {
+        _exitUserMessageEdit(clearDraft: false);
+      }
+      await regenerateAtMessage(
+        newMsg,
+        allowImagesApiRouting: input.allowImagesApiRouting,
+      );
       return ChatInputSubmissionResult.sent;
     }
     if (currentConversation == null) {
@@ -972,6 +1343,11 @@ class HomePageController extends ChangeNotifier {
   void cancelQueuedMessage() {
     final restored = _viewModel.cancelCurrentQueuedInput();
     if (restored == null) return;
+    if (restored.draftSubmission != null && _composerDrafts != null) {
+      unawaited(_restoreRecoveredDraft());
+      notifyListeners();
+      return;
+    }
 
     _inputController.value = TextEditingValue(
       text: restored.text,
@@ -989,12 +1365,14 @@ class HomePageController extends ChangeNotifier {
   Future<void> regenerateAtMessage(
     ChatMessage message, {
     bool assistantAsNewReply = false,
+    bool? allowImagesApiRouting,
   }) async {
     if (currentConversation == null) return;
     _warmupSerial++;
 
     final settings = _context.read<SettingsProvider>();
-    if (settings.regenerateDeleteTrailingMessages) {
+    if (settings.regenerateDeleteTrailingMessages &&
+        currentConversation?.id == message.conversationId) {
       final versioning = _messageGenerationService
           .calculateRegenerationVersioning(
             message: message,
@@ -1012,7 +1390,8 @@ class HomePageController extends ChangeNotifier {
     final success = await _viewModel.regenerateAtMessage(
       message,
       assistantAsNewReply: assistantAsNewReply,
-      allowImagesApiRouting: _mediaController.allowImagesApiRouting,
+      allowImagesApiRouting:
+          allowImagesApiRouting ?? _mediaController.allowImagesApiRouting,
     );
     if (success) {
       notifyListeners();
@@ -1093,7 +1472,7 @@ class HomePageController extends ChangeNotifier {
     }
     // Invalidate in-flight select-all / toggle / invert for the prior chat.
     _selectionEpoch++;
-    _exitUserMessageEdit(clearDraft: true);
+    if (_composerDrafts == null) _exitUserMessageEdit(clearDraft: true);
 
     if (!isDesktopPlatform) {
       // Fetch-then-commit: fade-out, progress flush, and the DB fetch run
@@ -1176,47 +1555,76 @@ class HomePageController extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> createNewConversationAnimated({
+  Future<Conversation?> createNewConversationAnimated({
     bool preserveDraft = false,
   }) async {
     // Cancel any in-flight conversation switch fetch.
-    _switchSerial++;
+    final serial = ++_switchSerial;
+    final assistantId = _context.read<AssistantProvider>().currentAssistantId;
     _warmupSerial++;
     _selectionEpoch++;
     try {
       await _viewModel.flushCurrentConversationProgress();
     } catch (_) {}
-    _exitUserMessageEdit(clearDraft: !preserveDraft);
+    if (!_context.mounted || serial != _switchSerial) return null;
+    if (_composerDrafts == null) {
+      _exitUserMessageEdit(clearDraft: !preserveDraft);
+    }
     if (!isDesktopPlatform) {
       try {
-        await _convoFadeController.reverse();
+        await _convoFadeController.reverse().orCancel;
       } catch (_) {}
     }
-    await _createNewConversation(preserveDraft: preserveDraft);
+    if (!_context.mounted || serial != _switchSerial) return null;
+    final conversation = await _createNewConversation(
+      preserveDraft: preserveDraft,
+      assistantId: assistantId,
+    );
+    if (conversation == null ||
+        !_context.mounted ||
+        serial != _switchSerial ||
+        currentConversation?.id != conversation.id) {
+      return conversation;
+    }
     if (!isDesktopPlatform) {
       try {
         await WidgetsBinding.instance.endOfFrame;
-        await _convoFadeController.forward();
+        if (serial != _switchSerial) return conversation;
+        await _convoFadeController.forward().orCancel;
       } catch (_) {}
     }
     if (isDesktopPlatform) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _inputFocus.requestFocus();
+        if (_context.mounted && serial == _switchSerial) {
+          _inputFocus.requestFocus();
+        }
       });
     }
+    return conversation;
   }
 
-  Future<void> _createNewConversation({bool preserveDraft = false}) async {
-    _exitUserMessageEdit(clearDraft: !preserveDraft);
+  Future<Conversation?> _createNewConversation({
+    bool preserveDraft = false,
+    String? assistantId,
+  }) async {
+    if (_composerDrafts == null) {
+      _exitUserMessageEdit(clearDraft: !preserveDraft);
+    }
     _translations.clear();
     final previousId = currentConversation?.id;
-    await _viewModel.createNewConversation();
+    final conversation = await _viewModel.createNewConversation(
+      assistantId: assistantId,
+    );
+    if (conversation == null || currentConversation?.id != conversation.id) {
+      return conversation;
+    }
     if (currentConversation?.id != null &&
         currentConversation!.id != previousId) {
       _clearSelectionState();
     }
     notifyListeners();
     _scrollToBottomSoon(animate: false);
+    return conversation;
   }
 
   /// Clears selection chrome without notifying.
@@ -1545,7 +1953,7 @@ class HomePageController extends ChangeNotifier {
 
   Future<void> startUserMessageEdit(ChatMessage message) async {
     final ctx = _context;
-    if (!ctx.mounted) return;
+    if (!ctx.mounted || _mediaController.restoringDraft) return;
     if (message.role != 'user') {
       final l10n = AppLocalizations.of(ctx)!;
       showAppSnackBar(
@@ -1559,13 +1967,17 @@ class HomePageController extends ChangeNotifier {
     final hasDraft =
         _inputController.text.trim().isNotEmpty ||
         _mediaController.hasDraftMedia;
-    if (hasDraft) {
+    if (hasDraft &&
+        (_composerDrafts == null ||
+            isTemporaryConversation ||
+            _userMessageEditState != null)) {
       final overwrite = await _confirmOverwriteInputDraft(ctx);
       if (overwrite != true) return;
       await Future<void>.delayed(const Duration(milliseconds: 100));
       if (!ctx.mounted) return;
     }
 
+    if (currentConversation?.id != message.conversationId) return;
     _enterUserMessageEdit(message);
   }
 
@@ -1582,11 +1994,59 @@ class HomePageController extends ChangeNotifier {
 
   Future<void> saveUserMessageEditOnly() async {
     final editState = _userMessageEditState;
-    if (editState == null || _mediaController.hasUnreadyImages) return;
-    final input = _mediaController.snapshotInput(_inputController.text);
+    if (editState == null ||
+        _mediaController.restoringDraft ||
+        _mediaController.hasUnreadyImages) {
+      return;
+    }
+    var input = _mediaController.snapshotInput(_inputController.text);
     if (input.text.trim().isEmpty &&
         input.imagePaths.isEmpty &&
         input.documents.isEmpty) {
+      return;
+    }
+    final owner = _composerOwner;
+    final drafts = _composerDrafts;
+    if (owner != null &&
+        drafts != null &&
+        !_chatService.isTemporaryConversation(owner)) {
+      if (drafts.submitting.contains(owner)) return;
+      final snapshot = _mediaController.snapshotDraft(_inputController.text);
+      final bindingSerial = _composerSwitch;
+      DraftSubmission? submission;
+      _mediaController.restoringDraft = true;
+      _applyingComposer = true;
+      notifyListeners();
+      try {
+        submission = await drafts.beginSubmission(owner, snapshot);
+        input = await drafts.prepareSubmissionInput(
+          snapshot.toInput(submission: submission),
+        );
+        final newMessage = await _saveEditedUserMessageVersion(
+          input,
+          editState,
+        );
+        if (newMessage == null) {
+          _recoverComposerSubmission(owner);
+          return;
+        }
+        await _finishComposerSubmission(submission);
+      } catch (_) {
+        if (submission != null && await drafts.wasSubmitted(submission.id)) {
+          await _finishComposerSubmission(submission);
+        } else {
+          _recoverComposerSubmission(owner);
+        }
+      } finally {
+        drafts.submissionIdle(owner);
+        if (!_composerDisposed &&
+            _composerOwner == owner &&
+            _composerSwitch == bindingSerial) {
+          _applyingComposer = false;
+          _mediaController.restoringDraft = false;
+        }
+        if (!_composerDisposed) notifyListeners();
+      }
       return;
     }
     final newMsg = await _saveEditedUserMessageVersion(input, editState);
@@ -1600,12 +2060,16 @@ class HomePageController extends ChangeNotifier {
       includeMediaFilePathsAsImages: false,
     );
     final messageId = message.id;
-    _inputController.value = TextEditingValue(
-      text: input.text,
-      selection: TextSelection.collapsed(offset: input.text.length),
-      composing: TextRange.empty,
-    );
-    _mediaController.restoreInput(input);
+    final owner = _composerOwner;
+    if (owner != null && !_chatService.isTemporaryConversation(owner)) {
+      _saveComposerDraft();
+      _composerDrafts?.beginEdit(
+        owner,
+        message.id,
+        ComposerDraftInput.fromInput(input),
+      );
+    }
+    _applyComposerValue(ComposerDraftInput.fromInput(input));
     _userMessageEditState = UserMessageEditState(
       messageId: message.id,
       previewText: input.text.isNotEmpty ? input.text : message.content.trim(),
@@ -1621,6 +2085,15 @@ class HomePageController extends ChangeNotifier {
   void _exitUserMessageEdit({required bool clearDraft}) {
     if (_userMessageEditState == null) return;
     _userMessageEditState = null;
+    final owner = _composerOwner;
+    if (_composerDrafts != null &&
+        owner != null &&
+        !_chatService.isTemporaryConversation(owner)) {
+      _composerDrafts!.endEdit(owner);
+      _applyComposerValue(_composerDrafts!.peek(owner)!.compose);
+      notifyListeners();
+      return;
+    }
     if (clearDraft) {
       _mediaController.clearDraft();
     }
@@ -1634,24 +2107,32 @@ class HomePageController extends ChangeNotifier {
     ChatInputData input,
     UserMessageEditState editState,
   ) async {
-    final conversation = currentConversation;
+    final conversation = input.draftSubmission == null
+        ? currentConversation
+        : _chatService.getConversation(input.draftSubmission!.conversationId);
     if (conversation == null) return null;
-    final assistant = _context.read<AssistantProvider>().currentAssistant;
+    final assistants = _context.read<AssistantProvider>();
+    final assistant = assistants.getById(conversation.assistantId ?? '');
+    if (conversation.assistantId != null && assistant == null) return null;
     final parts = await MessageGenerationService.buildPersistedUserMessageParts(
       input,
       assistant: assistant,
     );
 
     await _chatService.clearConversationSuggestions(conversation.id);
-    _viewModel.updateCurrentConversation(
-      _chatService.getConversation(conversation.id),
-    );
+    if (currentConversation?.id == conversation.id) {
+      _viewModel.updateCurrentConversation(
+        _chatService.getConversation(conversation.id),
+      );
+    }
 
     final newMsg = await _chatService.appendMessageVersion(
       messageId: editState.messageId,
       parts: parts,
+      draftSubmission: input.draftSubmission,
     );
     if (newMsg == null) return null;
+    if (currentConversation?.id != conversation.id) return newMsg;
 
     if (await _chatController.openAroundPersistedMessage(newMsg)) {
       _viewModel.restoreMessageUiState();
@@ -2365,7 +2846,14 @@ class HomePageController extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// While the composer fills the chat area its height says nothing about
+  /// the space the message list must keep clear, so it is not measured.
+  void setInputBarExpanded(bool expanded) {
+    _inputBarExpanded = expanded;
+  }
+
   void measureInputBar() {
+    if (_inputBarExpanded) return;
     try {
       final ctx = _inputBarKey.currentContext;
       if (ctx == null) return;
@@ -2443,14 +2931,108 @@ class HomePageController extends ChangeNotifier {
         false;
   }
 
-  Future<bool> openIncomingShareDraft(ChatInputData input) async {
+  Future<bool> openIncomingShareDraft(
+    ChatInputData input, {
+    Iterable<String> shareIds = const [],
+  }) async {
+    final drafts = _composerDrafts;
+    if (drafts != null) {
+      // Incoming shares have their own destination: the assistant's new entry.
+      // Navigating there saves the source conversation independently.
+      final target = await createNewConversationAnimated(preserveDraft: true);
+      if (!_context.mounted || target == null || drafts.suspended) {
+        throw StateError('composer_not_ready');
+      }
+      final owner = target.id;
+      final generation = drafts.epoch(owner);
+      if (currentConversation?.id == owner) await _activateComposerDraft();
+      final draft = await drafts.load(owner, assistantId: target.assistantId);
+      if (!_context.mounted ||
+          drafts.suspended ||
+          !drafts.isCurrent(owner, generation)) {
+        throw StateError('composer_share_changed');
+      }
+      final visible =
+          _composerOwner == owner && currentConversation?.id == owner;
+      if (visible) {
+        if (_mediaController.restoringDraft) {
+          throw StateError('composer_not_ready');
+        }
+        _saveComposerDraft();
+      }
+      // An empty target can accept the share in the background. A conflict
+      // requires the target to remain visible; otherwise keep native delivery
+      // pending instead of asking about, or overwriting, another conversation.
+      final needsChoice = !draft.active.isEmpty;
+      if (needsChoice && !visible) throw StateError('composer_share_changed');
+      final revision = draft.revision;
+      final choice = needsChoice ? await _chooseDraftConflict() : 'replace';
+      if (choice == null) return false;
+      if (drafts.suspended ||
+          !drafts.isCurrent(owner, generation) ||
+          draft.revision != revision ||
+          (needsChoice &&
+              (_composerOwner != owner || currentConversation?.id != owner))) {
+        throw StateError('composer_share_changed');
+      }
+      final shared = ComposerDraftInput(
+        text: input.text,
+        selectionBase: input.text.length,
+        selectionExtent: input.text.length,
+        images: [
+          for (final path in input.imagePaths)
+            DraftImage(path: path, processing: true),
+        ],
+        documents: input.documents,
+      );
+      final value = choice == 'append'
+          ? ComposerDraftStore.merge(draft.active, shared)
+          : shared;
+      if (choice == 'replace') {
+        drafts.invalidateInputOperations(
+          owner,
+          editMessageId: draft.editMessageId,
+        );
+      }
+      final importGeneration = drafts.epoch(owner);
+      final bindingSerial = _composerSwitch;
+      if (visible) {
+        _applyingComposer = true;
+        _mediaController.restoringDraft = true;
+        notifyListeners();
+      }
+      try {
+        await drafts.acceptShare(owner, value, shareIds);
+        if (drafts.suspended || !drafts.isCurrent(owner, importGeneration)) {
+          throw StateError('composer_share_changed');
+        }
+      } finally {
+        if (visible &&
+            !_composerDisposed &&
+            _composerOwner == owner &&
+            _composerSwitch == bindingSerial) {
+          _applyComposerValue(draft.active);
+          _mediaController.restoringDraft = false;
+          _applyingComposer = false;
+        }
+        if (!_composerDisposed) notifyListeners();
+      }
+      if (!_composerDisposed && _composerOwner == owner) {
+        _mediaController.sharedDraftAction.value = () =>
+            unawaited(moveSharedDraft());
+      }
+      return true;
+    }
     final approvedText = _inputController.text;
     final approvedMedia = _mediaController.draftMediaIdentity;
     // Keep even an edited-message draft until the actual replacement below.
     // Conversation creation and both animations may yield while it is edited.
-    await createNewConversationAnimated(preserveDraft: true);
+    final target = await createNewConversationAnimated(preserveDraft: true);
     await WidgetsBinding.instance.endOfFrame;
-    if (!_context.mounted || !_mediaController.isAttached) {
+    if (!_context.mounted ||
+        !_mediaController.isAttached ||
+        target == null ||
+        currentConversation?.id != target.id) {
       throw StateError('The chat composer is not ready');
     }
     if ((approvedText != _inputController.text ||
@@ -2458,7 +3040,9 @@ class HomePageController extends ChangeNotifier {
         !await confirmIncomingShare()) {
       return false;
     }
-    if (!_context.mounted || !_mediaController.isAttached) {
+    if (!_context.mounted ||
+        !_mediaController.isAttached ||
+        currentConversation?.id != target.id) {
       throw StateError('The chat composer is not ready');
     }
     // No more awaits between final confirmation and writing the new draft.
@@ -2479,7 +3063,13 @@ class HomePageController extends ChangeNotifier {
     return true;
   }
 
-  Future<bool> acceptIncomingShareDraft(ChatInputData input) async {
+  Future<bool> acceptIncomingShareDraft(
+    ChatInputData input, {
+    Iterable<String> shareIds = const [],
+  }) async {
+    if (_composerDrafts != null) {
+      return openIncomingShareDraft(input, shareIds: shareIds);
+    }
     if (!_context.mounted || !await confirmIncomingShare()) return false;
     if (!_context.mounted) return false;
     return openIncomingShareDraft(input);
@@ -2500,8 +3090,69 @@ class HomePageController extends ChangeNotifier {
         currentConversation?.id != sourceId) {
       return;
     }
-    // The stable composer keeps its text, files and image-processing queue.
-    // Navigate only; never clear or recopy draft attachments during a move.
+    if (_composerDrafts != null && sourceId != null) {
+      final drafts = _composerDrafts!;
+      try {
+        _saveComposerDraft();
+        var targetId = destination;
+        if (targetId.isEmpty) {
+          final created = await createNewConversationAnimated(
+            preserveDraft: true,
+          );
+          if (created == null || currentConversation?.id != created.id) return;
+          await _activateComposerDraft();
+          if (_composerOwner != created.id) return;
+          targetId = created.id;
+        }
+        if (targetId.isEmpty || targetId == sourceId) return;
+        final visibleId = currentConversation?.id;
+        final target = await drafts.load(
+          targetId,
+          assistantId: _chatService.getConversation(targetId)?.assistantId,
+        );
+        final revision = target.revision;
+        final choice = target.active.isEmpty
+            ? 'replace'
+            : await _chooseDraftConflict();
+        if (choice == null || currentConversation?.id != visibleId) return;
+        if (target.revision != revision) {
+          throw StateError('composer_transfer_changed');
+        }
+        final bindingOwner = _composerOwner;
+        final bindingSerial = _composerSwitch;
+        _applyingComposer = true;
+        _mediaController.restoringDraft = true;
+        notifyListeners();
+        try {
+          await drafts.transfer(sourceId, targetId, append: choice == 'append');
+        } finally {
+          if (!_composerDisposed &&
+              _composerOwner == bindingOwner &&
+              _composerSwitch == bindingSerial) {
+            // Imports can update the store while this composer is locked,
+            // including when their arrival makes the move abort.
+            final latest = drafts.peek(bindingOwner ?? '');
+            if (latest != null) _applyComposerValue(latest.active);
+            _applyingComposer = false;
+            _mediaController.restoringDraft = false;
+          }
+          if (!_composerDisposed) notifyListeners();
+        }
+        if (_composerDisposed || _composerSwitch != bindingSerial) return;
+        await switchConversationAnimated(targetId);
+        await _activateComposerDraft();
+      } catch (_) {
+        if (_context.mounted) {
+          showAppSnackBar(
+            _context,
+            message: AppLocalizations.of(_context)!.incomingShareMoveFailed,
+            type: NotificationType.error,
+          );
+        }
+      }
+      return;
+    }
+    // Legacy controller-only test hosts do not attach a persistent store.
     try {
       if (destination.isEmpty) {
         await createNewConversationAnimated();
@@ -2709,10 +3360,8 @@ class HomePageController extends ChangeNotifier {
     return _generationController.isToolModel(providerKey, modelId);
   }
 
-  bool isReasoningEnabled(int? budget) {
-    if (budget == null) return true;
-    if (budget == -1) return true;
-    return budget >= 1024;
+  bool isReasoningEnabled(ReasoningRequest r) {
+    return _generationController.isReasoningEnabled(r);
   }
 
   // ============================================================================
@@ -2765,6 +3414,10 @@ class HomePageController extends ChangeNotifier {
   // ============================================================================
 
   void onAppLifecycleStateChanged(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) {
+      _saveComposerDraft();
+      unawaited(_composerDrafts?.flush().catchError((Object _) {}));
+    }
     _homeAppVisible =
         state != AppLifecycleState.paused &&
         state != AppLifecycleState.hidden &&
@@ -2910,6 +3563,17 @@ class HomePageController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _saveComposerDraft();
+    _composerDisposed = true;
+    _composerSwitch++;
+    _inputController.removeListener(_saveComposerDraft);
+    _composerDrafts?.removeListener(_onComposerStatusChanged);
+    if (_composerDrafts != null) {
+      AppExitFlush.unregister(_composerDrafts!.flush);
+    }
+    _mediaController.onDraftChanged = null;
+    _mediaController.onBeginSubmission = null;
+    unawaited(_composerDrafts?.flush().catchError((Object _) {}));
     final background = MobileBackgroundCoordinator.instance;
     if (background.visibleConversation == _visibleBackgroundConversation) {
       background.visibleConversation = null;
